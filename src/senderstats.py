@@ -120,8 +120,14 @@ def main():
     parser.add_argument('--no-empty-from', action='store_true', dest="no_empty_from",
                         help='If the header From: is empty the envelope sender address is used')
 
+    parser.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
+                        help='Show skipped details')
+
     parser.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
                         nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
+
+    parser.add_argument('--restrict-domains', default=[], metavar='<sender>', dest="restricted_domains",
+                        nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
 
     parser.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
                         nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
@@ -148,13 +154,21 @@ def main():
     print()
 
     # Remove duplicates + merge
-    args.excluded_domains = list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains})
+    args.excluded_domains = sorted(list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
+
+    # Remove duplicates + merge
+    args.restricted_domains = sorted(list({domain.casefold() for domain in args.restricted_domains}))
 
     # Remove duplicates
-    args.excluded_senders = list({sender.casefold() for sender in args.excluded_senders})
+    args.excluded_senders = sorted(list({sender.casefold() for sender in args.excluded_senders}))
 
     print("Domains excluded from processing:")
     for skip in args.excluded_domains:
+        print(skip)
+    print()
+
+    print("Domains constrained for processing:")
+    for skip in args.restricted_domains:
         print(skip)
     print()
 
@@ -162,6 +176,11 @@ def main():
     for skip in args.excluded_senders:
         print(skip)
     print()
+
+    args.restricted_domains = list({escape_regex_specials(domain.casefold()) for domain in args.restricted_domains})
+    # Pattern used to constrain domains and subdomains
+    restricted_domains = r'(\.|@)' + build_or_regex_string(args.restricted_domains)
+    restricted_domains = re.compile(restricted_domains, flags=re.IGNORECASE)
 
     args.excluded_domains = list({escape_regex_specials(domain.casefold()) for domain in args.excluded_domains})
     # Pattern used to exclude domains and subdomains
@@ -188,6 +207,30 @@ def main():
             for line in reader:
                 total += 1
                 env_sender = line[args.sender_field].casefold().strip()
+
+                # Deal with all the records we don't want to process based on sender.
+                # Skip empty and domain patterns
+                if exclude_pattern.search(env_sender) or not env_sender:
+                    skipped += 1
+                    domain = get_email_domain(env_sender)
+                    if not env_sender:
+                        domain = '(Empty)'
+                    skipped_domains[domain] += 1
+                    continue
+
+                # Skip empty and domain patterns
+                if not restricted_domains.search(env_sender):
+                    skipped += 1
+                    domain = get_email_domain(env_sender)
+                    skipped_domains[domain] += 1
+                    continue
+
+                # Skip those domains not part of the processing constraint
+                if env_sender in skipped_domain_set:
+                    skipped += 1
+                    skipped_senders[env_sender] += 1
+                    continue
+
                 header_from = line[args.from_field].casefold().strip()
                 return_path = line[args.return_field].casefold().strip()
 
@@ -214,21 +257,6 @@ def main():
                 if args.no_display:
                     header_from = strip_display_names(header_from)
                     return_path = strip_display_names(return_path)
-
-                # Skip empty and domain patterns
-                if exclude_pattern.search(env_sender) or not env_sender:
-                    skipped += 1
-                    domain = get_email_domain(env_sender)
-                    if not env_sender:
-                        domain = '(Empty)'
-                    skipped_domains[domain] += 1
-                    continue
-
-                # Skip empty and domain patterns
-                if env_sender in skipped_domain_set:
-                    skipped += 1
-                    skipped_senders[env_sender] += 1
-                    continue
 
                 # Determine distinct dates of data, and count number of messages on that day
                 date = datetime.datetime.strptime(line[args.date_field], args.date_format)
@@ -434,20 +462,22 @@ def main():
     print("Skipped Records: ", skipped)
     print()
 
-    print("Skipped Domain Details")
-    for k, v in skipped_domains.items():
-        print("Skipped {}:".format(k), v)
-    print()
+    if args.show_skip_detail:
+        print("Skipped Domain Details")
+        for k, v in skipped_domains.items():
+            print("Skipped {}:".format(k), v)
+        print()
 
-    print("Skipped Sender Details")
-    for k, v in skipped_senders.items():
-        print("Skipped {}:".format(k), v)
-    print()
+        print("Skipped Sender Details")
+        for k, v in skipped_senders.items():
+            print("Skipped {}:".format(k), v)
+        print()
 
-    print("Records by Day")
-    for d in sorted(dates.keys()):
-        print("{}:".format(d), dates[d])
-    print()
+    if dates:
+        print("Records by Day")
+        for d in sorted(dates.keys()):
+            print("{}:".format(d), dates[d])
+        print()
 
     print("Please see report: {}".format(args.output_file))
 
