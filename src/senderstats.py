@@ -30,6 +30,10 @@ def is_valid_email_syntax(email: str):
         raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
     return email
 
+def validate_xlsx_file(file_path):
+    if not file_path.lower().endswith('.xlsx'):
+        raise argparse.ArgumentTypeError("File must have a .xlsx extension.")
+    return file_path
 
 def strip_display_names(email: str):
     match = email_address_re.search(email)
@@ -72,10 +76,7 @@ def pint(number: str):
 
 def main():
     if len(sys.argv) == 1:
-        print("""usage: senderstats [-h] -i SearchExport [SearchExport ...]
-                   [--from-field FromField] [--sender-field SenderField]
-                   [--msg-size SizeField] [--date-field DateField]
-                   [--date-format DateFormat] -o <xlsx> [-t THRESHOLD]""")
+        print("""usage: senderstats [-h] -i SearchExport [SearchExport ...] -o <xlsx> [-t THRESHOLD]""")
         exit(1)
 
     parser = argparse.ArgumentParser(prog="senderstats",
@@ -132,7 +133,7 @@ def main():
     parser.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
                         nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
 
-    parser.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file", type=str, required=True,
+    parser.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file", type=validate_xlsx_file, required=True,
                         help='Output file')
 
     parser.add_argument('-t', '--threshold', dest="threshold", type=pint, required=False,
