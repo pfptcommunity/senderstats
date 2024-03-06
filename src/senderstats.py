@@ -126,7 +126,7 @@ def main():
     parser.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
                         nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
 
-    parser.add_argument('--restrict-domains', default=[], metavar='<sender>', dest="restricted_domains",
+    parser.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restricted_domains",
                         nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
 
     parser.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
