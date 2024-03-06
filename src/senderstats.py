@@ -238,7 +238,7 @@ def main():
                 # Message ID is unique but often the sending host behind the @ symbol is unique to the application
                 message_id = line[args.mid_field].casefold().strip()
                 message_id_domain = get_email_domain(message_id)
-                message_id_domain_extract = tldextract.extract(message_id)
+                message_id_domain_extract = tldextract.extract(message_id_domain)
                 message_id_host = message_id_domain_extract.subdomain
                 message_id_domain = message_id_domain_extract.domain
                 message_id_domain_suffix = message_id_domain_extract.suffix
