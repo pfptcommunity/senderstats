@@ -30,10 +30,12 @@ def is_valid_email_syntax(email: str):
         raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
     return email
 
+
 def validate_xlsx_file(file_path):
     if not file_path.lower().endswith('.xlsx'):
         raise argparse.ArgumentTypeError("File must have a .xlsx extension.")
     return file_path
+
 
 def strip_display_names(email: str):
     match = email_address_re.search(email)
@@ -47,6 +49,10 @@ def get_email_domain(email: str):
     if match:
         return match.group(3)
     return email
+
+
+def get_message_id_host(msgid: str):
+    return msgid.strip('<> ').split('@')[-1]
 
 
 def escape_regex_specials(literal_str: str):
@@ -155,7 +161,8 @@ def main():
     print()
 
     # Remove duplicates + merge
-    args.excluded_domains = sorted(list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
+    args.excluded_domains = sorted(
+        list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
 
     # Remove duplicates + merge
     args.restricted_domains = sorted(list({domain.casefold() for domain in args.restricted_domains}))
@@ -237,7 +244,7 @@ def main():
 
                 # Message ID is unique but often the sending host behind the @ symbol is unique to the application
                 message_id = line[args.mid_field].casefold().strip()
-                message_id_domain = get_email_domain(message_id)
+                message_id_domain = get_message_id_host(message_id)
                 message_id_domain_extract = tldextract.extract(message_id_domain)
                 message_id_host = message_id_domain_extract.subdomain
                 message_id_domain = message_id_domain_extract.domain
