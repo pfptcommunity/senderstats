@@ -95,11 +95,11 @@ def main():
                         type=str, required=False, default='Sender',
                         help='CSV field of the envelope sender address. (default=Sender)')
 
-    parser.add_argument('--return-path', metavar='ReturnField', dest="return_field",
+    parser.add_argument('--rpath', metavar='ReturnField', dest="return_field",
                         type=str, required=False, default='Header_Return-Path',
                         help='CSV field of the Return-Path: address. (default=Header_Return-Path)')
 
-    parser.add_argument('--message-id', metavar='MIDField', dest="mid_field",
+    parser.add_argument('--mid', metavar='MIDField', dest="mid_field",
                         type=str, required=False, default='Message_ID',
                         help='CSV field of the message ID. (default=Message_ID)')
 
