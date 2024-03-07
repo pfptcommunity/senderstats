@@ -42,8 +42,9 @@ pip install senderstats
 ### Usage Options:
 
 ```
-usage: senderstats [-h] -i <file> [<file> ...] [--hfrom FromField] [--mfrom SenderField] [--rpath ReturnField] [--mid MIDField] [--size SizeField] [--date DateField] [--date-format DateFormat] [--no-display] [--no-empty-from] [--show-skip-detail] [--excluded-domains <domain> [<domain> ...]]
-                   [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] -o <xlsx> [-t THRESHOLD]
+usage: senderstats [-h] -i <file> [<file> ...] [--hfrom FromField] [--mfrom SenderField] [--rpath ReturnField] [--mid MIDField] [--size SizeField] [--date DateField] [--date-format DateFormat] [--strip-display-name]
+                   [--strip-prvs] [--decode-srs] [--no-empty-from] [--show-skip-detail] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] -o
+                   <xlsx> [-t THRESHOLD]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
@@ -57,7 +58,9 @@ optional arguments:
   --size SizeField                                     CSV field of message size. (default=Message_Size)
   --date DateField                                     CSV field of message date/time. (default=Date)
   --date-format DateFormat                             Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
-  --no-display                                         Remove display names, address only
+  --strip-display-name                                 Remove display names, address only
+  --strip-prvs                                         Remove bounce attack prevention tag e.g. prvs=tag=sender@domain.com
+  --decode-srs                                         Convert SRS forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
   --no-empty-from                                      If the header From: is empty the envelope sender address is used
   --show-skip-detail                                   Show skipped details
   --excluded-domains <domain> [<domain> ...]           Exclude domains from processing.
