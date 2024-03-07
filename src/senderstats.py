@@ -13,10 +13,17 @@ PROOFPOINT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com
 
 # Precompiled Regex Matcher (valid email address) parse group 2
 email_address_re = re.compile(
-    r'(<?\s*([a-zA-Z0-9.!#$%&’*+\/=?^_`{|}~-]+@([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)\s*)>?\s*(?:;|$))')
+    r'(<?\s*([a-zA-Z0-9.!#$%&’*+\/=?^_`{|}~-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)*)\s*)>?\s*(?:;|$))', re.IGNORECASE)
 
 # Precompiled Regex Matcher (valid domain)
-valid_domain_re = re.compile(r"(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z]{2,63}){1,2}$")
+valid_domain_re = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z]{2,63}){1,2}$", re.IGNORECASE)
+
+# Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
+prvs_re = re.compile(r'(ms)?prvs\d?=[^=]*=', re.IGNORECASE)
+
+# Precompiled Regex for Sender Rewrite Scheme (SRS)
+# <Forwarding Mailbox Username>+SRS=<Hash>=<Timestamp>=<Original Sender Domain>=<Original Sender Username>@
+srs_re = re.compile(r'([^+]*)\+?srs\d{0,2}=[^=]+=[^=]+=([^=]+)=([^@]+)@', re.IGNORECASE)
 
 
 def is_valid_domain_syntax(domain_name: str):
@@ -53,6 +60,17 @@ def get_email_domain(email: str):
 
 def get_message_id_host(msgid: str):
     return msgid.strip('<> ').split('@')[-1]
+
+
+def strip_prvs(email: str):
+    return prvs_re.sub('', email)
+
+
+def convert_srs(email: str):
+    match = srs_re.search(email)
+    if match:
+        return '{}@{}'.format(match.group(2), match.group(1))
+    return email
 
 
 def escape_regex_specials(literal_str: str):
@@ -121,8 +139,14 @@ def main():
                         type=str, required=False, default="%Y-%m-%dT%H:%M:%S.%f%z",
                         help="Date format used to parse the timestamps. (default=%%Y-%%m-%%dT%%H:%%M:%%S.%%f%%z)")
 
-    parser.add_argument('--no-display', action='store_true', dest="no_display",
+    parser.add_argument('--strip-display-name', action='store_true', dest="no_display",
                         help='Remove display names, address only')
+
+    parser.add_argument('--strip-prvs', action='store_true', dest="strip_prvs",
+                        help='Remove bounce attack prevention tag e.g. prvs=tag=sender@domain.com')
+
+    parser.add_argument('--decode-srs', action='store_true', dest="decode_srs",
+                        help='Convert SRS forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
 
     parser.add_argument('--no-empty-from', action='store_true', dest="no_empty_from",
                         help='If the header From: is empty the envelope sender address is used')
@@ -175,15 +199,17 @@ def main():
         print(skip)
     print()
 
-    print("Domains constrained for processing:")
-    for skip in args.restricted_domains:
-        print(skip)
-    print()
+    if args.restricted_domains:
+        print("Domains constrained or processing:")
+        for skip in args.restricted_domains:
+            print(skip)
+        print()
 
-    print("Senders excluded from processing:")
-    for skip in args.excluded_senders:
-        print(skip)
-    print()
+    if args.excluded_senders:
+        print("Senders excluded from processing:")
+        for skip in args.excluded_senders:
+            print(skip)
+        print()
 
     args.restricted_domains = list({escape_regex_specials(domain.casefold()) for domain in args.restricted_domains})
     # Pattern used to constrain domains and subdomains
@@ -216,6 +242,12 @@ def main():
                 total += 1
                 env_sender = line[args.sender_field].casefold().strip()
 
+                if args.decode_srs:
+                    env_sender = convert_srs(env_sender)
+
+                if args.strip_prvs:
+                    env_sender = strip_prvs(env_sender)
+
                 # Deal with all the records we don't want to process based on sender.
                 # Skip empty and domain patterns
                 if exclude_pattern.search(env_sender) or not env_sender:
@@ -240,7 +272,14 @@ def main():
                     continue
 
                 header_from = line[args.from_field].casefold().strip()
+
                 return_path = line[args.return_field].casefold().strip()
+
+                if args.decode_srs:
+                    return_path = strip_prvs(return_path)
+
+                if args.strip_prvs:
+                    return_path = convert_srs(return_path)
 
                 # Message ID is unique but often the sending host behind the @ symbol is unique to the application
                 message_id = line[args.mid_field].casefold().strip()
@@ -264,7 +303,6 @@ def main():
 
                 if args.no_display:
                     header_from = strip_display_names(header_from)
-                    return_path = strip_display_names(return_path)
 
                 # Determine distinct dates of data, and count number of messages on that day
                 date = datetime.datetime.strptime(line[args.date_field], args.date_format)
