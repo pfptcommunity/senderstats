@@ -141,9 +141,18 @@ Records by Day
 Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ```
 
-Sample Details (Sender + From by Volume):
+### Sample Summary Statistics
 
-![image](https://github.com/pfptcommunity/senderstats/assets/83429267/467d2cca-24a8-4373-a92b-90c2b5d3c8b8)
+![image](https://github.com/pfptcommunity/senderstats/assets/83429267/93207754-9e58-4e7b-8266-e78eadb48d3a)
+
+### Sample Details (Sender + From by Volume):
+
+![image](https://github.com/pfptcommunity/senderstats/assets/83429267/4fa58247-bf7b-4e9f-ba31-e6173b35da1d)
+
+### Sample Details (Message ID) Inferencing:
+
+![image](https://github.com/pfptcommunity/senderstats/assets/83429267/c6cb1102-c8b5-49c2-b498-51dfa30ae04a)
+
 
 
 
