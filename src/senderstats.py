@@ -99,10 +99,6 @@ def pint(number: str):
 
 
 def main():
-    if len(sys.argv) == 1:
-        print("""usage: senderstats [-h] -i SearchExport [SearchExport ...] -o <xlsx> [-t THRESHOLD]""")
-        exit(1)
-
     parser = argparse.ArgumentParser(prog="senderstats",
                                      description="""This tool helps identify the top senders based on smart search outbound message exports.""",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
@@ -169,6 +165,10 @@ def main():
     parser.add_argument('-t', '--threshold', dest="threshold", type=pint, required=False,
                         help='Integer representing number of messages per day to be considered application traffic. (default=100)',
                         default=100)
+
+    if len(sys.argv) == 1:
+        parser.print_usage()  # Print usage information if no arguments are passed
+        sys.exit(1)
 
     args = parser.parse_args()
 
