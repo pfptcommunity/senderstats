@@ -2,11 +2,12 @@ import argparse
 import os
 import sys
 from glob import glob
+from pprint import pprint
 
 from constants import DEFAULT_THRESHOLD, DEFAULT_DATE_FORMAT, PROOFPOINT_DOMAIN_EXCLUSIONS
-from reporting import generate_report
-from log_processor import LogProcessor
-from utils import print_summary, compile_domains_pattern, print_list_with_title
+from MessageDataReport import MessageDataReport
+from MessageDataProcessor import MessageDataProcessor
+from utils import print_summary, compile_domains_pattern, print_list_with_title, average
 from validators import is_valid_domain_syntax, is_valid_email_syntax, validate_xlsx_file
 
 
@@ -116,37 +117,41 @@ def main():
     print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
     # Log processor object
-    log_processor = LogProcessor()
-    log_processor.skipped_domain_set = set(args.excluded_senders)
-    log_processor.excluded_domains_pattern = compile_domains_pattern(args.excluded_domains)
-    log_processor.restricted_domains_pattern = compile_domains_pattern(args.restricted_domains)
-    log_processor.sender_field = args.sender_field
-    log_processor.from_field = args.from_field
-    log_processor.return_field = args.return_field
-    log_processor.mid_field = args.mid_field
-    log_processor.size_field = args.size_field
-    log_processor.date_field = args.date_field
-    log_processor.date_format = args.date_format
+    data_processor = MessageDataProcessor()
+    data_processor.skipped_domain_set = set(args.excluded_senders)
+    data_processor.excluded_domains_pattern = compile_domains_pattern(args.excluded_domains)
+    data_processor.restricted_domains_pattern = compile_domains_pattern(args.restricted_domains)
+    data_processor.sender_field = args.sender_field
+    data_processor.from_field = args.from_field
+    data_processor.return_field = args.return_field
+    data_processor.mid_field = args.mid_field
+    data_processor.size_field = args.size_field
+    data_processor.date_field = args.date_field
+    data_processor.date_format = args.date_format
 
+    f_current = 1
+    f_total = len(file_names)
     for f in file_names:
-        print("Processing: ", f)
-        log_processor.process_file(f)
+        print("Processing:", f, f'({f_current} of {f_total})')
+        data_processor.process_file(f)
+        f_current += 1
 
     print()
-    print("\nTotal records processed:", log_processor.total)
-    print_summary("Skipped due to empty sender", log_processor.empty_senders)
-    print_summary("Excluded by excluded senders list", log_processor.excluded_senders, args.show_skip_detail)
-    print_summary("Excluded by excluded domains list", log_processor.excluded_domains, args.show_skip_detail)
-    print_summary("Excluded by restricted domains list", log_processor.restricted_domains, args.show_skip_detail)
+    print("\nTotal records processed:", data_processor.total)
+    print_summary("Skipped due to empty sender", data_processor.empty_senders)
+    print_summary("Excluded by excluded senders list", data_processor.excluded_senders, args.show_skip_detail)
+    print_summary("Excluded by excluded domains list", data_processor.excluded_domains, args.show_skip_detail)
+    print_summary("Excluded by restricted domains list", data_processor.restricted_domains, args.show_skip_detail)
     print()
 
-    if log_processor.dates:
+    if data_processor.dates:
         print("Records by Day")
-        for d in sorted(log_processor.dates.keys()):
-            print("{}:".format(d), log_processor.dates[d])
+        for d in sorted(data_processor.dates.keys()):
+            print("{}:".format(d), data_processor.dates[d])
         print()
 
-    generate_report(args.output_file, log_processor, args.threshold)
+    data_report = MessageDataReport(args.output_file, data_processor, args.threshold)
+    data_report.generate_report()
 
     print("Please see report: {}".format(args.output_file))
 

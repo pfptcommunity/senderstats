@@ -8,7 +8,7 @@ from utils import convert_srs, strip_prvs, get_email_domain, get_message_id_host
     strip_display_names  # Assuming these functions are defined
 
 
-class LogProcessor:
+class MessageDataProcessor:
     def __init__(self):
         self.days = None
         self.date_format = None

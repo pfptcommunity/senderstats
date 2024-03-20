@@ -1,13 +1,6 @@
 import argparse
 import re
-
 from constants import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
-
-# Precompiled Regex Matcher (valid email address) parse group 2
-email_address_re = re.compile(EMAIL_ADDRESS_REGEX, re.IGNORECASE)
-
-# Precompiled Regex Matcher (valid domain)
-valid_domain_re = re.compile(VALID_DOMAIN_REGEX, re.IGNORECASE)
 
 
 def is_valid_domain_syntax(domain_name: str):
@@ -18,7 +11,7 @@ def is_valid_domain_syntax(domain_name: str):
     :return: The domain name if valid.
     :raises: argparse.ArgumentTypeError if the domain name syntax is invalid.
     """
-    if not valid_domain_re.match(domain_name):
+    if not re.match(VALID_DOMAIN_REGEX, domain_name, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
     return domain_name
 
@@ -31,7 +24,7 @@ def is_valid_email_syntax(email: str):
     :return: The email address if valid.
     :raises: argparse.ArgumentTypeError if the email syntax is invalid.
     """
-    if not email_address_re.match(email):
+    if not re.match(EMAIL_ADDRESS_REGEX, email, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
     return email
 
