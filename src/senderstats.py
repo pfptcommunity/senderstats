@@ -1,141 +1,16 @@
 import argparse
-import csv
-import datetime
 import os
-import re
 import sys
-from collections import defaultdict
 from glob import glob
 
-import tldextract
-import xlsxwriter
-
-PROOFPOINT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com']
-
-# Precompiled Regex Matcher (valid email address) parse group 2
-email_address_re = re.compile(
-    r'(<?\s*([a-zA-Z0-9.!#$%&’*+\/=?^_`{|}~-]+@([a-z0-9-]+(?:\.[a-z0-9-]+)*)\s*)>?\s*(?:;|$))', re.IGNORECASE)
-
-# Precompiled Regex Matcher (valid domain)
-valid_domain_re = re.compile(r"(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z]{2,63}){1,2}$", re.IGNORECASE)
-
-# Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
-prvs_re = re.compile(r'(ms)?prvs\d?=[^=]*=', re.IGNORECASE)
-
-# Precompiled Regex for Sender Rewrite Scheme (SRS)
-# <Forwarding Mailbox Username>+SRS=<Hash>=<Timestamp>=<Original Sender Domain>=<Original Sender Username>@
-srs_re = re.compile(r'([^+]*)\+?srs\d{0,2}=[^=]+=[^=]+=([^=]+)=([^@]+)@', re.IGNORECASE)
+from constants import DEFAULT_THRESHOLD, DEFAULT_DATE_FORMAT, PROOFPOINT_DOMAIN_EXCLUSIONS
+from reporting import generate_report
+from log_processor import LogProcessor
+from utils import print_summary, compile_domains_pattern, print_list_with_title
+from validators import is_valid_domain_syntax, is_valid_email_syntax, validate_xlsx_file
 
 
-def is_valid_domain_syntax(domain_name: str):
-    if not valid_domain_re.match(domain_name):
-        raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
-    return domain_name
-
-
-def is_valid_email_syntax(email: str):
-    if not email_address_re.match(email):
-        raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
-    return email
-
-
-def validate_xlsx_file(file_path):
-    if not file_path.lower().endswith('.xlsx'):
-        raise argparse.ArgumentTypeError("File must have a .xlsx extension.")
-    return file_path
-
-
-def strip_display_names(email: str):
-    match = email_address_re.search(email)
-    if match:
-        return match.group(2)
-    return email
-
-
-def get_email_domain(email: str):
-    match = email_address_re.search(email)
-    if match:
-        return match.group(3)
-    return email
-
-
-def get_message_id_host(msgid: str):
-    return msgid.strip('<> ').split('@')[-1]
-
-
-def strip_prvs(email: str):
-    return prvs_re.sub('', email)
-
-
-def convert_srs(email: str):
-    match = srs_re.search(email)
-    if match:
-        return '{}@{}'.format(match.group(2), match.group(1))
-    return email
-
-
-def escape_regex_specials(literal_str: str):
-    escape_chars = [".", "*", "+"]
-    escaped_text = ""
-    for char in literal_str:
-        if char in escape_chars:
-            escaped_text += "\\" + char
-        else:
-            escaped_text += char
-    return escaped_text
-
-
-def build_or_regex_string(strings: list):
-    return r"({})".format('|'.join(strings))
-
-
-def average(list: list) -> float:
-    return sum(list) / len(list)
-
-
-def pint(number: str):
-    if int(number) < 0:
-        raise argparse.ArgumentTypeError("'{}' is invalid, integer value must be >= 0".format(number))
-    return number
-
-
-def print_summary(title: str, data: any, detail: bool = False):
-    if data:
-        data_sum = sum(data.values()) if isinstance(data, dict) else data
-        print(f"{title}: {data_sum}")
-
-        # Print details if requested and data is a dictionary
-        if detail and isinstance(data, dict):
-            for key, value in data.items():
-                print(f"  {key}: {value}")
-            print()
-
-
-def write_data_to_sheet(worksheet, data, headers, days, cell_format=None):
-    row = 0
-    for col, header in enumerate(headers):
-        worksheet.write(row, col, header, cell_format)
-    for k, v in data.items():
-        row += 1
-        col = 0
-        if isinstance(k, tuple):
-            for f in k:
-                worksheet.write(row, col, f)
-                col += 1
-        else:
-            worksheet.write(row, col, k)
-            col += 1
-        worksheet.write(row, col, len(v))
-        col += 1
-        worksheet.write(row, col, average(v))
-        col += 1
-        worksheet.write_formula(row, col, "=C{line}/{days}".format(line=row + 1, days=days))
-        col += 1
-        worksheet.write_formula(row, col, "=C{line}*D{line}".format(line=row + 1))
-    worksheet.autofit()
-
-
-def main():
+def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats",
                                      description="""This tool helps identify the top senders based on smart search outbound message exports.""",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
@@ -169,8 +44,9 @@ def main():
                         help='CSV field of message date/time. (default=Date)')
 
     parser.add_argument('--date-format', metavar='DateFormat', dest="date_format",
-                        type=str, required=False, default="%Y-%m-%dT%H:%M:%S.%f%z",
-                        help="Date format used to parse the timestamps. (default=%%Y-%%m-%%dT%%H:%%M:%%S.%%f%%z)")
+                        type=str, required=False, default=DEFAULT_DATE_FORMAT,
+                        help="Date format used to parse the timestamps. (default={})".format(
+                            DEFAULT_DATE_FORMAT.replace('%', '%%')))
 
     parser.add_argument('--strip-display-name', action='store_true', dest="no_display",
                         help='Remove display names, address only')
@@ -199,299 +75,81 @@ def main():
     parser.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file", type=validate_xlsx_file, required=True,
                         help='Output file')
 
-    parser.add_argument('-t', '--threshold', dest="threshold", type=pint, required=False,
+    parser.add_argument('-t', '--threshold', dest="threshold", type=int, required=False,
                         help='Integer representing number of messages per day to be considered application traffic. (default=100)',
-                        default=100)
+                        default=DEFAULT_THRESHOLD)
 
     if len(sys.argv) == 1:
         parser.print_usage()  # Print usage information if no arguments are passed
         sys.exit(1)
 
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main():
+    args = parse_arguments()
+
+    # Process files and expand wildcards
     file_names = []
     for f in args.input_files:
         file_names += glob(f)
 
+    # Remove duplicates after wildcard expansion
     file_names = set(file_names)
+
+    # Validate files exist
     file_names = [file for file in file_names if os.path.isfile(file)]
 
-    print("Files to be processed:")
-    for files in file_names:
-        print(files)
-    print()
+    # Remove duplicate sender entries
+    args.excluded_senders = sorted(list({sender.casefold() for sender in args.excluded_senders}))
 
-    # Remove duplicates + merge
+    # Merge domain exclusions and remove duplicates
     args.excluded_domains = sorted(
         list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
 
-    # Remove duplicates + merge
+    # Remove duplicate restricted domains
     args.restricted_domains = sorted(list({domain.casefold() for domain in args.restricted_domains}))
 
-    # Remove duplicates
-    args.excluded_senders = sorted(list({sender.casefold() for sender in args.excluded_senders}))
+    print_list_with_title("Files to be processed:", file_names)
+    print_list_with_title("Senders excluded from processing:", args.excluded_senders)
+    print_list_with_title("Domains excluded from processing:", args.excluded_domains)
+    print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
-    print("Domains excluded from processing:")
-    for skip in args.excluded_domains:
-        print(skip)
-    print()
-
-    if args.restricted_domains:
-        print("Domains constrained or processing:")
-        for skip in args.restricted_domains:
-            print(skip)
-        print()
-
-    if args.excluded_senders:
-        print("Senders excluded from processing:")
-        for skip in args.excluded_senders:
-            print(skip)
-        print()
-
-    args.restricted_domains = list({escape_regex_specials(domain.casefold()) for domain in args.restricted_domains})
-    # Pattern used to constrain domains and subdomains
-    restricted_domains_pattern = r'(\.|@)' + build_or_regex_string(args.restricted_domains)
-    restricted_domains_pattern = re.compile(restricted_domains_pattern, flags=re.IGNORECASE)
-
-    args.excluded_domains = list({escape_regex_specials(domain.casefold()) for domain in args.excluded_domains})
-    # Pattern used to exclude domains and subdomains
-    excluded_domains_pattern = r'(\.|@)' + build_or_regex_string(args.excluded_domains)
-    excluded_domains_pattern = re.compile(excluded_domains_pattern, flags=re.IGNORECASE)
-
-    # Set used to exclude domains and subdomains
-    skipped_domain_set = set(args.excluded_senders)
-
-    total = 0
-
-    dates = {}
-    sender_data = {}
-    from_data = {}
-    return_data = {}
-    sender_from_data = {}
-    mid_data = {}
-    excluded_senders = defaultdict(int)
-    excluded_domains = defaultdict(int)
-    restricted_domains = defaultdict(int)
-    empty_senders = 0
+    # Log processor object
+    log_processor = LogProcessor()
+    log_processor.skipped_domain_set = set(args.excluded_senders)
+    log_processor.excluded_domains_pattern = compile_domains_pattern(args.excluded_domains)
+    log_processor.restricted_domains_pattern = compile_domains_pattern(args.restricted_domains)
+    log_processor.sender_field = args.sender_field
+    log_processor.from_field = args.from_field
+    log_processor.return_field = args.return_field
+    log_processor.mid_field = args.mid_field
+    log_processor.size_field = args.size_field
+    log_processor.date_field = args.date_field
+    log_processor.date_format = args.date_format
 
     for f in file_names:
         print("Processing: ", f)
-        with open(f, 'r', encoding='utf-8-sig') as input_file:
-            reader = csv.DictReader(input_file)
-            for line in reader:
-                total += 1
-                env_sender = line[args.sender_field].casefold().strip()
-
-                # Skip Empty Sender
-                if not env_sender:
-                    empty_senders += 1
-                    continue
-
-                if args.decode_srs:
-                    env_sender = convert_srs(env_sender)
-
-                if args.strip_prvs:
-                    env_sender = strip_prvs(env_sender)
-
-                # Exclude a specific sender highest priority
-                if env_sender in skipped_domain_set:
-                    excluded_senders[env_sender] += 1
-                    continue
-
-                # Deal with all the records we don't want to process based on sender.
-                if excluded_domains_pattern.search(env_sender):
-                    domain = get_email_domain(env_sender)
-                    excluded_domains[domain] += 1
-                    continue
-
-                # Limit processing to only domains on in a list
-                if not restricted_domains_pattern.search(env_sender):
-                    domain = get_email_domain(env_sender)
-                    restricted_domains[domain] += 1
-                    continue
-
-                header_from = line[args.from_field].casefold().strip()
-
-                return_path = line[args.return_field].casefold().strip()
-
-                if args.decode_srs:
-                    return_path = strip_prvs(return_path)
-
-                if args.strip_prvs:
-                    return_path = convert_srs(return_path)
-
-                # Message ID is unique but often the sending host behind the @ symbol is unique to the application
-                message_id = line[args.mid_field].casefold().strip()
-                message_id_domain = get_message_id_host(message_id)
-                message_id_domain_extract = tldextract.extract(message_id_domain)
-                message_id_host = message_id_domain_extract.subdomain
-                message_id_domain = message_id_domain_extract.domain
-                message_id_domain_suffix = message_id_domain_extract.suffix
-
-                # If header from is empty, we will use env_sender
-                if args.no_empty_from and not header_from:
-                    header_from = env_sender
-
-                # Add domain suffix to TLD
-                if message_id_domain_suffix:
-                    message_id_domain += '.' + message_id_domain_suffix
-
-                if not message_id_host and not message_id_domain_suffix:
-                    message_id_host = message_id_domain
-                    message_id_domain = ''
-
-                if args.no_display:
-                    header_from = strip_display_names(header_from)
-
-                # Determine distinct dates of data, and count number of messages on that day
-                date = datetime.datetime.strptime(line[args.date_field], args.date_format)
-                if date.strftime('%Y-%m-%d') not in dates:
-                    dates[date.strftime('%Y-%m-%d')] = 0
-
-                dates[date.strftime('%Y-%m-%d')] += 1
-
-                message_size = line[args.size_field]
-
-                # Make sure cast to int is valid, else 0
-                if message_size.isdigit():
-                    message_size = int(message_size)
-                else:
-                    message_size = 0
-
-                sender_data.setdefault(env_sender, []).append(message_size)
-                from_data.setdefault(header_from, []).append(message_size)
-                return_data.setdefault(return_path, []).append(message_size)
-
-                # Fat index for binding commonality
-                mid_host_domain_index = (header_from, message_id_host, message_id_domain)
-                mid_data.setdefault(mid_host_domain_index, []).append(message_size)
-
-                # Fat index for binding commonality
-                sender_header_index = (env_sender, header_from)
-                sender_from_data.setdefault(sender_header_index, []).append(message_size)
-
-    days = len(dates)
-
-    workbook = xlsxwriter.Workbook(args.output_file)
-
-    # Formatting Data
-    summary_field = workbook.add_format()
-    summary_field.set_bold()
-    summary_field.set_align('right')
-    summary_values = workbook.add_format()
-    summary_values.set_align("right")
-
-    cell_format = workbook.add_format()
-    cell_format.set_bold()
-
-    summary = workbook.add_worksheet("Summary")
-    summary.write(0, 0, "Estimated App Data ({} days)".format(days), summary_field)
-    summary.write(1, 0, "Estimated App Messages ({} days)".format(days), summary_field)
-    summary.write(2, 0, "Estimated App Average Message Size ({} days)".format(days), summary_field)
-    summary.write(3, 0, "Estimated App Peak Hourly Volume ({} days)".format(days), summary_field)
-
-    summary.write(5, 0, "Estimated Monthly App Data", summary_field)
-    summary.write(6, 0, "Estimated Monthly App Messages", summary_field)
-
-    summary.write(8, 0, "Total Outbound Data", summary_field)
-    summary.write(9, 0, "Total Messages Message", summary_field)
-    summary.write(10, 0, "Total Average Message Size", summary_field)
-    summary.write(11, 0, "Total Peak Hourly Volume", summary_field)
-
-    # Total summary of App data
-    summary.write_formula(0, 1,
-                          "=IF(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)&\" bytes\",IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)>=1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/1024),1)&\" Kb\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/POWER(1024,2)),1)&\" Mb\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/POWER(1024,3)),1)&\" Gb\"))))".format(
-                              threshold=args.threshold),
-                          summary_values)
-
-    summary.write_formula(1, 1, "=SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)".format(
-        threshold=args.threshold),
-                          summary_values)
-
-    summary.write_formula(2, 1,
-                          "=ROUNDUP((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B))/1024,0)&\" Kb\"".format(
-                              threshold=args.threshold),
-                          summary_values)
-
-    summary.write_formula(3, 1,
-                          "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}/8,0)".format(
-                              days=days,
-                              threshold=args.threshold),
-                          summary_values)
-
-    # 30 day calculation divide total days * 30
-    summary.write_formula(5, 1,
-                          "=IF(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30&\" bytes\",IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/1024),1)&\" Kb\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,2)),1)&\" Mb\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,3)),1)&\" Gb\"))))".format(
-                              days=days,
-                              threshold=args.threshold),
-                          summary_values)
-
-    summary.write_formula(6, 1,
-                          "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}*30,0)".format(
-                              days=days,
-                              threshold=args.threshold),
-                          summary_values)
-
-    # Total message volume data
-    summary.write_formula(8, 1,
-                          "=IF(SUM('Envelope Senders'!E:E)<1024,SUM('Envelope Senders'!E:E)&\" bytes\",IF(AND(SUM('Envelope Senders'!E:E)>=1024,SUM('Envelope Senders'!E:E)<POWER(1024,2)),(ROUND((SUM('Envelope Senders'!E:E)/1024),1)&\" Kb\"),IF(AND(SUM('Envelope Senders'!E:E)>=POWER(1024,2),SUM('Envelope Senders'!E:E)<POWER(1024,3)),(ROUND((SUM('Envelope Senders'!E:E)/POWER(1024,2)),1)&\" Mb\"),(ROUND((SUM('Envelope Senders'!E:E)/POWER(1024,3)),1)&\" Gb\"))))",
-                          summary_values)
-    summary.write_formula(9, 1, "=SUM('Envelope Senders'!B:B)", summary_values)
-
-    summary.write_formula(10, 1,
-                          "=ROUNDUP((SUM('Envelope Senders'!E:E)/SUM('Envelope Senders'!B:B))/1024,0)&\" Kb\"".format(
-                              threshold=args.threshold),
-                          summary_values)
-
-    summary.write_formula(11, 1,
-                          "=ROUNDUP(SUM('Envelope Senders'!B:B)/{days}/8,0)".format(
-                              days=days,
-                              threshold=args.threshold),
-                          summary_values)
-    summary.autofit()
-
-    sender_sheet = workbook.add_worksheet("Envelope Senders")
-    write_data_to_sheet(sender_sheet, sender_data, ['Sender', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'],
-                        days, cell_format)
-
-    from_sheet = workbook.add_worksheet("Header From")
-    write_data_to_sheet(from_sheet, from_data, ['From', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'],
-                        days, cell_format)
-
-    return_sheet = workbook.add_worksheet("Return Path")
-    write_data_to_sheet(return_sheet, return_data,
-                        ['Return Path', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'],
-                        days, cell_format)
-
-    mid_sheet = workbook.add_worksheet("Message ID")
-    write_data_to_sheet(mid_sheet, mid_data,
-                        ['Sender', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day',
-                         'Total Bytes'], days, cell_format)
-
-    sender_from_sheet = workbook.add_worksheet("Sender + From (Alignment)")
-    write_data_to_sheet(sender_from_sheet, sender_from_data,
-                        ['Sender', 'From', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'],
-                        days, cell_format)
-
-    workbook.close()
+        log_processor.process_file(f)
 
     print()
-    print("\nTotal records processed:", total)
-    print_summary("Skipped due to empty sender", empty_senders)
-    print_summary("Excluded by excluded senders list", excluded_senders, args.show_skip_detail)
-    print_summary("Excluded by excluded domains list", excluded_domains, args.show_skip_detail)
-    print_summary("Excluded by restricted domains list", restricted_domains, args.show_skip_detail)
+    print("\nTotal records processed:", log_processor.total)
+    print_summary("Skipped due to empty sender", log_processor.empty_senders)
+    print_summary("Excluded by excluded senders list", log_processor.excluded_senders, args.show_skip_detail)
+    print_summary("Excluded by excluded domains list", log_processor.excluded_domains, args.show_skip_detail)
+    print_summary("Excluded by restricted domains list", log_processor.restricted_domains, args.show_skip_detail)
     print()
 
-    if dates:
+    if log_processor.dates:
         print("Records by Day")
-        for d in sorted(dates.keys()):
-            print("{}:".format(d), dates[d])
+        for d in sorted(log_processor.dates.keys()):
+            print("{}:".format(d), log_processor.dates[d])
         print()
+
+    generate_report(args.output_file, log_processor, args.threshold)
 
     print("Please see report: {}".format(args.output_file))
 
 
-# Main entry point of program
 if __name__ == '__main__':
     main()

@@ -1,0 +1,49 @@
+import argparse
+import re
+
+from constants import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
+
+# Precompiled Regex Matcher (valid email address) parse group 2
+email_address_re = re.compile(EMAIL_ADDRESS_REGEX, re.IGNORECASE)
+
+# Precompiled Regex Matcher (valid domain)
+valid_domain_re = re.compile(VALID_DOMAIN_REGEX, re.IGNORECASE)
+
+
+def is_valid_domain_syntax(domain_name: str):
+    """
+    Validates if the provided domain name follows the expected syntax.
+
+    :param domain_name: Domain name to validate.
+    :return: The domain name if valid.
+    :raises: argparse.ArgumentTypeError if the domain name syntax is invalid.
+    """
+    if not valid_domain_re.match(domain_name):
+        raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
+    return domain_name
+
+
+def is_valid_email_syntax(email: str):
+    """
+    Validates if the provided email follows the expected syntax.
+
+    :param email: Email address to validate.
+    :return: The email address if valid.
+    :raises: argparse.ArgumentTypeError if the email syntax is invalid.
+    """
+    if not email_address_re.match(email):
+        raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
+    return email
+
+
+def validate_xlsx_file(file_path):
+    """
+    Validates if the provided file path ends with a .xlsx extension.
+
+    :param file_path: Path to the file to validate.
+    :return: The file path if valid.
+    :raises: argparse.ArgumentTypeError if the file does not end with .xlsx.
+    """
+    if not file_path.lower().endswith('.xlsx'):
+        raise argparse.ArgumentTypeError("File must have a .xlsx extension.")
+    return file_path
