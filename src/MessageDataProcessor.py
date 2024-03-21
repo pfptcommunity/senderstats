@@ -6,11 +6,9 @@ from typing import DefaultDict, Any, Dict, Set, List
 
 from tldextract import tldextract
 
-from utils import convert_srs, remove_prvs, get_email_domain, get_message_id_host, strip_display_names, \
-    compile_domains_pattern
+from utils import convert_srs, remove_prvs, compile_domains_pattern, parse_email_details, find_ip_in_text
 
 # Constants for the class
-DEFAULT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com']
 DEFAULT_MFROM_FIELD = 'Sender'
 DEFAULT_HFROM_FIELD = 'Header_From'
 DEFAULT_RPATH_FIELD = 'Header_Return-Path'
@@ -92,93 +90,109 @@ class MessageDataProcessor:
             reader = csv.DictReader(input_file)
             for csv_line in reader:
                 self.__total_processed_count += 1
-                env_sender = csv_line[self.__mfrom_field].casefold().strip()
+                mfrom = csv_line[self.__mfrom_field].casefold().strip()
 
                 # Check for empy sender
-                if not env_sender:
+                if not mfrom:
                     self.__empty_sender_count += 1
                     continue
 
-                if self.__opt_decode_srs:
-                    env_sender = convert_srs(env_sender)
-
-                if self.__opt_remove_prvs:
-                    env_sender = remove_prvs(env_sender)
-
-                # Exclude a specific sender highest priority
-                if env_sender in self.__excluded_senders:
-                    self.__excluded_sender_count[env_sender] += 1
-                    continue
-
-                # Deal with all the records we don't want to process based on sender.
-                if self.__excluded_domains.search(env_sender):
-                    domain = get_email_domain(env_sender)
-                    self.__excluded_domain_count[domain] += 1
-                    continue
-
-                # Limit processing to only domains on in a list
-                if not self.__restricted_domains.search(env_sender):
-                    domain = get_email_domain(env_sender)
-                    self.__restricted_domains_count[domain] += 1
-                    continue
-
-                header_from = csv_line[self.__hfrom_field].casefold().strip()
-
-                return_path = csv_line[self.__rpath_field].casefold().strip()
-
-                if self.__opt_decode_srs:
-                    return_path = remove_prvs(return_path)
-
-                if self.__opt_decode_srs:
-                    return_path = convert_srs(return_path)
-
-                # Message ID is unique but often the sending host behind the @ symbol is unique to the application
-                message_id = csv_line[self.__msgid_field].casefold().strip()
-                message_id_domain = get_message_id_host(message_id)
-                message_id_domain_extract = tldextract.extract(message_id_domain)
-                message_id_host = message_id_domain_extract.subdomain
-                message_id_domain = message_id_domain_extract.domain
-                message_id_domain_suffix = message_id_domain_extract.suffix
-
-                # If header from is empty, we will use env_sender
-                if self.__opt_empty_from and not header_from:
-                    header_from = env_sender
-
-                # Add domain suffix to TLD
-                if message_id_domain_suffix:
-                    message_id_domain += '.' + message_id_domain_suffix
-
-                if not message_id_host and not message_id_domain_suffix:
-                    message_id_host = message_id_domain
-                    message_id_domain = ''
-
-                if self.__opt_no_display:
-                    header_from = strip_display_names(header_from)
-
                 # Determine distinct dates of data, and count number of messages on that day
                 date = datetime.datetime.strptime(csv_line[self.__date_field], self.__date_format)
-
                 str_date = date.strftime('%Y-%m-%d')
                 self.__date_counter[str_date] += 1
 
+                # Make sure cast to int is valid, else 0 (size is required)
                 message_size = csv_line[self.__msgsz_field]
-
-                # Make sure cast to int is valid, else 0
                 if message_size.isdigit():
                     message_size = int(message_size)
                 else:
                     message_size = 0
 
-                self.__mfrom_data.setdefault(env_sender, []).append(message_size)
-                self.__hfrom_data.setdefault(header_from, []).append(message_size)
-                self.__rpath_data.setdefault(return_path, []).append(message_size)
+                # If sender is not empty, we will extract parts of the email
+                mfrom_parts = parse_email_details(mfrom)
+                mfrom = mfrom_parts['email_address']
+
+                # Determine the original sender
+                if self.__opt_decode_srs:
+                    mfrom = convert_srs(mfrom)
+
+                if self.__opt_remove_prvs:
+                    mfrom = remove_prvs(mfrom)
+
+                # Exclude a specific sender highest priority
+                if mfrom in self.__excluded_senders:
+                    self.__excluded_sender_count[mfrom] += 1
+                    continue
+
+                # Deal with all the records we don't want to process based on sender.
+                if self.__excluded_domains.search(mfrom):
+                    domain = mfrom_parts['domain']
+                    self.__excluded_domain_count[domain] += 1
+                    continue
+
+                # Limit processing to only domains on in a list
+                if not self.__restricted_domains.search(mfrom):
+                    domain = mfrom_parts['domain']
+                    self.__restricted_domains_count[domain] += 1
+                    continue
+
+                self.__mfrom_data.setdefault(mfrom, []).append(message_size)
+
+                # Get hfrom and parse it
+                hfrom = csv_line[self.__hfrom_field].casefold().strip()
+                hfrom_parts = parse_email_details(hfrom)
+
+                # If header from is empty, we will use env_sender
+                if self.__opt_empty_from and not hfrom:
+                    hfrom = mfrom
+
+                if self.__opt_no_display:
+                    hfrom = hfrom_parts['email_address']
+
+                self.__hfrom_data.setdefault(hfrom, []).append(message_size)
+
+                # Get rpath and parse it
+                rpath = csv_line[self.__rpath_field].casefold().strip()
+                rpath_parts = parse_email_details(rpath)
+                rpath = rpath_parts['email_address']
+
+                if self.__opt_decode_srs:
+                    rpath = remove_prvs(rpath)
+
+                if self.__opt_decode_srs:
+                    rpath = convert_srs(rpath)
+
+                self.__rpath_data.setdefault(rpath, []).append(message_size)
+
+                # Message ID is unique but often the sending host behind the @ symbol is unique to the application
+                msgid = csv_line[self.__msgid_field].casefold().strip('<>[] ')
+                msgid_parts = parse_email_details(msgid)
+                msgid_domain = ''
+                msgid_host = ''
+
+                if msgid_parts['email_address'] or '@' in msgid:
+                    # Use the extracted domain if available; otherwise, split the msgid
+                    domain = msgid_parts['domain'] if msgid_parts['domain'] else msgid.split('@')[-1]
+                    msgid_host = find_ip_in_text(domain)
+                    if not msgid_host:
+                        # Extract the components using tldextract
+                        extracted = tldextract.extract(domain)
+                        # Combine domain and suffix if the suffix is present
+                        msgid_domain = f"{extracted.domain}.{extracted.suffix}"
+                        msgid_host = extracted.subdomain
+
+                        # Adjust msgid_host and msgid_domain based on the presence of subdomain
+                        if not msgid_host and not extracted.suffix:
+                            msgid_host = msgid_domain
+                            msgid_domain = ''
 
                 # Fat index for binding commonality
-                mid_host_domain_index = (header_from, message_id_host, message_id_domain)
+                mid_host_domain_index = (mfrom, msgid_host, msgid_domain)
                 self.__msgid_data.setdefault(mid_host_domain_index, []).append(message_size)
 
                 # Fat index for binding commonality
-                sender_header_index = (env_sender, header_from)
+                sender_header_index = (mfrom, hfrom)
                 self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
 
     # Getter for total_processed_count

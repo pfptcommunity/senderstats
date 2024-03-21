@@ -4,12 +4,14 @@ import sys
 from glob import glob
 
 from MessageDataProcessor import MessageDataProcessor, DEFAULT_DATE_FIELD, DEFAULT_MSGSZ_FIELD, DEFAULT_MSGID_FIELD, \
-    DEFAULT_RPATH_FIELD, DEFAULT_HFROM_FIELD, DEFAULT_MFROM_FIELD
+    DEFAULT_RPATH_FIELD, DEFAULT_HFROM_FIELD, DEFAULT_MFROM_FIELD, DEFAULT_DATE_FORMAT
+
 from MessageDataReport import MessageDataReport
-from constants import DEFAULT_THRESHOLD, DEFAULT_DATE_FORMAT, PROOFPOINT_DOMAIN_EXCLUSIONS
 from utils import print_summary, print_list_with_title
 from validators import is_valid_domain_syntax, is_valid_email_syntax, validate_xlsx_file
 
+DEFAULT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com']
+DEFAULT_THRESHOLD = 100
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats",
@@ -52,10 +54,10 @@ def parse_arguments():
                         help='Remove display and use address only. Converts \'Display Name <user@domain.com>\' to \'user@domain.com\'')
 
     parser.add_argument('--remove-prvs', action='store_true', dest="remove_prvs",
-                        help='Remove bounce attack prevention tag e.g. prvs=tag=sender@domain.com')
+                        help='Remove return path verification strings e.g. prvs=tag=sender@domain.com')
 
     parser.add_argument('--decode-srs', action='store_true', dest="decode_srs",
-                        help='Convert SRS forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
+                        help='Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
 
     parser.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
                         help='If the header From: is empty the envelope sender address is used')
@@ -105,7 +107,7 @@ def main():
 
     # Merge domain exclusions and remove duplicates
     args.excluded_domains = sorted(
-        list({domain.casefold() for domain in PROOFPOINT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
+        list({domain.casefold() for domain in DEFAULT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
 
     # Remove duplicate restricted domains
     args.restricted_domains = sorted(list({domain.casefold() for domain in args.restricted_domains}))
@@ -180,6 +182,7 @@ def main():
 
     data_report = MessageDataReport(args.output_file, data_processor, args.threshold)
     data_report.generate_report()
+    data_report.close()
 
     print("Please see report: {}".format(args.output_file))
 

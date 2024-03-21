@@ -1,6 +1,7 @@
+import email.utils
 import re
 
-from constants import PRVS_REGEX, SRS_REGEX, EMAIL_ADDRESS_REGEX
+from constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX
 
 # Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
 prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)
@@ -8,8 +9,13 @@ prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)
 # Precompiled Regex for Sender Rewrite Scheme (SRS)
 srs_re = re.compile(SRS_REGEX, re.IGNORECASE)
 
-# Precompiled Regex Matcher (valid email address) parse group 2
-email_address_re = re.compile(EMAIL_ADDRESS_REGEX, re.IGNORECASE)
+ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
+
+
+def parse_email_details(email_str):
+    display_name, email_address = email.utils.parseaddr(email_str)
+    domain = email_address.split('@')[1] if '@' in email_address else ''
+    return {"display_name": display_name, "email_address": email_address, "domain": domain, 'odata': email_str}
 
 
 def escape_regex_specials(literal_str: str):
@@ -27,6 +33,13 @@ def escape_regex_specials(literal_str: str):
         else:
             escaped_text += char
     return escaped_text
+
+
+def find_ip_in_text(data: str):
+    match = ip_re.search(data)
+    if match:
+        return match.group()
+    return ''
 
 
 def build_or_regex_string(strings: list):
@@ -82,32 +95,6 @@ def print_summary(title: str, data, detail: bool = False):
             print(f"{title}: {data_sum}")
         except TypeError:
             print(f"{title}: Data type not supported")
-
-
-def strip_display_names(email: str):
-    """
-    Removes display names from an email address, leaving only the email part.
-
-    :param email: The email address possibly with display names.
-    :return: Email address without display names.
-    """
-    match = email_address_re.search(email)
-    if match:
-        return match.group(2)
-    return email
-
-
-def get_email_domain(email: str):
-    """
-    Extracts the domain part from an email address.
-
-    :param email: The email address to extract the domain from.
-    :return: The domain part of the email address.
-    """
-    match = email_address_re.search(email)
-    if match:
-        return match.group(3)
-    return email
 
 
 def remove_prvs(email: str):
@@ -188,4 +175,4 @@ def get_message_id_host(msgid: str):
     # Strip leading and trailing '<', '>', and spaces from the message ID,
     # then split it by the '@' symbol and return the last part (the host).
     # If '@' is not present, the entire stripped message ID is returned.
-    return msgid.strip('<> ').split('@')[-1]
+    return msgid.strip('<>[] ').split('@')[-1]

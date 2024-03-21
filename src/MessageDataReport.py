@@ -32,7 +32,7 @@ class MessageDataReport:
         self.__header_format = self.__workbook.add_format()
         self.__header_format.set_bold()
 
-    def __del__(self):
+    def close(self):
         self.__workbook.close()
 
     def __write_headers(self, worksheet: Worksheet, headers: list):
