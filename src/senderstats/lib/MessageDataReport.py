@@ -1,8 +1,8 @@
-from senderstats.common.utils import average
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
 
+from senderstats.common.utils import average
 from .MessageDataProcessor import MessageDataProcessor
 
 
