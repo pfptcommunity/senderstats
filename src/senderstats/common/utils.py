@@ -7,21 +7,43 @@ prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)
 # Precompiled Regex for Sender Rewrite Scheme (SRS)
 srs_re = re.compile(SRS_REGEX, re.IGNORECASE)
 
+# Precompiled Regex matches IPv4 and IPv6 addresses
 ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
 
+# Precompiled Regex matches email addresses that can contain display names
 email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
 
 
-def parse_email_details(email_str):
+def parse_email_details(email_str: str):
+    """
+    Parses email details from a given email string.
+
+    This function uses a regular expression to extract the display name and email address
+    from a provided email string. If the email string matches the expected format, it extracts
+    the display name (if present), the email address, and the domain part of the email address.
+    If the email string does not match the expected format, it returns empty strings for these components.
+
+    Parameters:
+    :param email_str: The email string to parse. Expected to potentially include a display name
+      and an email address in a standard format (e.g., "John Doe <john.doe@example.com>").
+
+    :return: A dictionary containing the parsed display name, email address, and domain, as well as
+      the original email string. The keys in the returned dictionary are "display_name", "email_address",
+    """
+    # Attempt to match the email string against the predefined regex pattern
     match = email_re.match(email_str)
 
+    # If the pattern matches, extract the display name and email address
     if match:
-        display_name = match.group(1) or ''
-        email_address = match.group(2)
+        display_name = match.group(1) or ''  # Extracted display name or empty string if not present
+        email_address = match.group(2)  # Extracted email address
+        # Extract the domain part from the email address if '@' is present, otherwise return empty string
         domain = email_address.split('@')[1] if '@' in email_address else ''
     else:
+        # If the pattern does not match, initialize display name, email address, and domain as empty strings
         display_name, email_address, domain = '', '', ''
 
+    # Return a dictionary containing the parsed components and the original email string
     return {
         "display_name": display_name,
         "email_address": email_address,
@@ -48,6 +70,12 @@ def escape_regex_specials(literal_str: str):
 
 
 def find_ip_in_text(data: str):
+    """
+    Find IPv4 or IPv6 address in a string of text
+
+    :param data: string of information
+    :return: String with IPv4 or IPv6 or empty if not found
+    """
     match = ip_re.search(data)
     if match:
         return match.group()
@@ -163,28 +191,3 @@ def print_list_with_title(title: str, items: list):
         for item in items:
             print(item)
         print()
-
-
-def get_message_id_host(msgid: str):
-    """
-    Extracts the host part from a message ID.
-
-    The function assumes the message ID is in a typical format found in email headers,
-    where it might be surrounded by '<' and '>' and contains an '@' symbol separating
-    the local part from the host part. This function focuses on extracting the host part.
-
-    Parameters:
-    - msgid (str): The message ID from which the host part should be extracted.
-
-    Returns:
-    - str: The host part of the message ID. If the message ID does not contain an '@' symbol,
-           the entire input string (minus any leading/trailing '<', '>', or spaces) is returned.
-
-    Example:
-    - Input: "<12345@example.com>"
-    - Output: "example.com"
-    """
-    # Strip leading and trailing '<', '>', '[', ']', and spaces from the message ID,
-    # then split it by the '@' symbol and return the last part (the host).
-    # If '@' is not present, the entire stripped message ID is returned.
-    return msgid.strip('<>[] ').split('@')[-1]
