@@ -2,6 +2,7 @@ import xlsxwriter
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
+
 from MessageDataProcessor import MessageDataProcessor
 from utils import average
 
@@ -13,9 +14,11 @@ class MessageDataReport:
     __header_format: Format
     __summary_format: Format
     __summary_values_format: Format
+    __days: int
 
     def __init__(self, output_file: str, data_processor: MessageDataProcessor, threshold: int):
         self.__data_processor = data_processor
+        self.__days = len(data_processor.get_date_counter())
         self.__threshold = threshold
 
         self.__workbook = xlsxwriter.Workbook(output_file)
@@ -68,7 +71,7 @@ class MessageDataReport:
             messages_per_sender = len(v)
             total_bytes = sum(v)
             average_message_size = average(v)
-            messages_per_sender_per_day = messages_per_sender / self.__data_processor.days
+            messages_per_sender_per_day = messages_per_sender / self.__days
 
             worksheet.write_number(row, col, messages_per_sender)
             col += 1
@@ -81,10 +84,10 @@ class MessageDataReport:
 
     def create_sizing_summary(self):
         summary = self.__workbook.add_worksheet("Summary")
-        summary.write(0, 0, "Estimated App Data ({} days)".format(self.__data_processor.days), self.__summary_format)
-        summary.write(1, 0, "Estimated App Messages ({} days)".format(self.__data_processor.days), self.__summary_format)
-        summary.write(2, 0, "Estimated App Average Message Size ({} days)".format(self.__data_processor.days), self.__summary_format)
-        summary.write(3, 0, "Estimated App Peak Hourly Volume ({} days)".format(self.__data_processor.days), self.__summary_format)
+        summary.write(0, 0, "Estimated App Data ({} days)".format(self.__days), self.__summary_format)
+        summary.write(1, 0, "Estimated App Messages ({} days)".format(self.__days), self.__summary_format)
+        summary.write(2, 0, "Estimated App Average Message Size ({} days)".format(self.__days), self.__summary_format)
+        summary.write(3, 0, "Estimated App Peak Hourly Volume ({} days)".format(self.__days), self.__summary_format)
 
         summary.write(5, 0, "Estimated Monthly App Data", self.__summary_format)
         summary.write(6, 0, "Estimated Monthly App Messages", self.__summary_format)
@@ -111,20 +114,20 @@ class MessageDataReport:
 
         summary.write_formula(3, 1,
                               "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}/8,0)".format(
-                                  days=self.__data_processor.days,
+                                  days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
         # 30 day calculation divide total days * 30
         summary.write_formula(5, 1,
                               "=IF(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30&\" bytes\",IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/1024),1)&\" Kb\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,2)),1)&\" Mb\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,3)),1)&\" Gb\"))))".format(
-                                  days=self.__data_processor.days,
+                                  days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
         summary.write_formula(6, 1,
                               "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}*30,0)".format(
-                                  days=self.__data_processor.days,
+                                  days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
@@ -141,51 +144,57 @@ class MessageDataReport:
 
         summary.write_formula(11, 1,
                               "=ROUNDUP(SUM('Envelope Senders'!B:B)/{days}/8,0)".format(
-                                  days=self.__data_processor.days,
+                                  days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
         summary.autofit()
 
-    def create_sender_summary(self):
+    def create_mfrom_summary(self):
         sender_sheet = self.__workbook.add_worksheet("Envelope Senders")
         self.__write_headers(sender_sheet,
-                        ['Sender', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
-        self.__write_data(sender_sheet, self.__data_processor.sender_data)
+                             ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        self.__write_data(sender_sheet, self.__data_processor.get_mfrom_data())
         sender_sheet.autofit()
 
-    def create_from_summary(self):
+    def create_hfrom_summary(self):
         from_sheet = self.__workbook.add_worksheet("Header From")
         self.__write_headers(from_sheet,
-                        ['From', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
-        self.__write_data(from_sheet, self.__data_processor.from_data)
+                             ['HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        self.__write_data(from_sheet, self.__data_processor.get_hfrom_data())
         from_sheet.autofit()
 
-    def create_return_summary(self):
+    def create_rpath_summary(self):
         return_sheet = self.__workbook.add_worksheet("Return Path")
         self.__write_headers(return_sheet,
-                        ['Return Path', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
-        self.__write_data(return_sheet, self.__data_processor.return_data)
+                             ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        self.__write_data(return_sheet, self.__data_processor.get_rpath_data())
         return_sheet.autofit()
 
-    def create_mid_summary(self):
-        mid_sheet = self.__workbook.add_worksheet("Message ID")
+    def create_msgid_summary(self):
+        mid_sheet = self.__workbook.add_worksheet("MFrom + Message ID")
         self.__write_headers(mid_sheet,
-                        ['Sender', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size',
-                         'Messages Per Day', 'Total Bytes'])
-        self.__write_data(mid_sheet, self.__data_processor.mid_data)
+                             ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size',
+                              'Messages Per Day', 'Total Bytes'])
+        self.__write_data(mid_sheet, self.__data_processor.get_msgid_data())
         mid_sheet.autofit()
 
-    def create_sender_from_summary(self):
-        sender_from_sheet = self.__workbook.add_worksheet("Sender + From (Alignment)")
+    def create_mfrom_hfrom_summary(self):
+        sender_from_sheet = self.__workbook.add_worksheet("MFrom + HFrom (Alignment)")
         self.__write_headers(sender_from_sheet,
-                        ['Sender', 'From', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
-        self.__write_data(sender_from_sheet, self.__data_processor.sender_from_data)
+                             ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        self.__write_data(sender_from_sheet, self.__data_processor.get_mfrom_hfrom_data())
         sender_from_sheet.autofit()
 
     def generate_report(self):
         self.create_sizing_summary()
-        self.create_sender_summary()
-        self.create_from_summary()
-        self.create_return_summary()
-        self.create_mid_summary()
-        self.create_sender_from_summary()
+        # Only create a worksheet for data that exists
+        if self.__data_processor.get_mfrom_data():
+            self.create_mfrom_summary()
+        if self.__data_processor.get_hfrom_data():
+            self.create_hfrom_summary()
+        if self.__data_processor.get_rpath_data():
+            self.create_rpath_summary()
+        if self.__data_processor.get_msgid_data():
+            self.create_msgid_summary()
+        if self.__data_processor.get_mfrom_hfrom_data():
+            self.create_mfrom_hfrom_summary()

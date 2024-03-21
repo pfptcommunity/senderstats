@@ -110,7 +110,7 @@ def get_email_domain(email: str):
     return email
 
 
-def strip_prvs(email: str):
+def remove_prvs(email: str):
     """
     Removes PRVS tags from an email address for bounce attack prevention.
 

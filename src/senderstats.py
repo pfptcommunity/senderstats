@@ -2,12 +2,12 @@ import argparse
 import os
 import sys
 from glob import glob
-from pprint import pprint
 
-from constants import DEFAULT_THRESHOLD, DEFAULT_DATE_FORMAT, PROOFPOINT_DOMAIN_EXCLUSIONS
+from MessageDataProcessor import MessageDataProcessor, DEFAULT_DATE_FIELD, DEFAULT_MSGSZ_FIELD, DEFAULT_MSGID_FIELD, \
+    DEFAULT_RPATH_FIELD, DEFAULT_HFROM_FIELD, DEFAULT_MFROM_FIELD
 from MessageDataReport import MessageDataReport
-from MessageDataProcessor import MessageDataProcessor
-from utils import print_summary, compile_domains_pattern, print_list_with_title, average
+from constants import DEFAULT_THRESHOLD, DEFAULT_DATE_FORMAT, PROOFPOINT_DOMAIN_EXCLUSIONS
+from utils import print_summary, print_list_with_title
 from validators import is_valid_domain_syntax, is_valid_email_syntax, validate_xlsx_file
 
 
@@ -20,45 +20,44 @@ def parse_arguments():
                         nargs='+', type=str, required=True,
                         help='Smart search files to read.')
 
-    parser.add_argument('--hfrom', metavar='FromField', dest="from_field",
-                        type=str, required=False, default='Header_From',
-                        help='CSV field of the header From: address. (default=Header_From)')
+    parser.add_argument('--mfrom', metavar='MFrom', dest="mfrom_field",
+                        type=str, required=False,
+                        help=f'CSV field of the envelope sender address. (default={DEFAULT_MFROM_FIELD})')
 
-    parser.add_argument('--mfrom', metavar='SenderField', dest="sender_field",
-                        type=str, required=False, default='Sender',
-                        help='CSV field of the envelope sender address. (default=Sender)')
+    parser.add_argument('--hfrom', metavar='HFrom', dest="hfrom_field",
+                        type=str, required=False,
+                        help=f'CSV field of the header From: address. (default={DEFAULT_HFROM_FIELD})')
 
-    parser.add_argument('--rpath', metavar='ReturnField', dest="return_field",
-                        type=str, required=False, default='Header_Return-Path',
-                        help='CSV field of the Return-Path: address. (default=Header_Return-Path)')
+    parser.add_argument('--rpath', metavar='RPath', dest="rpath_field",
+                        type=str, required=False,
+                        help=f'CSV field of the Return-Path: address. (default={DEFAULT_RPATH_FIELD})')
 
-    parser.add_argument('--mid', metavar='MIDField', dest="mid_field",
-                        type=str, required=False, default='Message_ID',
-                        help='CSV field of the message ID. (default=Message_ID)')
+    parser.add_argument('--msgid', metavar='MsgID', dest="msgid_field",
+                        type=str, required=False,
+                        help=f'CSV field of the message ID. (default={DEFAULT_MSGID_FIELD})')
 
-    parser.add_argument('--size', metavar='SizeField', dest="size_field",
-                        type=str, required=False, default='Message_Size',
-                        help='CSV field of message size. (default=Message_Size)')
+    parser.add_argument('--size', metavar='MsgSz', dest="msgsz_field",
+                        type=str, required=False,
+                        help=f'CSV field of message size. (default={DEFAULT_MSGSZ_FIELD})')
 
-    parser.add_argument('--date', metavar='DateField', dest="date_field",
-                        type=str, required=False, default='Date',
-                        help='CSV field of message date/time. (default=Date)')
+    parser.add_argument('--date', metavar='Date', dest="date_field",
+                        type=str, required=False,
+                        help=f'CSV field of message date/time. (default={DEFAULT_DATE_FIELD})')
 
-    parser.add_argument('--date-format', metavar='DateFormat', dest="date_format",
-                        type=str, required=False, default=DEFAULT_DATE_FORMAT,
-                        help="Date format used to parse the timestamps. (default={})".format(
-                            DEFAULT_DATE_FORMAT.replace('%', '%%')))
+    parser.add_argument('--date-format', metavar='DateFmt', dest="date_format",
+                        type=str, required=False,
+                        help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})')
 
-    parser.add_argument('--strip-display-name', action='store_true', dest="no_display",
-                        help='Remove display names, address only')
+    parser.add_argument('--no-display-name', action='store_true', dest="no_display",
+                        help='Remove display and use address only. Converts \'Display Name <user@domain.com>\' to \'user@domain.com\'')
 
-    parser.add_argument('--strip-prvs', action='store_true', dest="strip_prvs",
+    parser.add_argument('--remove-prvs', action='store_true', dest="remove_prvs",
                         help='Remove bounce attack prevention tag e.g. prvs=tag=sender@domain.com')
 
     parser.add_argument('--decode-srs', action='store_true', dest="decode_srs",
                         help='Convert SRS forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
 
-    parser.add_argument('--no-empty-from', action='store_true', dest="no_empty_from",
+    parser.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
                         help='If the header From: is empty the envelope sender address is used')
 
     parser.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
@@ -116,18 +115,43 @@ def main():
     print_list_with_title("Domains excluded from processing:", args.excluded_domains)
     print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
-    # Log processor object
-    data_processor = MessageDataProcessor()
-    data_processor.skipped_domain_set = set(args.excluded_senders)
-    data_processor.excluded_domains_pattern = compile_domains_pattern(args.excluded_domains)
-    data_processor.restricted_domains_pattern = compile_domains_pattern(args.restricted_domains)
-    data_processor.sender_field = args.sender_field
-    data_processor.from_field = args.from_field
-    data_processor.return_field = args.return_field
-    data_processor.mid_field = args.mid_field
-    data_processor.size_field = args.size_field
-    data_processor.date_field = args.date_field
-    data_processor.date_format = args.date_format
+    # Log processor object (find a cleaner way to apply these settings)
+    data_processor = MessageDataProcessor(args.excluded_senders, args.excluded_domains, args.restricted_domains)
+
+    # Configure fields
+    if args.hfrom_field:
+        data_processor.set_hfrom_field(args.hfrom_field)
+
+    if args.mfrom_field:
+        data_processor.set_hfrom_field(args.mfrom_field)
+
+    if args.rpath_field:
+        data_processor.set_rpath_field(args.rpath_field)
+
+    if args.msgid_field:
+        data_processor.set_msgid_field(args.msgid_field)
+
+    if args.msgsz_field:
+        data_processor.set_msgsz_field(args.msgsz_field)
+
+    if args.date_field:
+        data_processor.set_date_field(args.date_field)
+
+    if args.date_format:
+        data_processor.set_date_format = args.date_format
+
+    # Set processing flags
+    if args.remove_prvs:
+        data_processor.set_opt_remove_prvs(args.remove_prvs)
+
+    if args.decode_srs:
+        data_processor.set_opt_decode_srs(args.decode_srs)
+
+    if args.no_empty_hfrom:
+        data_processor.set_opt_empty_from(args.no_empty_hfrom)
+
+    if args.no_display:
+        data_processor.set_opt_no_display(args.no_display)
 
     f_current = 1
     f_total = len(file_names)
@@ -137,17 +161,21 @@ def main():
         f_current += 1
 
     print()
-    print("\nTotal records processed:", data_processor.total)
-    print_summary("Skipped due to empty sender", data_processor.empty_senders)
-    print_summary("Excluded by excluded senders list", data_processor.excluded_senders, args.show_skip_detail)
-    print_summary("Excluded by excluded domains list", data_processor.excluded_domains, args.show_skip_detail)
-    print_summary("Excluded by restricted domains list", data_processor.restricted_domains, args.show_skip_detail)
+    print("\nTotal records processed:", data_processor.get_total_processed_count())
+    print_summary("Skipped due to empty sender", data_processor.get_empty_sender_count())
+    print_summary("Excluded by excluded senders list", data_processor.get_excluded_sender_count(),
+                  args.show_skip_detail)
+    print_summary("Excluded by excluded domains list", data_processor.get_excluded_domain_count(),
+                  args.show_skip_detail)
+    print_summary("Excluded by restricted domains list", data_processor.get_excluded_domain_count(),
+                  args.show_skip_detail)
     print()
 
-    if data_processor.dates:
+    date_counts = data_processor.get_date_counter()
+    if date_counts:
         print("Records by Day")
-        for d in sorted(data_processor.dates.keys()):
-            print("{}:".format(d), data_processor.dates[d])
+        for d in sorted(date_counts.keys()):
+            print("{}:".format(d), date_counts[d])
         print()
 
     data_report = MessageDataReport(args.output_file, data_processor, args.threshold)

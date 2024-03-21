@@ -1,5 +1,6 @@
 import argparse
 import re
+
 from constants import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
 
 
