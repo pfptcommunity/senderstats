@@ -1,7 +1,7 @@
 import email.utils
 import re
 
-from constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX
+from .constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX
 
 # Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
 prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)

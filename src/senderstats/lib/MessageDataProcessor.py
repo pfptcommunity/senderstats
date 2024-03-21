@@ -6,7 +6,7 @@ from typing import DefaultDict, Any, Dict, Set, List
 
 from tldextract import tldextract
 
-from utils import convert_srs, remove_prvs, compile_domains_pattern, parse_email_details, find_ip_in_text
+from ..common.utils import convert_srs, remove_prvs, compile_domains_pattern, parse_email_details, find_ip_in_text
 
 # Constants for the class
 DEFAULT_MFROM_FIELD = 'Sender'

@@ -1,6 +1,7 @@
 # Define email and domain regex patterns
 EMAIL_ADDRESS_REGEX = r'^(?:"?([^"]*)"?\s)?(?:<?(\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b)>?)'
 VALID_DOMAIN_REGEX = r"(?!-)[a-z0-9-]{1,63}(?<!-)(\.[a-z]{2,63}){1,2}$"
+PARSE_EMAIL_REGEX = r'(?:"?([^"]*)"?\s)?(?:<?([\w\.-]+@[\w\.-]+)>?)'
 PRVS_REGEX = r'(ms)?prvs\d?=[^=]*='
 SRS_REGEX = r'([^+]*)\+?srs\d{0,2}=[^=]+=[^=]+=([^=]+)=([^@]+)@'
 IPV46_REGEX = (r'(((([0-9A-F]{1,4}:){7}([0-9A-F]{1,4}|:))|(([0-9A-F]{1,4}:){6}(:[0-9A-F]{1,4}|((25[0-5]|2['

@@ -1,10 +1,9 @@
-import xlsxwriter
+from senderstats.common.utils import average
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
 
-from MessageDataProcessor import MessageDataProcessor
-from utils import average
+from .MessageDataProcessor import MessageDataProcessor
 
 
 class MessageDataReport:
@@ -21,7 +20,7 @@ class MessageDataReport:
         self.__days = len(data_processor.get_date_counter())
         self.__threshold = threshold
 
-        self.__workbook = xlsxwriter.Workbook(output_file)
+        self.__workbook = Workbook(output_file)
         self.__summary_format = self.__workbook.add_format()
         self.__summary_format.set_bold()
         self.__summary_format.set_align('right')

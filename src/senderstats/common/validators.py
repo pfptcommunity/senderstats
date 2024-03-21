@@ -1,7 +1,7 @@
 import argparse
 import re
 
-from constants import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
+from .constants import VALID_DOMAIN_REGEX, EMAIL_ADDRESS_REGEX
 
 
 def is_valid_domain_syntax(domain_name: str):

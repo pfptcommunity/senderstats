@@ -24,4 +24,4 @@ repository = "https://github.com/pfptcommunity/senderstats"
 #changelog = "https://github.com/pfptcommunity/senderstats"
 
 [project.scripts]
-senderstats = "senderstats:main"
+senderstats = "main:main"
