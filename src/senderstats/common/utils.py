@@ -1,7 +1,5 @@
-import email.utils
 import re
-
-from .constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX
+from .constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX, PARSE_EMAIL_REGEX
 
 # Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
 prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)
@@ -11,11 +9,25 @@ srs_re = re.compile(SRS_REGEX, re.IGNORECASE)
 
 ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
 
+email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
+
 
 def parse_email_details(email_str):
-    display_name, email_address = email.utils.parseaddr(email_str)
-    domain = email_address.split('@')[1] if '@' in email_address else ''
-    return {"display_name": display_name, "email_address": email_address, "domain": domain, 'odata': email_str}
+    match = email_re.match(email_str)
+
+    if match:
+        display_name = match.group(1) or ''
+        email_address = match.group(2)
+        domain = email_address.split('@')[1] if '@' in email_address else ''
+    else:
+        display_name, email_address, domain = '', '', ''
+
+    return {
+        "display_name": display_name,
+        "email_address": email_address,
+        "domain": domain,
+        "odata": email_str
+    }
 
 
 def escape_regex_specials(literal_str: str):
@@ -172,7 +184,7 @@ def get_message_id_host(msgid: str):
     - Input: "<12345@example.com>"
     - Output: "example.com"
     """
-    # Strip leading and trailing '<', '>', and spaces from the message ID,
+    # Strip leading and trailing '<', '>', '[', ']', and spaces from the message ID,
     # then split it by the '@' symbol and return the last part (the host).
     # If '@' is not present, the entire stripped message ID is returned.
     return msgid.strip('<>[] ').split('@')[-1]

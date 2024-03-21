@@ -153,6 +153,8 @@ def main():
     if args.no_display:
         data_processor.set_opt_no_display(args.no_display)
 
+    # Print the execution time
+
     f_current = 1
     f_total = len(file_names)
     for f in file_names:
