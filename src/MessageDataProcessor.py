@@ -143,12 +143,12 @@ class MessageDataProcessor:
                 hfrom = csv_line[self.__hfrom_field].casefold().strip()
                 hfrom_parts = parse_email_details(hfrom)
 
+                if self.__opt_no_display:
+                    hfrom = hfrom_parts['email_address']
+
                 # If header from is empty, we will use env_sender
                 if self.__opt_empty_from and not hfrom:
                     hfrom = mfrom
-
-                if self.__opt_no_display:
-                    hfrom = hfrom_parts['email_address']
 
                 self.__hfrom_data.setdefault(hfrom, []).append(message_size)
 

@@ -5,13 +5,13 @@ from glob import glob
 
 from MessageDataProcessor import MessageDataProcessor, DEFAULT_DATE_FIELD, DEFAULT_MSGSZ_FIELD, DEFAULT_MSGID_FIELD, \
     DEFAULT_RPATH_FIELD, DEFAULT_HFROM_FIELD, DEFAULT_MFROM_FIELD, DEFAULT_DATE_FORMAT
-
 from MessageDataReport import MessageDataReport
 from utils import print_summary, print_list_with_title
 from validators import is_valid_domain_syntax, is_valid_email_syntax, validate_xlsx_file
 
 DEFAULT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com']
 DEFAULT_THRESHOLD = 100
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats",
