@@ -40,28 +40,26 @@ pip install senderstats
     * Total outbound peak hourly volume
 
 ### Usage Options:
-
 ```
-usage: senderstats [-h] -i <file> [<file> ...] [--hfrom FromField] [--mfrom SenderField] [--rpath ReturnField] [--mid MIDField] [--size SizeField] [--date DateField] [--date-format DateFormat] [--strip-display-name]
-                   [--strip-prvs] [--decode-srs] [--no-empty-from] [--show-skip-detail] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] -o
-                   <xlsx> [-t THRESHOLD]
+usage: senderstats [-h] -i <file> [<file> ...] [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--date-format DateFmt] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom]
+                   [--show-skip-detail] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] -o <xlsx> [-t THRESHOLD]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
-optional arguments:
+options:
   -h, --help                                           show this help message and exit
   -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to read.
-  --hfrom FromField                                    CSV field of the header From: address. (default=Header_From)
-  --mfrom SenderField                                  CSV field of the envelope sender address. (default=Sender)
-  --rpath ReturnField                                  CSV field of the Return-Path: address. (default=Header_Return-Path)
-  --mid MIDField                                       CSV field of the message ID. (default=Message_ID)
-  --size SizeField                                     CSV field of message size. (default=Message_Size)
-  --date DateField                                     CSV field of message date/time. (default=Date)
-  --date-format DateFormat                             Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
-  --strip-display-name                                 Remove display names, address only
-  --strip-prvs                                         Remove bounce attack prevention tag e.g. prvs=tag=sender@domain.com
-  --decode-srs                                         Convert SRS forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
-  --no-empty-from                                      If the header From: is empty the envelope sender address is used
+  --mfrom MFrom                                        CSV field of the envelope sender address. (default=Sender)
+  --hfrom HFrom                                        CSV field of the header From: address. (default=Header_From)
+  --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-Path)
+  --msgid MsgID                                        CSV field of the message ID. (default=Message_ID)
+  --size MsgSz                                         CSV field of message size. (default=Message_Size)
+  --date Date                                          CSV field of message date/time. (default=Date)
+  --date-format DateFmt                                Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
+  --no-display-name                                    Remove display and use address only. Converts 'Display Name <user@domain.com>' to 'user@domain.com'
+  --remove-prvs                                        Remove return path verification strings e.g. prvs=tag=sender@domain.com
+  --decode-srs                                         Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
+  --no-empty-hfrom                                     If the header From: is empty the envelope sender address is used
   --show-skip-detail                                   Show skipped details
   --excluded-domains <domain> [<domain> ...]           Exclude domains from processing.
   --restrict-domains <domain> [<domain> ...]           Constrain domains for processing.
