@@ -2,13 +2,11 @@ import os
 import sys
 from glob import glob
 
+from senderstats.common.constants import DEFAULT_THRESHOLD, DEFAULT_DOMAIN_EXCLUSIONS
 from senderstats.common.utils import *
 from senderstats.common.validators import *
 from senderstats.lib.MessageDataProcessor import *
 from senderstats.lib.MessageDataReport import MessageDataReport
-
-DEFAULT_DOMAIN_EXCLUSIONS = ['ppops.net', 'pphosted.com', 'knowledgefront.com']
-DEFAULT_THRESHOLD = 100
 
 
 def parse_arguments():
@@ -76,7 +74,7 @@ def parse_arguments():
                         help='Output file')
 
     parser.add_argument('-t', '--threshold', dest="threshold", type=int, required=False,
-                        help='Integer representing number of messages per day to be considered application traffic. (default=100)',
+                        help=f'Integer representing number of messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
                         default=DEFAULT_THRESHOLD)
 
     if len(sys.argv) == 1:

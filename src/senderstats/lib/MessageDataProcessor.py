@@ -18,9 +18,6 @@ DEFAULT_MSGSZ_FIELD = 'Message_Size'
 DEFAULT_DATE_FIELD = 'Date'
 DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 
-# Thresholds and limits
-DEFAULT_THRESHOLD = 100
-
 
 class MessageDataProcessor:
     # Data processing information
@@ -153,6 +150,10 @@ class MessageDataProcessor:
 
                 self.__hfrom_data.setdefault(hfrom, []).append(message_size)
 
+                # Fat index for binding commonality
+                sender_header_index = (mfrom, hfrom)
+                self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
+
                 # Get rpath and parse it
                 rpath = csv_line[self.__rpath_field].casefold().strip()
                 rpath_parts = parse_email_details(rpath)
@@ -191,10 +192,6 @@ class MessageDataProcessor:
                 # Fat index for binding commonality
                 mid_host_domain_index = (mfrom, msgid_host, msgid_domain)
                 self.__msgid_data.setdefault(mid_host_domain_index, []).append(message_size)
-
-                # Fat index for binding commonality
-                sender_header_index = (mfrom, hfrom)
-                self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
 
     # Getter for total_processed_count
     def get_total_processed_count(self) -> int:
