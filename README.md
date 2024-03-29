@@ -41,8 +41,7 @@ pip install senderstats
 
 ### Usage Options:
 ```
-usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [-t THRESHOLD] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom]
-                   [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
+usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [-t THRESHOLD] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
@@ -63,7 +62,7 @@ Reporting control arguments (optional):
   --gen-rpath                                          Generate report showing return path for messages being sent.
   --gen-alignment                                      Generate report showing envelope sender and header From: alignment
   --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the sending system
-  -t THRESHOLD, --threshold THRESHOLD                  Integer representing number of messages per day to be considered application traffic. (default=100)
+  -t N, --threshold N                                  Adjust summary report threshold for messages per day to be considered application traffic. (default=100)
 
 Parsing behavior arguments (optional):
   --no-display-name                                    Remove display and use address only. Converts 'Display Name <user@domain.com>' to 'user@domain.com'
