@@ -1,7 +1,6 @@
 import os
 import sys
 from glob import glob
-
 from senderstats.common.constants import DEFAULT_THRESHOLD, DEFAULT_DOMAIN_EXCLUSIONS
 from senderstats.common.utils import *
 from senderstats.common.validators import *
@@ -10,72 +9,95 @@ from senderstats.lib.MessageDataReport import MessageDataReport
 
 
 def parse_arguments():
-    parser = argparse.ArgumentParser(prog="senderstats",
+    parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
                                      description="""This tool helps identify the top senders based on smart search outbound message exports.""",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
 
-    parser.add_argument('-i', '--input', metavar='<file>', dest="input_files",
-                        nargs='+', type=str, required=True,
-                        help='Smart search files to read.')
+    required_group = parser.add_argument_group('Required arguments (optional)')
+    field_group = parser.add_argument_group('Field mapping arguments (optional)')
+    reporting_group = parser.add_argument_group('Reporting control arguments (optional)')
+    parser_group = parser.add_argument_group('Parsing behavior arguments (optional)')
+    output_group = parser.add_argument_group('Extended processing controls (optional)')
+    usage = parser.add_argument_group('Usage')
+    # Manually add the help option to the new group
+    usage.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
+                       help='Show this help message and exit')
 
-    parser.add_argument('--mfrom', metavar='MFrom', dest="mfrom_field",
-                        type=str, required=False,
-                        help=f'CSV field of the envelope sender address. (default={DEFAULT_MFROM_FIELD})')
+    required_group.add_argument('-i', '--input', metavar='<file>', dest="input_files",
+                                nargs='+', type=str, required=True,
+                                help='Smart search files to read.')
 
-    parser.add_argument('--hfrom', metavar='HFrom', dest="hfrom_field",
-                        type=str, required=False,
-                        help=f'CSV field of the header From: address. (default={DEFAULT_HFROM_FIELD})')
+    required_group.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file",
+                                type=validate_xlsx_file, required=True,
+                                help='Output file')
 
-    parser.add_argument('--rpath', metavar='RPath', dest="rpath_field",
-                        type=str, required=False,
-                        help=f'CSV field of the Return-Path: address. (default={DEFAULT_RPATH_FIELD})')
+    field_group.add_argument('--mfrom', metavar='MFrom', dest="mfrom_field",
+                             type=str, required=False,
+                             help=f'CSV field of the envelope sender address. (default={DEFAULT_MFROM_FIELD})')
 
-    parser.add_argument('--msgid', metavar='MsgID', dest="msgid_field",
-                        type=str, required=False,
-                        help=f'CSV field of the message ID. (default={DEFAULT_MSGID_FIELD})')
+    field_group.add_argument('--hfrom', metavar='HFrom', dest="hfrom_field",
+                             type=str, required=False,
+                             help=f'CSV field of the header From: address. (default={DEFAULT_HFROM_FIELD})')
 
-    parser.add_argument('--size', metavar='MsgSz', dest="msgsz_field",
-                        type=str, required=False,
-                        help=f'CSV field of message size. (default={DEFAULT_MSGSZ_FIELD})')
+    field_group.add_argument('--rpath', metavar='RPath', dest="rpath_field",
+                             type=str, required=False,
+                             help=f'CSV field of the Return-Path: address. (default={DEFAULT_RPATH_FIELD})')
 
-    parser.add_argument('--date', metavar='Date', dest="date_field",
-                        type=str, required=False,
-                        help=f'CSV field of message date/time. (default={DEFAULT_DATE_FIELD})')
+    field_group.add_argument('--msgid', metavar='MsgID', dest="msgid_field",
+                             type=str, required=False,
+                             help=f'CSV field of the message ID. (default={DEFAULT_MSGID_FIELD})')
 
-    parser.add_argument('--date-format', metavar='DateFmt', dest="date_format",
-                        type=str, required=False,
-                        help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})')
+    field_group.add_argument('--size', metavar='MsgSz', dest="msgsz_field",
+                             type=str, required=False,
+                             help=f'CSV field of message size. (default={DEFAULT_MSGSZ_FIELD})')
 
-    parser.add_argument('--no-display-name', action='store_true', dest="no_display",
-                        help='Remove display and use address only. Converts \'Display Name <user@domain.com>\' to \'user@domain.com\'')
+    field_group.add_argument('--date', metavar='Date', dest="date_field",
+                             type=str, required=False,
+                             help=f'CSV field of message date/time. (default={DEFAULT_DATE_FIELD})')
 
-    parser.add_argument('--remove-prvs', action='store_true', dest="remove_prvs",
-                        help='Remove return path verification strings e.g. prvs=tag=sender@domain.com')
+    reporting_group.add_argument('--gen-hfrom', action='store_true', dest="gen_hfrom",
+                                 help='Generate report showing the header From: data for messages being sent.')
 
-    parser.add_argument('--decode-srs', action='store_true', dest="decode_srs",
-                        help='Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
+    reporting_group.add_argument('--gen-rpath', action='store_true', dest="gen_rpath",
+                                 help='Generate report showing return path for messages being sent.')
 
-    parser.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
-                        help='If the header From: is empty the envelope sender address is used')
+    reporting_group.add_argument('--gen-alignment', action='store_true', dest="gen_alignment",
+                                 help='Generate report showing envelope sender and header From: alignment')
 
-    parser.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
-                        help='Show skipped details')
+    reporting_group.add_argument('--gen-msgid', action='store_true', dest="gen_msgid",
+                                 help='Generate report showing parsed Message ID. Helps determine the sending system')
 
-    parser.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
-                        nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
+    reporting_group.add_argument('-t', '--threshold', dest="threshold", type=int, required=False,
+                                 help=f'Integer representing number of messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
+                                 default=DEFAULT_THRESHOLD)
 
-    parser.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restricted_domains",
-                        nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
+    parser_group.add_argument('--no-display-name', action='store_true', dest="no_display",
+                              help='Remove display and use address only. Converts \'Display Name <user@domain.com>\' to \'user@domain.com\'')
 
-    parser.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
-                        nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
+    parser_group.add_argument('--remove-prvs', action='store_true', dest="remove_prvs",
+                              help='Remove return path verification strings e.g. prvs=tag=sender@domain.com')
 
-    parser.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file", type=validate_xlsx_file, required=True,
-                        help='Output file')
+    parser_group.add_argument('--decode-srs', action='store_true', dest="decode_srs",
+                              help='Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
 
-    parser.add_argument('-t', '--threshold', dest="threshold", type=int, required=False,
-                        help=f'Integer representing number of messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
-                        default=DEFAULT_THRESHOLD)
+    parser_group.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
+                              help='If the header From: is empty the envelope sender address is used')
+
+    parser_group.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
+                              nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
+
+    parser_group.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restricted_domains",
+                              nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
+
+    parser_group.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
+                              nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
+
+    parser_group.add_argument('--date-format', metavar='DateFmt', dest="date_format",
+                              type=str, required=False,
+                              help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})')
+
+    output_group.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
+                              help='Show skipped details')
 
     if len(sys.argv) == 1:
         parser.print_usage()  # Print usage information if no arguments are passed
@@ -151,7 +173,17 @@ def main():
     if args.no_display:
         data_processor.set_opt_no_display(args.no_display)
 
-    # Print the execution time
+    if args.gen_hfrom:
+        data_processor.set_opt_gen_hfrom(args.gen_hfrom)
+
+    if args.gen_rpath:
+        data_processor.set_opt_gen_rpath(args.gen_rpath)
+
+    if args.gen_alignment:
+        data_processor.set_opt_gen_alignment(args.gen_alignment)
+
+    if args.gen_msgid:
+        data_processor.set_opt_gen_msgid(args.gen_msgid)
 
     f_current = 1
     f_total = len(file_names)

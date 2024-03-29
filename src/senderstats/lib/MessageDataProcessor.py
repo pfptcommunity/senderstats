@@ -2,7 +2,7 @@ import csv
 import datetime
 import re
 from collections import defaultdict
-from typing import DefaultDict, Any, Dict, Set, List
+from typing import DefaultDict, Any, Dict, Set, List, Optional
 
 from tldextract import tldextract
 
@@ -46,6 +46,11 @@ class MessageDataProcessor:
     __opt_decode_srs: bool
     __opt_remove_prvs: bool
     __opt_empty_from: bool
+    # Report generation options
+    __opt_gen_hfrom: bool
+    __opt_gen_alignment: bool
+    __opt_gen_rpath: bool
+    __opt_gen_msgid: bool
     # Restrictions
     __excluded_senders: Set[str]
     __excluded_domains: re.Pattern
@@ -72,6 +77,11 @@ class MessageDataProcessor:
         self.__opt_decode_srs = False
         self.__opt_remove_prvs = False
         self.__opt_empty_from = False
+        # Reports we want to generate
+        self.__opt_gen_hfrom = False
+        self.__opt_gen_alignment = False
+        self.__opt_gen_rpath = False
+        self.__opt_gen_msgid = False
         # Used to match the patterns
         self.__excluded_senders = set(excluded_senders)
         self.__excluded_domains = compile_domains_pattern(excluded_domains)
@@ -83,22 +93,105 @@ class MessageDataProcessor:
         self.__mfrom_hfrom_data = dict()
         self.__msgid_data = dict()
 
+    def __process_mfrom_data(self, mfrom: str) -> Optional[str]:
+        # Check for empy sender
+        if not mfrom:
+            self.__empty_sender_count += 1
+            return
+
+        # If sender is not empty, we will extract parts of the email
+        mfrom_parts = parse_email_details(mfrom)
+        mfrom = mfrom_parts['email_address']
+
+        # Determine the original sender
+        if self.__opt_decode_srs:
+            mfrom = convert_srs(mfrom)
+
+        if self.__opt_remove_prvs:
+            mfrom = remove_prvs(mfrom)
+
+        # Exclude a specific sender highest priority
+        if mfrom in self.__excluded_senders:
+            self.__excluded_sender_count[mfrom] += 1
+            return
+
+        # Deal with all the records we don't want to process based on sender.
+        if self.__excluded_domains.search(mfrom):
+            domain = mfrom_parts['domain']
+            self.__excluded_domain_count[domain] += 1
+            return
+
+        # Limit processing to only domains on in a list
+        if not self.__restricted_domains.search(mfrom):
+            domain = mfrom_parts['domain']
+            self.__restricted_domains_count[domain] += 1
+            return
+
+        return mfrom
+
+    def __process_hfrom_data(self, hfrom: str, mfrom: str) -> str:
+        hfrom_parts = parse_email_details(hfrom)
+
+        if self.__opt_no_display:
+            hfrom = hfrom_parts['email_address']
+
+        # If header from is empty, we will use env_sender
+        if self.__opt_empty_from and not hfrom:
+            hfrom = mfrom
+
+        return hfrom
+
+    def __process_rpath_data(self, rpath: str) -> str:
+        rpath_parts = parse_email_details(rpath)
+        rpath = rpath_parts['email_address']
+
+        if self.__opt_decode_srs:
+            rpath = remove_prvs(rpath)
+
+        if self.__opt_decode_srs:
+            rpath = convert_srs(rpath)
+
+        return rpath
+
+    def __process_alignment_data(self, hfrom: str, mfrom: str, message_size: int):
+        # Fat index for binding commonality
+        sender_header_index = (mfrom, hfrom)
+        self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
+
+    def __process_msgid_data(self, msgid: str, mfrom: str, message_size: int) -> str:
+        # Message ID is unique but often the sending host behind the @ symbol is unique to the application
+        msgid_parts = parse_email_details(msgid)
+        msgid_domain = ''
+        msgid_host = ''
+
+        if msgid_parts['email_address'] or '@' in msgid:
+            # Use the extracted domain if available; otherwise, split the msgid
+            domain = msgid_parts['domain'] if msgid_parts['domain'] else msgid.split('@')[-1]
+            msgid_host = find_ip_in_text(domain)
+            if not msgid_host:
+                # Extract the components using tldextract
+                extracted = tldextract.extract(domain)
+                # Combine domain and suffix if the suffix is present
+                msgid_domain = f"{extracted.domain}.{extracted.suffix}"
+                msgid_host = extracted.subdomain
+
+                # Adjust msgid_host and msgid_domain based on the presence of subdomain
+                if not msgid_host and not extracted.suffix:
+                    msgid_host = msgid_domain
+                    msgid_domain = ''
+
+        # Fat index for binding commonality
+        mid_host_domain_index = (mfrom, msgid_host, msgid_domain)
+
+        self.__msgid_data.setdefault(mid_host_domain_index, []).append(message_size)
+
+        return msgid
+
     def process_file(self, input_file):
         with open(input_file, 'r', encoding='utf-8-sig') as input_file:
             reader = csv.DictReader(input_file)
             for csv_line in reader:
                 self.__total_processed_count += 1
-                mfrom = csv_line[self.__mfrom_field].casefold().strip()
-
-                # Check for empy sender
-                if not mfrom:
-                    self.__empty_sender_count += 1
-                    continue
-
-                # Determine distinct dates of data, and count number of messages on that day
-                date = datetime.datetime.strptime(csv_line[self.__date_field], self.__date_format)
-                str_date = date.strftime('%Y-%m-%d')
-                self.__date_counter[str_date] += 1
 
                 # Make sure cast to int is valid, else 0 (size is required)
                 message_size = csv_line[self.__msgsz_field]
@@ -107,91 +200,43 @@ class MessageDataProcessor:
                 else:
                     message_size = 0
 
-                # If sender is not empty, we will extract parts of the email
-                mfrom_parts = parse_email_details(mfrom)
-                mfrom = mfrom_parts['email_address']
+                mfrom = self.__process_mfrom_data(csv_line[self.__mfrom_field].casefold().strip())
 
-                # Determine the original sender
-                if self.__opt_decode_srs:
-                    mfrom = convert_srs(mfrom)
-
-                if self.__opt_remove_prvs:
-                    mfrom = remove_prvs(mfrom)
-
-                # Exclude a specific sender highest priority
-                if mfrom in self.__excluded_senders:
-                    self.__excluded_sender_count[mfrom] += 1
+                # mfrom will be None, unless the filtering criteria applied properly
+                if not mfrom:
                     continue
 
-                # Deal with all the records we don't want to process based on sender.
-                if self.__excluded_domains.search(mfrom):
-                    domain = mfrom_parts['domain']
-                    self.__excluded_domain_count[domain] += 1
-                    continue
-
-                # Limit processing to only domains on in a list
-                if not self.__restricted_domains.search(mfrom):
-                    domain = mfrom_parts['domain']
-                    self.__restricted_domains_count[domain] += 1
-                    continue
-
+                # Track the cleaned, filtered mfrom data for our report
                 self.__mfrom_data.setdefault(mfrom, []).append(message_size)
 
-                # Get hfrom and parse it
-                hfrom = csv_line[self.__hfrom_field].casefold().strip()
-                hfrom_parts = parse_email_details(hfrom)
+                # Alignment will require that we have hfrom
+                if self.__opt_gen_hfrom or self.__opt_gen_alignment:
+                    hfrom = self.__process_hfrom_data(csv_line[self.__hfrom_field].casefold().strip(), mfrom)
 
-                if self.__opt_no_display:
-                    hfrom = hfrom_parts['email_address']
+                    # Generate data for HFrom
+                    if self.__opt_gen_hfrom:
+                        self.__hfrom_data.setdefault(hfrom, []).append(message_size)
 
-                # If header from is empty, we will use env_sender
-                if self.__opt_empty_from and not hfrom:
-                    hfrom = mfrom
+                    # Generate data for HFrom and MFrom Alignment
+                    if self.__opt_gen_alignment:
+                        self.__process_alignment_data(hfrom, mfrom, message_size)
 
-                self.__hfrom_data.setdefault(hfrom, []).append(message_size)
+                # Generate data for return path
+                if self.__opt_gen_rpath:
+                    rpath = self.__process_rpath_data(csv_line[self.__rpath_field].casefold().strip())
+                    if self.__opt_gen_rpath:
+                        self.__rpath_data.setdefault(rpath, []).append(message_size)
 
-                # Fat index for binding commonality
-                sender_header_index = (mfrom, hfrom)
-                self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
+                # Generate data for parsed message ID
+                if self.__opt_gen_msgid:
+                    # Generate data for Message ID information
+                    self.__process_msgid_data(csv_line[self.__msgid_field].casefold().strip('<>[] '), mfrom,
+                                              message_size)
 
-                # Get rpath and parse it
-                rpath = csv_line[self.__rpath_field].casefold().strip()
-                rpath_parts = parse_email_details(rpath)
-                rpath = rpath_parts['email_address']
-
-                if self.__opt_decode_srs:
-                    rpath = remove_prvs(rpath)
-
-                if self.__opt_decode_srs:
-                    rpath = convert_srs(rpath)
-
-                self.__rpath_data.setdefault(rpath, []).append(message_size)
-
-                # Message ID is unique but often the sending host behind the @ symbol is unique to the application
-                msgid = csv_line[self.__msgid_field].casefold().strip('<>[] ')
-                msgid_parts = parse_email_details(msgid)
-                msgid_domain = ''
-                msgid_host = ''
-
-                if msgid_parts['email_address'] or '@' in msgid:
-                    # Use the extracted domain if available; otherwise, split the msgid
-                    domain = msgid_parts['domain'] if msgid_parts['domain'] else msgid.split('@')[-1]
-                    msgid_host = find_ip_in_text(domain)
-                    if not msgid_host:
-                        # Extract the components using tldextract
-                        extracted = tldextract.extract(domain)
-                        # Combine domain and suffix if the suffix is present
-                        msgid_domain = f"{extracted.domain}.{extracted.suffix}"
-                        msgid_host = extracted.subdomain
-
-                        # Adjust msgid_host and msgid_domain based on the presence of subdomain
-                        if not msgid_host and not extracted.suffix:
-                            msgid_host = msgid_domain
-                            msgid_domain = ''
-
-                # Fat index for binding commonality
-                mid_host_domain_index = (mfrom, msgid_host, msgid_domain)
-                self.__msgid_data.setdefault(mid_host_domain_index, []).append(message_size)
+                # Determine distinct dates of data, and count number of messages on that day
+                date = datetime.datetime.strptime(csv_line[self.__date_field], self.__date_format)
+                str_date = date.strftime('%Y-%m-%d')
+                self.__date_counter[str_date] += 1
 
     # Getter for total_processed_count
     def get_total_processed_count(self) -> int:
@@ -264,6 +309,34 @@ class MessageDataProcessor:
             self.__opt_empty_from = value
         else:
             raise ValueError("opt_empty_from must be a boolean.")
+
+    # Setter for opt_gen_hfrom
+    def set_opt_gen_hfrom(self, value):
+        if isinstance(value, bool):
+            self.__opt_gen_hfrom = value
+        else:
+            raise ValueError("opt_gen_hfrom must be a boolean")
+
+    # Setter for opt_gen_alignment
+    def set_opt_gen_alignment(self, value):
+        if isinstance(value, bool):
+            self.__opt_gen_alignment = value
+        else:
+            raise ValueError("opt_gen_alignment must be a boolean")
+
+    # Setter for opt_gen_rpath
+    def set_opt_gen_rpath(self, value):
+        if isinstance(value, bool):
+            self.__opt_gen_rpath = value
+        else:
+            raise ValueError("opt_gen_rpath must be a boolean")
+
+    # Setter for opt_gen_msgid
+    def set_opt_gen_msgid(self, value):
+        if isinstance(value, bool):
+            self.__opt_gen_msgid = value
+        else:
+            raise ValueError("opt_gen_msgid must be a boolean")
 
     # Setter for mfrom_field
     def set_mfrom_field(self, value: str) -> None:
