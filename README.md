@@ -41,31 +41,45 @@ pip install senderstats
 
 ### Usage Options:
 ```
-usage: senderstats [-h] -i <file> [<file> ...] [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--date-format DateFmt] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom]
-                   [--show-skip-detail] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] -o <xlsx> [-t THRESHOLD]
+usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [-t THRESHOLD] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom]
+                   [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
-options:
-  -h, --help                                           show this help message and exit
+Required arguments (optional):
   -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to read.
+  -o <xlsx>, --output <xlsx>                           Output file
+
+Field mapping arguments (optional):
   --mfrom MFrom                                        CSV field of the envelope sender address. (default=Sender)
   --hfrom HFrom                                        CSV field of the header From: address. (default=Header_From)
   --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-Path)
   --msgid MsgID                                        CSV field of the message ID. (default=Message_ID)
   --size MsgSz                                         CSV field of message size. (default=Message_Size)
   --date Date                                          CSV field of message date/time. (default=Date)
-  --date-format DateFmt                                Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
+
+Reporting control arguments (optional):
+  --gen-hfrom                                          Generate report showing the header From: data for messages being sent.
+  --gen-rpath                                          Generate report showing return path for messages being sent.
+  --gen-alignment                                      Generate report showing envelope sender and header From: alignment
+  --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the sending system
+  -t THRESHOLD, --threshold THRESHOLD                  Integer representing number of messages per day to be considered application traffic. (default=100)
+
+Parsing behavior arguments (optional):
   --no-display-name                                    Remove display and use address only. Converts 'Display Name <user@domain.com>' to 'user@domain.com'
   --remove-prvs                                        Remove return path verification strings e.g. prvs=tag=sender@domain.com
   --decode-srs                                         Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
   --no-empty-hfrom                                     If the header From: is empty the envelope sender address is used
-  --show-skip-detail                                   Show skipped details
   --excluded-domains <domain> [<domain> ...]           Exclude domains from processing.
   --restrict-domains <domain> [<domain> ...]           Constrain domains for processing.
   --excluded-senders <sender> [<sender> ...]           Exclude senders from processing.
-  -o <xlsx>, --output <xlsx>                           Output file
-  -t THRESHOLD, --threshold THRESHOLD                  Integer representing number of messages per day to be considered application traffic. (default=100)
+  --date-format DateFmt                                Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
+
+Extended processing controls (optional):
+  --show-skip-detail                                   Show skipped details
+
+Usage:
+  -h, --help                                           Show this help message and exit
 ```
 
 ### Using the Tool with Proofpoint Smart Search
