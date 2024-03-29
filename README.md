@@ -62,7 +62,7 @@ Reporting control arguments (optional):
   --gen-rpath                                          Generate report showing return path for messages being sent.
   --gen-alignment                                      Generate report showing envelope sender and header From: alignment
   --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the sending system
-  -t N, --threshold N                                  Adjust summary report summary for messages per day to be considered application traffic. (default=100)
+  -t N, --threshold N                                  Adjust summary report threshold for messages per day to be considered application traffic. (default=100)
 
 Parsing behavior arguments (optional):
   --no-display-name                                    Remove display and use address only. Converts 'Display Name <user@domain.com>' to 'user@domain.com'
