@@ -69,6 +69,7 @@ Parsing behavior arguments (optional):
   --remove-prvs                                        Remove return path verification strings e.g. prvs=tag=sender@domain.com
   --decode-srs                                         Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
   --no-empty-hfrom                                     If the header From: is empty the envelope sender address is used
+  --sample-subject                                     Enable probabilistic random sampling of subject lines found during processing
   --excluded-domains <domain> [<domain> ...]           Exclude domains from processing.
   --restrict-domains <domain> [<domain> ...]           Constrain domains for processing.
   --excluded-senders <sender> [<sender> ...]           Exclude senders from processing.
