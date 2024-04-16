@@ -16,7 +16,7 @@ DEFAULT_HFROM_FIELD = 'Header_From'
 DEFAULT_RPATH_FIELD = 'Header_Return-Path'
 DEFAULT_MSGID_FIELD = 'Message_ID'
 DEFAULT_MSGSZ_FIELD = 'Message_Size'
-DEFAULT_MSGSUBJ_FIELD = 'Subject'
+DEFAULT_SUBJECT_FIELD = 'Subject'
 DEFAULT_DATE_FIELD = 'Date'
 DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 
@@ -42,7 +42,7 @@ class MessageDataProcessor:
     __rpath_field: str
     __msgid_field: str
     __msgsz_field: str
-    __msgsubj_field: str
+    __subject_field: str
     __date_field: str
     __date_format: str
     # Processing Option Flags
@@ -68,7 +68,7 @@ class MessageDataProcessor:
         self.__rpath_field = DEFAULT_RPATH_FIELD
         self.__msgid_field = DEFAULT_MSGID_FIELD
         self.__msgsz_field = DEFAULT_MSGSZ_FIELD
-        self.__msgsubj_field = DEFAULT_MSGSUBJ_FIELD
+        self.__subject_field = DEFAULT_SUBJECT_FIELD
         self.__date_field = DEFAULT_DATE_FIELD
         self.__date_format = DEFAULT_DATE_FORMAT
         # Initialize counters
@@ -166,8 +166,6 @@ class MessageDataProcessor:
         self.__mfrom_hfrom_data.setdefault(sender_header_index, {})
         self.__update_message_size_and_subjects(self.__mfrom_hfrom_data[sender_header_index], message_size, subject)
 
-
-
     def __process_msgid_data(self, msgid: str, mfrom: str, message_size: int, subject: str) -> str:
         # Message ID is unique but often the sending host behind the @ symbol is unique to the application
         msgid_parts = parse_email_details(msgid)
@@ -236,7 +234,9 @@ class MessageDataProcessor:
                 if not mfrom:
                     continue
 
-                subject = csv_line[self.__msgsubj_field].strip()
+                subject = ''
+                if self.__opt_sample_subject:
+                    subject = csv_line[self.__subject_field].strip()
 
                 # Track the cleaned, filtered mfrom data for our report
                 self.__mfrom_data.setdefault(mfrom, {})
@@ -418,6 +418,12 @@ class MessageDataProcessor:
             self.__msgsz_field = value
         else:
             raise ValueError("msgsz_field must be a string.")
+
+    def set_subject_field(self, value: str) -> None:
+        if isinstance(value, str):
+            self.__subject_field = value
+        else:
+            raise ValueError("subject_field must be a string.")
 
     # Setter for date_field
     def set_date_field(self, value: str) -> None:

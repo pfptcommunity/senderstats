@@ -19,28 +19,33 @@ or can install the tool using pip.
 ```
 pip install senderstats
 ```
+
 ### Use Cases:
+
 **Outbound message volumes and data transferred by:**
-  * Envelope sender
-  * Header From:
-  * Return-Path:
-  * Envelope header: From:, MessageID Host, MessageID Domain (helpful to identify original sender)
-  * Envelope sender and header From: for SPF alignment purposes
-  * Random subject line sampling to help understand the type of traffic
+
+* Envelope sender
+* Header From:
+* Return-Path:
+* Envelope header: From:, MessageID Host, MessageID Domain (helpful to identify original sender)
+* Envelope sender and header From: for SPF alignment purposes
+* Random subject line sampling to help understand the type of traffic
 
 **Summarize message volume information:**
-  * Estimated application email traffic based on sender volume threshold:
-    * Estimated application data 
-    * Estimated application messages 
-    * Estimated application average size 
+
+* Estimated application email traffic based on sender volume threshold:
+    * Estimated application data
+    * Estimated application messages
+    * Estimated application average size
     * Estimated application peak hourly volume
-  * Total outbound data
-    * Total outbound data 
-    * Total outbound messages 
+* Total outbound data
+    * Total outbound data
+    * Total outbound messages
     * Total outbound average size
     * Total outbound peak hourly volume
 
 ### Usage Options:
+
 ```
 usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [-t THRESHOLD] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
 
@@ -85,11 +90,13 @@ Usage:
 
 ### Using the Tool with Proofpoint Smart Search
 
-Export all outbound message traffic as a smart search CSV. You may need to export multiple CSVs if the data per time window exceeds 1M records. The tool can ingest multiple CSVs files at once.
+Export all outbound message traffic as a smart search CSV. You may need to export multiple CSVs if the data per time
+window exceeds 1M records. The tool can ingest multiple CSVs files at once.
 
 ![smart_search_outbound](https://github.com/pfptcommunity/senderstats/assets/83429267/83693152-922e-489a-b06d-a0765ecaf3e8)
 
-Once the files are downlaoded to a target folder, you can run the following command with the path to the files you downloaded and specify a wildard.
+Once the files are downlaoded to a target folder, you can run the following command with the path to the files you
+downloaded and specify a wildard.
 
 ```
 senderstats -i C:\path\to\downloaded\files\smart_search_results_custer_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx
@@ -97,7 +104,7 @@ senderstats -i C:\path\to\downloaded\files\smart_search_results_custer_hosted_20
 
 ### Sample Output
 
-The execution results should look similar to the following depending the options you select. 
+The execution results should look similar to the following depending the options you select.
 
 ```
 Files to be processed:

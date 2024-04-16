@@ -1,6 +1,7 @@
 import os
 import sys
 from glob import glob
+
 from senderstats.common.constants import DEFAULT_THRESHOLD, DEFAULT_DOMAIN_EXCLUSIONS
 from senderstats.common.utils import *
 from senderstats.common.validators import *
@@ -46,6 +47,10 @@ def parse_arguments():
     field_group.add_argument('--msgid', metavar='MsgID', dest="msgid_field",
                              type=str, required=False,
                              help=f'CSV field of the message ID. (default={DEFAULT_MSGID_FIELD})')
+
+    field_group.add_argument('--subject', metavar='Subject', dest="subject_field",
+                             type=str, required=False,
+                             help=f'CSV field of the Subject, only used if --sample-subject is specified. (default={DEFAULT_SUBJECT_FIELD})')
 
     field_group.add_argument('--size', metavar='MsgSz', dest="msgsz_field",
                              type=str, required=False,
@@ -156,6 +161,9 @@ def main():
 
     if args.msgsz_field:
         data_processor.set_msgsz_field(args.msgsz_field)
+
+    if args.subject_field:
+        data_processor.set_subject_field(args.subject_field)
 
     if args.date_field:
         data_processor.set_date_field(args.date_field)
