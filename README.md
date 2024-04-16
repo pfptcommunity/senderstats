@@ -47,7 +47,9 @@ pip install senderstats
 ### Usage Options:
 
 ```
-usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [-t THRESHOLD] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
+usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--subject Subject] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid]
+                   [-t N] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom] [--sample-subject] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]]
+                   [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
@@ -60,6 +62,7 @@ Field mapping arguments (optional):
   --hfrom HFrom                                        CSV field of the header From: address. (default=Header_From)
   --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-Path)
   --msgid MsgID                                        CSV field of the message ID. (default=Message_ID)
+  --subject Subject                                    CSV field of the Subject, only used if --sample-subject is specified. (default=Subject)
   --size MsgSz                                         CSV field of message size. (default=Message_Size)
   --date Date                                          CSV field of message date/time. (default=Date)
 
