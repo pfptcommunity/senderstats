@@ -13,6 +13,8 @@ class MessageDataReport:
     __header_format: Format
     __summary_format: Format
     __summary_values_format: Format
+    __subject_format: Format
+    __data_cell_format: Format
     __days: int
 
     def __init__(self, output_file: str, data_processor: MessageDataProcessor, threshold: int):
@@ -26,10 +28,14 @@ class MessageDataReport:
         self.__summary_format.set_align('right')
 
         self.__summary_values_format = self.__workbook.add_format()
-        self.__summary_values_format.set_align("right")
+        self.__summary_values_format.set_align('right')
 
         self.__header_format = self.__workbook.add_format()
         self.__header_format.set_bold()
+
+        self.__data_cell_format = self.__workbook.add_format({'valign': 'top'})
+
+        self.__subject_format = self.__workbook.add_format({'text_wrap': True})
 
     def close(self):
         self.__workbook.close()
@@ -61,24 +67,27 @@ class MessageDataReport:
             if isinstance(k, tuple):
                 # Write the fat index to columns
                 for data in k:
-                    worksheet.write_string(row, col, data)
+                    worksheet.write_string(row, col, data, self.__data_cell_format)
                     col += 1
             else:
-                worksheet.write_string(row, col, k)
+                worksheet.write_string(row, col, k, self.__data_cell_format)
                 col += 1
 
-            messages_per_sender = len(v)
-            total_bytes = sum(v)
-            average_message_size = average(v)
+            messages_per_sender = len(v['message_size'])
+            total_bytes = sum(v['message_size'])
+            average_message_size = average(v['message_size'])
             messages_per_sender_per_day = messages_per_sender / self.__days
 
-            worksheet.write_number(row, col, messages_per_sender)
+            worksheet.write_number(row, col, messages_per_sender, self.__data_cell_format)
             col += 1
-            worksheet.write_number(row, col, average_message_size)
+            worksheet.write_number(row, col, average_message_size, self.__data_cell_format)
             col += 1
-            worksheet.write_number(row, col, messages_per_sender_per_day)
+            worksheet.write_number(row, col, messages_per_sender_per_day, self.__data_cell_format)
             col += 1
-            worksheet.write_number(row, col, total_bytes)
+            worksheet.write_number(row, col, total_bytes, self.__data_cell_format)
+            if 'subjects' in v:
+                col += 1
+                worksheet.write_string(row, col, '\n'.join(v['subjects']), self.__subject_format)
             row += 1
 
     def create_sizing_summary(self):
@@ -150,37 +159,58 @@ class MessageDataReport:
 
     def create_mfrom_summary(self):
         sender_sheet = self.__workbook.add_worksheet("Envelope Senders")
-        self.__write_headers(sender_sheet,
-                             ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+
+        if self.__data_processor.get_opt_sample_subject():
+            headers.append('Subjects')
+
+        self.__write_headers(sender_sheet, headers)
         self.__write_data(sender_sheet, self.__data_processor.get_mfrom_data())
         sender_sheet.autofit()
 
     def create_hfrom_summary(self):
         from_sheet = self.__workbook.add_worksheet("Header From")
-        self.__write_headers(from_sheet,
-                             ['HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        headers = ['HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+
+        if self.__data_processor.get_opt_sample_subject():
+            headers.append('Subjects')
+
+        self.__write_headers(from_sheet, headers)
         self.__write_data(from_sheet, self.__data_processor.get_hfrom_data())
         from_sheet.autofit()
 
     def create_rpath_summary(self):
         return_sheet = self.__workbook.add_worksheet("Return Path")
-        self.__write_headers(return_sheet,
-                             ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+
+        headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+
+        if self.__data_processor.get_opt_sample_subject():
+            headers.append('Subjects')
+
+        self.__write_headers(return_sheet, headers)
         self.__write_data(return_sheet, self.__data_processor.get_rpath_data())
         return_sheet.autofit()
 
     def create_msgid_summary(self):
         mid_sheet = self.__workbook.add_worksheet("MFrom + Message ID")
-        self.__write_headers(mid_sheet,
-                             ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size',
-                              'Messages Per Day', 'Total Bytes'])
+        headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day',
+                   'Total Bytes']
+
+        if self.__data_processor.get_opt_sample_subject():
+            headers.append('Subjects')
+
+        self.__write_headers(mid_sheet, headers)
         self.__write_data(mid_sheet, self.__data_processor.get_msgid_data())
         mid_sheet.autofit()
 
     def create_mfrom_hfrom_summary(self):
         sender_from_sheet = self.__workbook.add_worksheet("MFrom + HFrom (Alignment)")
-        self.__write_headers(sender_from_sheet,
-                             ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes'])
+        headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+
+        if self.__data_processor.get_opt_sample_subject():
+            headers.append('Subjects')
+
+        self.__write_headers(sender_from_sheet, headers)
         self.__write_data(sender_from_sheet, self.__data_processor.get_mfrom_hfrom_data())
         sender_from_sheet.autofit()
 

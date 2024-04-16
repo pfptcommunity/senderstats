@@ -2,6 +2,7 @@ import csv
 import datetime
 import re
 from collections import defaultdict
+from random import random
 from typing import DefaultDict, Any, Dict, Set, List, Optional
 
 from tldextract import tldextract
@@ -15,17 +16,19 @@ DEFAULT_HFROM_FIELD = 'Header_From'
 DEFAULT_RPATH_FIELD = 'Header_Return-Path'
 DEFAULT_MSGID_FIELD = 'Message_ID'
 DEFAULT_MSGSZ_FIELD = 'Message_Size'
+DEFAULT_MSGSUBJ_FIELD = 'Subject'
 DEFAULT_DATE_FIELD = 'Date'
 DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 
 
 class MessageDataProcessor:
     # Data processing information
-    __mfrom_data: Dict[str, List[Any]]
-    __hfrom_data: Dict[str, List[Any]]
-    __rpath_data: Dict[str, List[Any]]
-    __mfrom_hfrom_data: Dict[tuple, List[Any]]
-    __msgid_data: Dict[tuple, List[Any]]
+    __mfrom_data: Dict[str, Dict]
+    __hfrom_data: Dict[str, Dict]
+    __rpath_data: Dict[str, Dict]
+    __mfrom_hfrom_data: Dict[tuple, Dict]
+    __msgid_data: Dict[tuple, Dict]
+    __subject_data: Dict[Any, Dict]
     # Counters
     __date_counter: DefaultDict[str, int]
     __total_processed_count: int
@@ -39,6 +42,7 @@ class MessageDataProcessor:
     __rpath_field: str
     __msgid_field: str
     __msgsz_field: str
+    __msgsubj_field: str
     __date_field: str
     __date_format: str
     # Processing Option Flags
@@ -46,6 +50,7 @@ class MessageDataProcessor:
     __opt_decode_srs: bool
     __opt_remove_prvs: bool
     __opt_empty_from: bool
+    __opt_sample_subject: bool
     # Report generation options
     __opt_gen_hfrom: bool
     __opt_gen_alignment: bool
@@ -63,6 +68,7 @@ class MessageDataProcessor:
         self.__rpath_field = DEFAULT_RPATH_FIELD
         self.__msgid_field = DEFAULT_MSGID_FIELD
         self.__msgsz_field = DEFAULT_MSGSZ_FIELD
+        self.__msgsubj_field = DEFAULT_MSGSUBJ_FIELD
         self.__date_field = DEFAULT_DATE_FIELD
         self.__date_format = DEFAULT_DATE_FORMAT
         # Initialize counters
@@ -77,6 +83,7 @@ class MessageDataProcessor:
         self.__opt_decode_srs = False
         self.__opt_remove_prvs = False
         self.__opt_empty_from = False
+        self.__opt_sample_subject = False
         # Reports we want to generate
         self.__opt_gen_hfrom = False
         self.__opt_gen_alignment = False
@@ -153,12 +160,15 @@ class MessageDataProcessor:
 
         return rpath
 
-    def __process_alignment_data(self, hfrom: str, mfrom: str, message_size: int):
+    def __process_alignment_data(self, hfrom: str, mfrom: str, message_size: int, subject: Optional):
         # Fat index for binding commonality
         sender_header_index = (mfrom, hfrom)
-        self.__mfrom_hfrom_data.setdefault(sender_header_index, []).append(message_size)
+        self.__mfrom_hfrom_data.setdefault(sender_header_index, {})
+        self.__update_message_size_and_subjects(self.__mfrom_hfrom_data[sender_header_index], message_size, subject)
 
-    def __process_msgid_data(self, msgid: str, mfrom: str, message_size: int) -> str:
+
+
+    def __process_msgid_data(self, msgid: str, mfrom: str, message_size: int, subject: str) -> str:
         # Message ID is unique but often the sending host behind the @ symbol is unique to the application
         msgid_parts = parse_email_details(msgid)
         msgid_domain = ''
@@ -182,13 +192,33 @@ class MessageDataProcessor:
 
         # Fat index for binding commonality
         mid_host_domain_index = (mfrom, msgid_host, msgid_domain)
-
-        self.__msgid_data.setdefault(mid_host_domain_index, []).append(message_size)
+        self.__msgid_data.setdefault(mid_host_domain_index, {})
+        self.__update_message_size_and_subjects(self.__msgid_data[mid_host_domain_index], message_size, subject)
 
         return msgid
 
+    def __update_message_size_and_subjects(self, data: Dict, message_size: int, subject: str):
+        # Ensure the message_size list exists and append the new message size
+        data.setdefault("message_size", []).append(message_size)
+
+        if not self.__opt_sample_subject:
+            return
+
+        data.setdefault("subjects", [])
+
+        # Avoid storing empty subject lines
+        if not subject:
+            return
+
+        # Calculate probability based on the number of processed records
+        probability = 1 / len(data['message_size'])
+
+        # Ensure at least one subject is added if subjects array is empty
+        if not data['subjects'] or random() < probability:
+            data['subjects'].append(subject)
+
     def process_file(self, input_file):
-        with open(input_file, 'r', encoding='utf-8-sig') as input_file:
+        with (open(input_file, 'r', encoding='utf-8-sig') as input_file):
             reader = csv.DictReader(input_file)
             for csv_line in reader:
                 self.__total_processed_count += 1
@@ -206,8 +236,11 @@ class MessageDataProcessor:
                 if not mfrom:
                     continue
 
+                subject = csv_line[self.__msgsubj_field].strip()
+
                 # Track the cleaned, filtered mfrom data for our report
-                self.__mfrom_data.setdefault(mfrom, []).append(message_size)
+                self.__mfrom_data.setdefault(mfrom, {})
+                self.__update_message_size_and_subjects(self.__mfrom_data[mfrom], message_size, subject)
 
                 # Alignment will require that we have hfrom
                 if self.__opt_gen_hfrom or self.__opt_gen_alignment:
@@ -215,23 +248,25 @@ class MessageDataProcessor:
 
                     # Generate data for HFrom
                     if self.__opt_gen_hfrom:
-                        self.__hfrom_data.setdefault(hfrom, []).append(message_size)
+                        self.__hfrom_data.setdefault(hfrom, {})
+                        self.__update_message_size_and_subjects(self.__hfrom_data[hfrom], message_size, subject)
 
                     # Generate data for HFrom and MFrom Alignment
                     if self.__opt_gen_alignment:
-                        self.__process_alignment_data(hfrom, mfrom, message_size)
+                        self.__process_alignment_data(hfrom, mfrom, message_size, subject)
 
                 # Generate data for return path
                 if self.__opt_gen_rpath:
                     rpath = self.__process_rpath_data(csv_line[self.__rpath_field].casefold().strip())
                     if self.__opt_gen_rpath:
-                        self.__rpath_data.setdefault(rpath, []).append(message_size)
+                        self.__rpath_data.setdefault(rpath, {})
+                        self.__update_message_size_and_subjects(self.__rpath_data[rpath], message_size, subject)
 
                 # Generate data for parsed message ID
                 if self.__opt_gen_msgid:
                     # Generate data for Message ID information
                     self.__process_msgid_data(csv_line[self.__msgid_field].casefold().strip('<>[] '), mfrom,
-                                              message_size)
+                                              message_size, subject)
 
                 # Determine distinct dates of data, and count number of messages on that day
                 date = datetime.datetime.strptime(csv_line[self.__date_field], self.__date_format)
@@ -337,6 +372,17 @@ class MessageDataProcessor:
             self.__opt_gen_msgid = value
         else:
             raise ValueError("opt_gen_msgid must be a boolean")
+
+    # Setter for opt_sample_subject
+    def set_opt_sample_subject(self, value):
+        if isinstance(value, bool):
+            self.__opt_sample_subject = value
+        else:
+            raise ValueError("opt_sample_subject must be a boolean")
+
+    # Getter for opt_sample_subject
+    def get_opt_sample_subject(self) -> bool:
+        return self.__opt_sample_subject
 
     # Setter for mfrom_field
     def set_mfrom_field(self, value: str) -> None:

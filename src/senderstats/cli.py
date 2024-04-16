@@ -83,6 +83,9 @@ def parse_arguments():
     parser_group.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
                               help='If the header From: is empty the envelope sender address is used')
 
+    parser_group.add_argument('--sample-subject', action='store_true', dest="sample_subject",
+                              help='Enable probabilistic random sampling of subject lines found during processing')
+
     parser_group.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
                               nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
 
@@ -169,6 +172,9 @@ def main():
 
     if args.no_empty_hfrom:
         data_processor.set_opt_empty_from(args.no_empty_hfrom)
+
+    if args.sample_subject:
+        data_processor.set_opt_sample_subject(args.sample_subject)
 
     if args.no_display:
         data_processor.set_opt_no_display(args.no_display)
