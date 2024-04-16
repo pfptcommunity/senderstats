@@ -26,6 +26,7 @@ pip install senderstats
   * Return-Path:
   * Envelope header: From:, MessageID Host, MessageID Domain (helpful to identify original sender)
   * Envelope sender and header From: for SPF alignment purposes
+  * Random subject line sampling to help understand the type of traffic
 
 **Summarize message volume information:**
   * Estimated application email traffic based on sender volume threshold:
