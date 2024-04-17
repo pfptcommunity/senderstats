@@ -160,7 +160,7 @@ class MessageDataProcessor:
 
         return rpath
 
-    def __process_alignment_data(self, hfrom: str, mfrom: str, message_size: int, subject: Optional):
+    def __process_alignment_data(self, hfrom: str, mfrom: str, message_size: int, subject: str):
         # Fat index for binding commonality
         sender_header_index = (mfrom, hfrom)
         self.__mfrom_hfrom_data.setdefault(sender_header_index, {})
@@ -235,6 +235,7 @@ class MessageDataProcessor:
                     continue
 
                 subject = ''
+                # Not all CSV files will contain a subject field.
                 if self.__opt_sample_subject:
                     subject = csv_line[self.__subject_field].strip()
 
