@@ -47,42 +47,57 @@ pip install senderstats
 ### Usage Options:
 
 ```
-usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath] [--msgid MsgID] [--subject Subject] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid]
-                   [-t N] [--no-display-name] [--remove-prvs] [--decode-srs] [--no-empty-hfrom] [--sample-subject] [--excluded-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]]
-                   [--excluded-senders <sender> [<sender> ...]] [--date-format DateFmt] [--show-skip-detail]
+usage: senderstats [-h] -i <file> [<file> ...] -o <xlsx> [--mfrom MFrom] [--hfrom HFrom] [--rpath RPath]
+                   [--msgid MsgID] [--subject Subject] [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath]
+                   [--gen-alignment] [--gen-msgid] [-t N] [--no-display-name] [--remove-prvs] [--decode-srs]
+                   [--no-empty-hfrom] [--sample-subject] [--excluded-domains <domain> [<domain> ...]]
+                   [--restrict-domains <domain> [<domain> ...]] [--excluded-senders <sender> [<sender> ...]]
+                   [--date-format DateFmt] [--show-skip-detail]
 
 This tool helps identify the top senders based on smart search outbound message exports.
 
-Required arguments (optional):
+Input / Output arguments (required):
   -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to read.
   -o <xlsx>, --output <xlsx>                           Output file
 
 Field mapping arguments (optional):
   --mfrom MFrom                                        CSV field of the envelope sender address. (default=Sender)
   --hfrom HFrom                                        CSV field of the header From: address. (default=Header_From)
-  --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-Path)
+  --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-
+                                                       Path)
   --msgid MsgID                                        CSV field of the message ID. (default=Message_ID)
-  --subject Subject                                    CSV field of the Subject, only used if --sample-subject is specified. (default=Subject)
+  --subject Subject                                    CSV field of the Subject, only used if --sample-subject is
+                                                       specified. (default=Subject)
   --size MsgSz                                         CSV field of message size. (default=Message_Size)
   --date Date                                          CSV field of message date/time. (default=Date)
 
 Reporting control arguments (optional):
-  --gen-hfrom                                          Generate report showing the header From: data for messages being sent.
+  --gen-hfrom                                          Generate report showing the header From: data for messages
+                                                       being sent.
   --gen-rpath                                          Generate report showing return path for messages being sent.
-  --gen-alignment                                      Generate report showing envelope sender and header From: alignment
-  --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the sending system
-  -t N, --threshold N                                  Adjust summary report threshold for messages per day to be considered application traffic. (default=100)
+  --gen-alignment                                      Generate report showing envelope sender and header From:
+                                                       alignment
+  --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the
+                                                       sending system
+  -t N, --threshold N                                  Adjust summary report threshold for messages per day to be
+                                                       considered application traffic. (default=100)
 
 Parsing behavior arguments (optional):
-  --no-display-name                                    Remove display and use address only. Converts 'Display Name <user@domain.com>' to 'user@domain.com'
-  --remove-prvs                                        Remove return path verification strings e.g. prvs=tag=sender@domain.com
-  --decode-srs                                         Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
-  --no-empty-hfrom                                     If the header From: is empty the envelope sender address is used
-  --sample-subject                                     Enable probabilistic random sampling of subject lines found during processing
+  --no-display-name                                    Remove display and use address only. Converts 'Display Name
+                                                       <user@domain.com>' to 'user@domain.com'
+  --remove-prvs                                        Remove return path verification strings e.g.
+                                                       prvs=tag=sender@domain.com
+  --decode-srs                                         Convert sender rewrite scheme,
+                                                       forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
+  --no-empty-hfrom                                     If the header From: is empty the envelope sender address is
+                                                       used
+  --sample-subject                                     Enable probabilistic random sampling of subject lines found
+                                                       during processing
   --excluded-domains <domain> [<domain> ...]           Exclude domains from processing.
   --restrict-domains <domain> [<domain> ...]           Constrain domains for processing.
   --excluded-senders <sender> [<sender> ...]           Exclude senders from processing.
-  --date-format DateFmt                                Date format used to parse the timestamps. (default=%Y-%m-%dT%H:%M:%S.%f%z)
+  --date-format DateFmt                                Date format used to parse the timestamps.
+                                                       (default=%Y-%m-%dT%H:%M:%S.%f%z)
 
 Extended processing controls (optional):
   --show-skip-detail                                   Show skipped details
