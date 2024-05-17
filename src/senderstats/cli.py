@@ -7,14 +7,14 @@ from senderstats.common.utils import *
 from senderstats.common.validators import *
 from senderstats.lib.MessageDataProcessor import *
 from senderstats.lib.MessageDataReport import MessageDataReport
-
+from senderstats.lib.FieldMapper import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
                                      description="""This tool helps identify the top senders based on smart search outbound message exports.""",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
 
-    required_group = parser.add_argument_group('Required arguments (optional)')
+    required_group = parser.add_argument_group('Input / Output arguments (required)')
     field_group = parser.add_argument_group('Field mapping arguments (optional)')
     reporting_group = parser.add_argument_group('Reporting control arguments (optional)')
     parser_group = parser.add_argument_group('Parsing behavior arguments (optional)')
@@ -143,30 +143,32 @@ def main():
     print_list_with_title("Domains excluded from processing:", args.excluded_domains)
     print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
-    # Log processor object (find a cleaner way to apply these settings)
-    data_processor = MessageDataProcessor(args.excluded_senders, args.excluded_domains, args.restricted_domains)
-
     # Configure fields
-    if args.hfrom_field:
-        data_processor.set_hfrom_field(args.hfrom_field)
-
+    field_mapper = FieldMapper()
     if args.mfrom_field:
-        data_processor.set_hfrom_field(args.mfrom_field)
+        field_mapper.add_mapping('mfrom', args.mfrom_field)
+
+    if args.hfrom_field:
+        field_mapper.add_mapping('hfrom',args.hfrom_field)
 
     if args.rpath_field:
-        data_processor.set_rpath_field(args.rpath_field)
+        field_mapper.add_mapping('rpath', args.rpath_field)
 
     if args.msgid_field:
-        data_processor.set_msgid_field(args.msgid_field)
+        field_mapper.add_mapping('msgid', args.msgid_field)
 
     if args.msgsz_field:
-        data_processor.set_msgsz_field(args.msgsz_field)
+        field_mapper.add_mapping('msgsz', args.msgsz_field)
 
     if args.subject_field:
-        data_processor.set_subject_field(args.subject_field)
+        field_mapper.add_mapping('subject', args.subject_field)
 
     if args.date_field:
-        data_processor.set_date_field(args.date_field)
+        field_mapper.add_mapping('date', args.date_field)
+
+    # Log processor object (find a cleaner way to apply these settings)
+    data_processor = MessageDataProcessor(field_mapper, args.excluded_senders, args.excluded_domains, args.restricted_domains)
+
 
     if args.date_format:
         data_processor.set_date_format = args.date_format

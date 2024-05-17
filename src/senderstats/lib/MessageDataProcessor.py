@@ -4,20 +4,11 @@ import re
 from collections import defaultdict
 from random import random
 from typing import DefaultDict, Any, Dict, Set, List, Optional
-
 from tldextract import tldextract
-
 from senderstats.common.utils import (convert_srs, remove_prvs, compile_domains_pattern, find_ip_in_text,
                                       parse_email_details)
+from .FieldMapper import FieldMapper
 
-# Constants for the class
-DEFAULT_MFROM_FIELD = 'Sender'
-DEFAULT_HFROM_FIELD = 'Header_From'
-DEFAULT_RPATH_FIELD = 'Header_Return-Path'
-DEFAULT_MSGID_FIELD = 'Message_ID'
-DEFAULT_MSGSZ_FIELD = 'Message_Size'
-DEFAULT_SUBJECT_FIELD = 'Subject'
-DEFAULT_DATE_FIELD = 'Date'
 DEFAULT_DATE_FORMAT = '%Y-%m-%dT%H:%M:%S.%f%z'
 
 
@@ -37,13 +28,7 @@ class MessageDataProcessor:
     __excluded_domain_count: DefaultDict[str, int]
     __restricted_domains_count: DefaultDict[str, int]
     # Define CSV Fields
-    __mfrom_field: str
-    __hfrom_field: str
-    __rpath_field: str
-    __msgid_field: str
-    __msgsz_field: str
-    __subject_field: str
-    __date_field: str
+    __field_mapper: FieldMapper
     __date_format: str
     # Processing Option Flags
     __opt_no_display: bool
@@ -61,15 +46,10 @@ class MessageDataProcessor:
     __excluded_domains: re.Pattern
     __restricted_domains: re.Pattern
 
-    def __init__(self, excluded_senders: List[str], excluded_domains: List[str], restricted_domains: List[str]):
+    def __init__(self, field_mapper: FieldMapper, excluded_senders: List[str], excluded_domains: List[str],
+                 restricted_domains: List[str]):
         # Default field mappings based on smart search output
-        self.__mfrom_field = DEFAULT_MFROM_FIELD
-        self.__hfrom_field = DEFAULT_HFROM_FIELD
-        self.__rpath_field = DEFAULT_RPATH_FIELD
-        self.__msgid_field = DEFAULT_MSGID_FIELD
-        self.__msgsz_field = DEFAULT_MSGSZ_FIELD
-        self.__subject_field = DEFAULT_SUBJECT_FIELD
-        self.__date_field = DEFAULT_DATE_FIELD
+        self.__field_mapper = field_mapper
         self.__date_format = DEFAULT_DATE_FORMAT
         # Initialize counters
         self.__date_counter = defaultdict(int)
@@ -217,18 +197,22 @@ class MessageDataProcessor:
 
     def process_file(self, input_file):
         with (open(input_file, 'r', encoding='utf-8-sig') as input_file):
-            reader = csv.DictReader(input_file)
+            reader = csv.reader(input_file)
+            headers = next(reader)  # Read the first line which contains the headers
+            self.__field_mapper.configure(headers)
             for csv_line in reader:
                 self.__total_processed_count += 1
 
                 # Make sure cast to int is valid, else 0 (size is required)
-                message_size = csv_line[self.__msgsz_field]
+                message_size = self.__field_mapper.get_field(csv_line, 'msgsz')
+
                 if message_size.isdigit():
                     message_size = int(message_size)
                 else:
                     message_size = 0
 
-                mfrom = self.__process_mfrom_data(csv_line[self.__mfrom_field].casefold().strip())
+                mfrom = self.__field_mapper.get_field(csv_line, 'mfrom').casefold().strip()
+                mfrom = self.__process_mfrom_data(mfrom)
 
                 # mfrom will be None, unless the filtering criteria applied properly
                 if not mfrom:
@@ -237,7 +221,7 @@ class MessageDataProcessor:
                 subject = ''
                 # Not all CSV files will contain a subject field.
                 if self.__opt_sample_subject:
-                    subject = csv_line[self.__subject_field].strip()
+                    subject = self.__field_mapper.get_field(csv_line, 'subject').casefold().strip()
 
                 # Track the cleaned, filtered mfrom data for our report
                 self.__mfrom_data.setdefault(mfrom, {})
@@ -245,7 +229,8 @@ class MessageDataProcessor:
 
                 # Alignment will require that we have hfrom
                 if self.__opt_gen_hfrom or self.__opt_gen_alignment:
-                    hfrom = self.__process_hfrom_data(csv_line[self.__hfrom_field].casefold().strip(), mfrom)
+                    hfrom = self.__field_mapper.get_field(csv_line, 'hfrom').casefold().strip()
+                    hfrom = self.__process_hfrom_data(hfrom, mfrom)
 
                     # Generate data for HFrom
                     if self.__opt_gen_hfrom:
@@ -258,7 +243,8 @@ class MessageDataProcessor:
 
                 # Generate data for return path
                 if self.__opt_gen_rpath:
-                    rpath = self.__process_rpath_data(csv_line[self.__rpath_field].casefold().strip())
+                    rpath = self.__field_mapper.get_field(csv_line, 'rpath').casefold().strip()
+                    rpath = self.__process_rpath_data(rpath)
                     if self.__opt_gen_rpath:
                         self.__rpath_data.setdefault(rpath, {})
                         self.__update_message_size_and_subjects(self.__rpath_data[rpath], message_size, subject)
@@ -266,11 +252,12 @@ class MessageDataProcessor:
                 # Generate data for parsed message ID
                 if self.__opt_gen_msgid:
                     # Generate data for Message ID information
-                    self.__process_msgid_data(csv_line[self.__msgid_field].casefold().strip('<>[] '), mfrom,
-                                              message_size, subject)
+                    msgid = self.__field_mapper.get_field(csv_line, 'msgid').casefold().strip('<>[] ')
+                    self.__process_msgid_data(msgid, mfrom, message_size, subject)
 
                 # Determine distinct dates of data, and count number of messages on that day
-                date = datetime.datetime.strptime(csv_line[self.__date_field], self.__date_format)
+                date_str = self.__field_mapper.get_field(csv_line, 'date')
+                date = datetime.datetime.strptime(date_str, self.__date_format)
                 str_date = date.strftime('%Y-%m-%d')
                 self.__date_counter[str_date] += 1
 
