@@ -101,7 +101,7 @@ class MessageDataReport:
         summary.write(6, 0, "Estimated Monthly App Messages", self.__summary_format)
 
         summary.write(8, 0, "Total Outbound Data", self.__summary_format)
-        summary.write(9, 0, "Total Messages Message", self.__summary_format)
+        summary.write(9, 0, "Total Messages", self.__summary_format)
         summary.write(10, 0, "Total Average Message Size", self.__summary_format)
         summary.write(11, 0, "Total Peak Hourly Volume", self.__summary_format)
 
