@@ -144,8 +144,22 @@ window exceeds 1M records. The tool can ingest multiple CSVs files at once.
 Once the files are downlaoded to a target folder, you can run the following command with the path to the files you
 downloaded and specify a wildard.
 
+
+The following example is the most basic usage:
 ```
-senderstats -i C:\path\to\downloaded\files\smart_search_results_custer_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx
+# Windows
+senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx
+# Linux
+senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx
+```
+
+For a more comprehensive reprt use the following command:
+
+```
+# Windows
+senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject
+# Linux
+senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject
 ```
 
 ### Sample Output
