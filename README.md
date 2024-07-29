@@ -153,7 +153,7 @@ senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2
 senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx
 ```
 
-For a more comprehensive reprt use the following command:
+For a more comprehensive report use the following command:
 
 ```
 # Windows
