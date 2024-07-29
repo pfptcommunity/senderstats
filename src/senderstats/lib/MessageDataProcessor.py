@@ -218,6 +218,8 @@ class MessageDataProcessor:
                 if not mfrom:
                     continue
 
+                #TODO add option for processing messageid for digest via pps.digest
+
                 subject = ''
                 # Not all CSV files will contain a subject field.
                 if self.__opt_sample_subject:
