@@ -11,6 +11,10 @@ class Handler(ABC, Generic[TData]):
         pass
 
     @abstractmethod
+    def get_next(self) -> THandler:
+        pass
+
+    @abstractmethod
     def handle(self, data: TData) -> Optional[TData]:
         pass
 
@@ -29,6 +33,9 @@ class AbstractHandler(Handler[TData], Generic[TData]):
                 last_handler = last_handler._next_handler
             last_handler._next_handler = handler
         return self
+
+    def get_next(self) -> Handler[TData]:
+        return self._next_handler
 
     def handle(self, data: TData) -> Optional[TData]:
         if self._next_handler:

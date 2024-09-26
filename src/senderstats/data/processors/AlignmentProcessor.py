@@ -8,6 +8,8 @@ TMessageData = TypeVar('TMessageData', bound=MessageData)
 
 
 class AlignmentProcessor(Processor[MessageData], Generic[TMessageData]):
+    sheet_name = "MFrom + HFrom (Alignment)"
+    headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __alignment_data: Dict[tuple, Dict]
     __sample_subject: bool
 
@@ -38,3 +40,9 @@ class AlignmentProcessor(Processor[MessageData], Generic[TMessageData]):
                     alignment_data['subjects'].append(data.subject)
 
         return data
+
+    def is_sample_subject(self) -> bool:
+        return self.__sample_subject
+
+    def get_data(self) -> Dict:
+        return self.__alignment_data

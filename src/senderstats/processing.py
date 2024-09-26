@@ -1,12 +1,14 @@
+import csv
 import os
 from glob import glob
-import csv
+
 from data.Mapper import Mapper
 from data.MessageData import MessageData
-from senderstats.common.defaults import *
+from data.common.Processor import Processor
 from data.filters import *
-from data.transformers import *
 from data.processors import *
+from data.transformers import *
+from senderstats.common.defaults import *
 
 
 def process_input_files(input_files):
@@ -16,11 +18,14 @@ def process_input_files(input_files):
     file_names = set(file_names)
     return [file for file in file_names if os.path.isfile(file)]
 
+
 def process_exclusions(args):
     args.excluded_senders = sorted(list({sender.casefold() for sender in args.excluded_senders}))
-    args.excluded_domains = sorted(list({domain.casefold() for domain in DEFAULT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
+    args.excluded_domains = sorted(
+        list({domain.casefold() for domain in DEFAULT_DOMAIN_EXCLUSIONS + args.excluded_domains}))
     args.restricted_domains = sorted(list({domain.casefold() for domain in args.restricted_domains}))
     return args
+
 
 def configure_field_mapper(args):
     default_field_mappings = {
@@ -49,6 +54,7 @@ def configure_field_mapper(args):
         field_mapper.add_mapping('date', args.date_field)
     return field_mapper
 
+
 def build_pipeline(args):
     exclude_empty_sender_filter = ExcludeEmptySenderFilter()
     exclude_domain_filter = ExcludeDomainFilter(args.excluded_domains)
@@ -73,15 +79,24 @@ def build_pipeline(args):
         pipeline.set_next(hfrom_transform)
     if args.gen_hfrom:
         pipeline.set_next(hfrom_processor)
-    if args.gen_alignment:
-        pipeline.set_next(align_processor)
     if args.gen_rpath:
         pipeline.set_next(rpath_transform)
         pipeline.set_next(rpath_processor)
     if args.gen_msgid:
         pipeline.set_next(msgid_transform)
         pipeline.set_next(msgid_processor)
+    if args.gen_alignment:
+        pipeline.set_next(align_processor)
     return pipeline
+
+def get_processors(pipeline) -> []:
+    processors = []
+    current = pipeline
+    while current is not None:
+        if isinstance(current, Processor):
+            processors.append(current)
+        current = current.get_next()
+    return processors
 
 def process_files(file_names, field_mapper, pipeline):
     message_data = MessageData(field_mapper)

@@ -8,6 +8,8 @@ TMessageData = TypeVar('TMessageData', bound=MessageData)
 
 
 class RPathProcessor(Processor[MessageData], Generic[TMessageData]):
+    sheet_name = "Return Path"
+    headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __rpath_data: Dict[str, Dict]
     __sample_subject: bool
 
@@ -35,3 +37,9 @@ class RPathProcessor(Processor[MessageData], Generic[TMessageData]):
                     rpath_data['subjects'].append(data.subject)
 
         return data
+
+    def is_sample_subject(self) -> bool:
+        return self.__sample_subject
+
+    def get_data(self) -> Dict:
+        return self.__rpath_data

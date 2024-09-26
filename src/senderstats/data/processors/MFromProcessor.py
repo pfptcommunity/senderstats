@@ -8,6 +8,8 @@ TMessageData = TypeVar('TMessageData', bound=MessageData)
 
 
 class MFromProcessor(Processor[MessageData], Generic[TMessageData]):
+    sheet_name = "Envelope Senders"
+    headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __mfrom_data: Dict[str, Dict]
     __sample_subject: bool
 
@@ -35,3 +37,9 @@ class MFromProcessor(Processor[MessageData], Generic[TMessageData]):
                     mfrom_data['subjects'].append(data.subject)
 
         return data
+
+    def is_sample_subject(self) -> bool:
+        return self.__sample_subject
+
+    def get_data(self) -> Dict:
+        return self.__mfrom_data

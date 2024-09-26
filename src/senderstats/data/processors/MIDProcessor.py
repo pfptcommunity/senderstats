@@ -8,6 +8,8 @@ TMessageData = TypeVar('TMessageData', bound=MessageData)
 
 
 class MIDProcessor(Processor[MessageData], Generic[TMessageData]):
+    sheet_name = "MFrom + Message ID"
+    headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __msgid_data: Dict[tuple, Dict]
     __sample_subject: bool
 
@@ -36,3 +38,9 @@ class MIDProcessor(Processor[MessageData], Generic[TMessageData]):
                     msgid_data['subjects'].append(data.subject)
 
         return data
+
+    def is_sample_subject(self) -> bool:
+        return self.__sample_subject
+
+    def get_data(self) -> Dict:
+        return self.__msgid_data
