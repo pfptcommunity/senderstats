@@ -1,4 +1,4 @@
-import re
+import regex as re
 
 from .constants import PRVS_REGEX, SRS_REGEX, IPV46_REGEX, PARSE_EMAIL_REGEX
 

@@ -1,9 +1,10 @@
 from typing import List
-from lib.FieldMapper import FieldMapper
+
+from data import Mapper
 
 
-class DataRecord:
-    def __init__(self, field_mapper: FieldMapper):
+class MessageData:
+    def __init__(self, field_mapper: Mapper):
         """Initialize the DataRecord object with default values."""
         self.field_mapper = field_mapper
         self.message_size = 0
@@ -11,6 +12,8 @@ class DataRecord:
         self.hfrom = ""
         self.rpath = ""
         self.msgid = ""
+        self.msgid_domain = ''
+        self.msgid_host = ''
         self.subject = ""
         self.date = ""
 
@@ -22,5 +25,7 @@ class DataRecord:
         self.hfrom = self.field_mapper.get_field(row, 'hfrom').casefold().strip()
         self.rpath = self.field_mapper.get_field(row, 'rpath').casefold().strip()
         self.msgid = self.field_mapper.get_field(row, 'msgid').casefold().strip('<>[] ')
+        self.msgid_domain = ''
+        self.msgid_host = ''
         self.subject = self.field_mapper.get_field(row, 'subject').strip()
         self.date = self.field_mapper.get_field(row, 'date').strip()

@@ -1,13 +1,19 @@
+import csv
 import os
 import sys
 from glob import glob
 
-from senderstats.common.constants import DEFAULT_THRESHOLD, DEFAULT_DOMAIN_EXCLUSIONS
+from common.constants import DEFAULT_MFROM_FIELD, DEFAULT_HFROM_FIELD, DEFAULT_RPATH_FIELD, DEFAULT_MSGSZ_FIELD, \
+    DEFAULT_MSGID_FIELD, DEFAULT_SUBJECT_FIELD, DEFAULT_DATE_FIELD, DEFAULT_THRESHOLD, DEFAULT_DOMAIN_EXCLUSIONS, \
+    DEFAULT_DATE_FORMAT
+from data.Mapper import Mapper
+from data.MessageData import MessageData
+from data.filters import *
+from data.processors import *
+from data.transformers import *
 from senderstats.common.utils import *
 from senderstats.common.validators import *
-from senderstats.lib.MessageDataProcessor import *
-from senderstats.lib.MessageDataReport import MessageDataReport
-from senderstats.lib.FieldMapper import *
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
@@ -143,13 +149,23 @@ def main():
     print_list_with_title("Domains excluded from processing:", args.excluded_domains)
     print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
+    default_field_mappings = {
+        'mfrom': DEFAULT_MFROM_FIELD,
+        'hfrom': DEFAULT_HFROM_FIELD,
+        'rpath': DEFAULT_RPATH_FIELD,
+        'msgsz': DEFAULT_MSGSZ_FIELD,
+        'msgid': DEFAULT_MSGID_FIELD,
+        'subject': DEFAULT_SUBJECT_FIELD,
+        'date': DEFAULT_DATE_FIELD
+    }
+
     # Configure fields
-    field_mapper = FieldMapper()
+    field_mapper = Mapper(default_field_mappings)
     if args.mfrom_field:
         field_mapper.add_mapping('mfrom', args.mfrom_field)
 
     if args.hfrom_field:
-        field_mapper.add_mapping('hfrom',args.hfrom_field)
+        field_mapper.add_mapping('hfrom', args.hfrom_field)
 
     if args.rpath_field:
         field_mapper.add_mapping('rpath', args.rpath_field)
@@ -166,71 +182,90 @@ def main():
     if args.date_field:
         field_mapper.add_mapping('date', args.date_field)
 
-    # Log processor object (find a cleaner way to apply these settings)
-    data_processor = MessageDataProcessor(field_mapper, args.excluded_senders, args.excluded_domains, args.restricted_domains)
+    # Define filters, they may not all be used
+    exclude_empty_sender_filter = ExcludeEmptySenderFilter()
+    exclude_domain_filter = ExcludeDomainFilter(args.excluded_domains)
+    exclude_senders_filter = ExcludeSenderFilter(args.excluded_senders)
+    restrict_senders_filter = RestrictDomainFilter(args.restricted_domains)
 
+    # Define transformers, they may not all be used
+    mfrom_transform = MFromTransform(args.decode_srs, args.remove_prvs)
+    hfrom_transform = HFromTransform(args.no_display, args.no_empty_hfrom)
+    msgid_transform = MIDTransform()
+    rpath_transform = RPathTransform(args.decode_srs, args.remove_prvs)
 
-    if args.date_format:
-        data_processor.set_date_format = args.date_format
+    # Define processors, they may not all be used
+    mfrom_processor = MFromProcessor(args.sample_subject)
+    hfrom_processor = HFromProcessor(args.sample_subject)
+    msgid_processor = MIDProcessor(args.sample_subject)
+    rpath_processor = RPathProcessor(args.sample_subject)
+    align_processor = AlignmentProcessor(args.sample_subject)
 
-    # Set processing flags
-    if args.remove_prvs:
-        data_processor.set_opt_remove_prvs(args.remove_prvs)
+    # Build the filtering minimum is always envelope senders
+    pipeline = (exclude_empty_sender_filter
+                .set_next(mfrom_transform)
+                .set_next(exclude_domain_filter)
+                .set_next(exclude_senders_filter)
+                .set_next(restrict_senders_filter)
+                .set_next(mfrom_processor))
 
-    if args.decode_srs:
-        data_processor.set_opt_decode_srs(args.decode_srs)
-
-    if args.no_empty_hfrom:
-        data_processor.set_opt_empty_from(args.no_empty_hfrom)
-
-    if args.sample_subject:
-        data_processor.set_opt_sample_subject(args.sample_subject)
-
-    if args.no_display:
-        data_processor.set_opt_no_display(args.no_display)
+    # Setup other processors
+    if args.gen_hfrom or args.gen_alignment:
+        pipeline.set_next(hfrom_transform)
 
     if args.gen_hfrom:
-        data_processor.set_opt_gen_hfrom(args.gen_hfrom)
-
-    if args.gen_rpath:
-        data_processor.set_opt_gen_rpath(args.gen_rpath)
+        pipeline.set_next(hfrom_processor)
 
     if args.gen_alignment:
-        data_processor.set_opt_gen_alignment(args.gen_alignment)
+        pipeline.set_next(align_processor)
+
+    if args.gen_rpath:
+        pipeline.set_next(rpath_transform)
+        pipeline.set_next(rpath_processor)
 
     if args.gen_msgid:
-        data_processor.set_opt_gen_msgid(args.gen_msgid)
+        pipeline.set_next(msgid_transform)
+        pipeline.set_next(msgid_processor)
+
+    message_data = MessageData(field_mapper)
 
     f_current = 1
     f_total = len(file_names)
-    for f in file_names:
+    for input_file in file_names:
         print("Processing:", f, f'({f_current} of {f_total})')
-        data_processor.process_file(f)
+        with (open(input_file, 'r', encoding='utf-8-sig') as input_file):
+            reader = csv.reader(input_file)
+            headers = next(reader)  # Read the first line which contains the headers
+            field_mapper.configure(headers)
+            for csv_line in reader:
+                message_data.load(csv_line)
+                pipeline.handle(message_data)
+
         f_current += 1
 
-    print()
-    print("\nTotal records processed:", data_processor.get_total_processed_count())
-    print_summary("Skipped due to empty sender", data_processor.get_empty_sender_count())
-    print_summary("Excluded by excluded senders list", data_processor.get_excluded_sender_count(),
-                  args.show_skip_detail)
-    print_summary("Excluded by excluded domains list", data_processor.get_excluded_domain_count(),
-                  args.show_skip_detail)
-    print_summary("Excluded by restricted domains list", data_processor.get_excluded_domain_count(),
-                  args.show_skip_detail)
-    print()
-
-    date_counts = data_processor.get_date_counter()
-    if date_counts:
-        print("Records by Day")
-        for d in sorted(date_counts.keys()):
-            print("{}:".format(d), date_counts[d])
-        print()
-
-    data_report = MessageDataReport(args.output_file, data_processor, args.threshold)
-    data_report.generate_report()
-    data_report.close()
-
-    print("Please see report: {}".format(args.output_file))
+    # print()
+    # print("\nTotal records processed:", data_processor.get_total_processed_count())
+    # print_summary("Skipped due to empty sender", data_processor.get_empty_sender_count())
+    # print_summary("Excluded by excluded senders list", data_processor.get_excluded_sender_count(),
+    #               args.show_skip_detail)
+    # print_summary("Excluded by excluded domains list", data_processor.get_excluded_domain_count(),
+    #               args.show_skip_detail)
+    # print_summary("Excluded by restricted domains list", data_processor.get_excluded_domain_count(),
+    #               args.show_skip_detail)
+    # print()
+    #
+    # date_counts = data_processor.get_date_counter()
+    # if date_counts:
+    #     print("Records by Day")
+    #     for d in sorted(date_counts.keys()):
+    #         print("{}:".format(d), date_counts[d])
+    #     print()
+    #
+    # data_report = MessageDataReport(args.output_file, data_processor, args.threshold)
+    # data_report.generate_report()
+    # data_report.close()
+    #
+    # print("Please see report: {}".format(args.output_file))
 
 
 if __name__ == '__main__':
