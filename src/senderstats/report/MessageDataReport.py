@@ -1,6 +1,5 @@
 from typing import TypeVar
 
-from numpy.lib.shape_base import dsplit
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
@@ -15,17 +14,18 @@ TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProces
 
 class MessageDataReport:
     __threshold: int
+    __days: int
     __workbook: Workbook
     __header_format: Format
     __summary_format: Format
     __summary_values_format: Format
     __subject_format: Format
     __data_cell_format: Format
-    __days: int
 
-    def __init__(self, output_file: str, days: int):
+    def __init__(self, output_file: str, threshold: int, days: int):
         #self.__threshold = threshold
         self.__days = days
+        self.__threshold = threshold
 
         self.__workbook = Workbook(output_file)
         self.__summary_format = self.__workbook.add_format()
@@ -97,6 +97,7 @@ class MessageDataReport:
 
     def create_sizing_summary(self):
         summary = self.__workbook.add_worksheet("Summary")
+
         summary.write(0, 0, "Estimated App Data ({} days)".format(self.__days), self.__summary_format)
         summary.write(1, 0, "Estimated App Messages ({} days)".format(self.__days), self.__summary_format)
         summary.write(2, 0, "Estimated App Average Message Size ({} days)".format(self.__days), self.__summary_format)
@@ -156,7 +157,7 @@ class MessageDataReport:
                               self.__summary_values_format)
 
         summary.write_formula(11, 1,
-                              "=ROUNDUP(SUM('Envelope Senders'!B:B)/{days}/8,0)".format(
+                              "=MAX('Hourly Metrics'!B:B)".format(
                                   days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
@@ -179,6 +180,6 @@ class MessageDataReport:
             row = 1
             for k, v in processor.get_hourly_counter().items():
                 sheet.write_string(row, 0, k, self.__data_cell_format)
-                sheet.write_string(row, 1, v, self.__data_cell_format)
-            row += 1
+                sheet.write_number(row, 1, v, self.__data_cell_format)
+                row += 1
             sheet.autofit()

@@ -26,13 +26,17 @@ def main():
 
     process_files(file_names, field_mapper, pipeline)
     processor_list = get_processors(pipeline)
-    report = MessageDataReport(args.output_file, len(date_processor.get_date_counter()))
+    report = MessageDataReport(args.output_file, args.threshold, len(date_processor.get_date_counter()))
+
+    report.create_sizing_summary()
 
     for processor in processor_list:
         report.create_summary(processor)
-    report.close()
 
     report.create_hourly_summary(date_processor)
+
+
+    report.close()
 
 if __name__ == "__main__":
     main()
