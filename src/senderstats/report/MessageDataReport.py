@@ -6,6 +6,7 @@ from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
 
 from data.processors import AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor
+from data.processors.DateProcessor import DateProcessor
 from senderstats.common.utils import average
 
 TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor,
@@ -162,10 +163,22 @@ class MessageDataReport:
         summary.autofit()
 
     def create_summary(self, processor: TMessageProcessor):
-        sheet = self.__workbook.add_worksheet(processor.sheet_name)
-        if processor.is_sample_subject():
-            processor.headers.append('Subjects')
+        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor, 'is_sample_subject'):
+            sheet = self.__workbook.add_worksheet(processor.sheet_name)
 
-        self.__write_headers(sheet, processor.headers)
-        self.__write_data(sheet, processor.get_data())
-        sheet.autofit()
+            if processor.is_sample_subject():
+                processor.headers.append('Subjects')
+
+            self.__write_headers(sheet, processor.headers)
+            self.__write_data(sheet, processor.get_data())
+            sheet.autofit()
+
+    def create_hourly_summary(self, processor: DateProcessor):
+            sheet = self.__workbook.add_worksheet("Hourly Metrics")
+            self.__write_headers(sheet, ['Date','Messages'])
+            row = 1
+            for k, v in processor.get_hourly_counter().items():
+                sheet.write_string(row, 0, k, self.__data_cell_format)
+                sheet.write_string(row, 1, v, self.__data_cell_format)
+            row += 1
+            sheet.autofit()

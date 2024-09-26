@@ -1,3 +1,5 @@
+from common.defaults import DEFAULT_DATE_FORMAT
+from data.processors.DateProcessor import DateProcessor
 from report.MessageDataReport import MessageDataReport
 from senderstats.common.utils import print_list_with_title
 from senderstats.common.validators import parse_arguments
@@ -17,13 +19,20 @@ def main():
 
     field_mapper = configure_field_mapper(args)
     pipeline = build_pipeline(args)
+
+    # Add to calculate date metrics
+    date_processor = DateProcessor(DEFAULT_DATE_FORMAT)
+    pipeline.set_next(date_processor)
+
     process_files(file_names, field_mapper, pipeline)
     processor_list = get_processors(pipeline)
+    report = MessageDataReport(args.output_file, len(date_processor.get_date_counter()))
 
-    report = MessageDataReport(args.output_file, 30)
     for processor in processor_list:
         report.create_summary(processor)
     report.close()
+
+    report.create_hourly_summary(date_processor)
 
 if __name__ == "__main__":
     main()
