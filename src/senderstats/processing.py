@@ -32,6 +32,7 @@ def configure_field_mapper(args):
         'mfrom': DEFAULT_MFROM_FIELD,
         'hfrom': DEFAULT_HFROM_FIELD,
         'rpath': DEFAULT_RPATH_FIELD,
+        'rcpts': DEFAULT_RCPTS_FIELD,
         'msgsz': DEFAULT_MSGSZ_FIELD,
         'msgid': DEFAULT_MSGID_FIELD,
         'subject': DEFAULT_SUBJECT_FIELD,
