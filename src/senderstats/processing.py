@@ -3,11 +3,11 @@ import os
 from glob import glob
 
 from data.Mapper import Mapper
-from data.MessageData import MessageData
 from data.common.Processor import Processor
 from data.filters import *
 from data.processors import *
 from data.transformers import *
+from data.transformers.MessageDataTransform import MessageDataTransform
 from senderstats.common.defaults import *
 
 
@@ -56,7 +56,8 @@ def configure_field_mapper(args):
     return field_mapper
 
 
-def build_pipeline(args):
+def build_pipeline(args, field_mapper: Mapper):
+    csv_to_message_data_transform = MessageDataTransform(field_mapper)
     exclude_empty_sender_filter = ExcludeEmptySenderFilter()
     exclude_domain_filter = ExcludeDomainFilter(args.excluded_domains)
     exclude_senders_filter = ExcludeSenderFilter(args.excluded_senders)
@@ -70,7 +71,7 @@ def build_pipeline(args):
     msgid_processor = MIDProcessor(args.sample_subject)
     rpath_processor = RPathProcessor(args.sample_subject)
     align_processor = AlignmentProcessor(args.sample_subject)
-    pipeline = (exclude_empty_sender_filter
+    pipeline = (csv_to_message_data_transform.set_next(exclude_empty_sender_filter)
                 .set_next(mfrom_transform)
                 .set_next(exclude_domain_filter)
                 .set_next(exclude_senders_filter)
@@ -90,6 +91,7 @@ def build_pipeline(args):
         pipeline.set_next(align_processor)
     return pipeline
 
+
 def get_processors(pipeline) -> []:
     processors = []
     current = pipeline
@@ -99,8 +101,8 @@ def get_processors(pipeline) -> []:
         current = current.get_next()
     return processors
 
+
 def process_files(file_names, field_mapper, pipeline):
-    message_data = MessageData(field_mapper)
     f_current = 1
     f_total = len(file_names)
     for input_file in file_names:
@@ -108,8 +110,7 @@ def process_files(file_names, field_mapper, pipeline):
         with open(input_file, 'r', encoding='utf-8-sig') as file:
             reader = csv.reader(file)
             headers = next(reader)
-            field_mapper.configure(headers)
+            pipeline._field_mapper.configure(headers)
             for csv_line in reader:
-                message_data.load(csv_line)
-                pipeline.handle(message_data)
+                pipeline.handle(csv_line)
         f_current += 1

@@ -1,19 +1,15 @@
-from typing import TypeVar, Generic
-
 from tldextract import tldextract
 
 from common.utils import parse_email_details, find_ip_in_text
 from data.MessageData import MessageData
 from data.common.Transform import Transform
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class MIDTransform(Transform[MessageData], Generic[TMessageData]):
+class MIDTransform(Transform[MessageData, MessageData]):
     def __init__(self):
         super().__init__()
 
-    def transform(self, data: TMessageData) -> TMessageData:
+    def transform(self, data: MessageData) -> MessageData:
         msgid = data.msgid
 
         # Message ID is unique but often the sending host behind the @ symbol is unique to the application

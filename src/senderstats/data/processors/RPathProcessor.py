@@ -1,13 +1,11 @@
 from random import random
-from typing import TypeVar, Generic, Dict
+from typing import Dict
 
 from data.MessageData import MessageData
 from data.common.Processor import Processor
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class RPathProcessor(Processor[MessageData], Generic[TMessageData]):
+class RPathProcessor(Processor[MessageData]):
     sheet_name = "Return Path"
     headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __rpath_data: Dict[str, Dict]
@@ -18,7 +16,7 @@ class RPathProcessor(Processor[MessageData], Generic[TMessageData]):
         self.__rpath_data = dict()
         self.__sample_subject = sample_subject
 
-    def execute(self, data: TMessageData) -> TMessageData:
+    def execute(self, data: MessageData) -> None:
         self.__rpath_data.setdefault(data.rpath, {})
 
         rpath_data = self.__rpath_data[data.rpath]
@@ -35,8 +33,6 @@ class RPathProcessor(Processor[MessageData], Generic[TMessageData]):
                 # Ensure at least one subject is added if subjects array is empty
                 if not rpath_data['subjects'] or random() < probability:
                     rpath_data['subjects'].append(data.subject)
-
-        return data
 
     def is_sample_subject(self) -> bool:
         return self.__sample_subject

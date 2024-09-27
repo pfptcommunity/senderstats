@@ -1,19 +1,15 @@
-from typing import TypeVar, Generic
-
 from common.utils import parse_email_details, convert_srs, remove_prvs
 from data.MessageData import MessageData
 from data.common.Transform import Transform
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class RPathTransform(Transform[MessageData], Generic[TMessageData]):
+class RPathTransform(Transform[MessageData, MessageData]):
     def __init__(self, decode_srs: bool = False, remove_prvs: bool = False):
         super().__init__()
         self.__decode_srs = decode_srs
         self.__remove_prvs = remove_prvs
 
-    def transform(self, data: TMessageData) -> TMessageData:
+    def transform(self, data: MessageData) -> MessageData:
         # If sender is not empty, we will extract parts of the email
         rpath_parts = parse_email_details(data.rpath)
         rpath = rpath_parts['email_address']

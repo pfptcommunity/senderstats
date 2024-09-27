@@ -1,13 +1,11 @@
 from random import random
-from typing import TypeVar, Generic, Dict
+from typing import Dict
 
 from data.MessageData import MessageData
 from data.common.Processor import Processor
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class MFromProcessor(Processor[MessageData], Generic[TMessageData]):
+class MFromProcessor(Processor[MessageData]):
     sheet_name = "Envelope Senders"
     headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __mfrom_data: Dict[str, Dict]
@@ -18,7 +16,7 @@ class MFromProcessor(Processor[MessageData], Generic[TMessageData]):
         self.__mfrom_data = dict()
         self.__sample_subject = sample_subject
 
-    def execute(self, data: TMessageData) -> TMessageData:
+    def execute(self, data: MessageData) -> None:
         self.__mfrom_data.setdefault(data.mfrom, {})
 
         mfrom_data = self.__mfrom_data[data.mfrom]
@@ -35,8 +33,6 @@ class MFromProcessor(Processor[MessageData], Generic[TMessageData]):
                 # Ensure at least one subject is added if subjects array is empty
                 if not mfrom_data['subjects'] or random() < probability:
                     mfrom_data['subjects'].append(data.subject)
-
-        return data
 
     def is_sample_subject(self) -> bool:
         return self.__sample_subject

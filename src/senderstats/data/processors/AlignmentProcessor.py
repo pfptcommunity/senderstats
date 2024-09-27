@@ -1,13 +1,11 @@
 from random import random
-from typing import TypeVar, Generic, Dict
+from typing import Dict
 
 from data.MessageData import MessageData
 from data.common.Processor import Processor
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class AlignmentProcessor(Processor[MessageData], Generic[TMessageData]):
+class AlignmentProcessor(Processor[MessageData]):
     sheet_name = "MFrom + HFrom (Alignment)"
     headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __alignment_data: Dict[tuple, Dict]
@@ -18,7 +16,8 @@ class AlignmentProcessor(Processor[MessageData], Generic[TMessageData]):
         self.__alignment_data = dict()
         self.__sample_subject = sample_subject
 
-    def execute(self, data: TMessageData) -> TMessageData:
+    def execute(self, data: MessageData) -> None:
+        """Aggregate alignment data without modifying the MessageData."""
         # Fat index for binding commonality
         sender_header_index = (data.mfrom, data.hfrom)
 
@@ -38,8 +37,6 @@ class AlignmentProcessor(Processor[MessageData], Generic[TMessageData]):
                 # Ensure at least one subject is added if subjects array is empty
                 if not alignment_data['subjects'] or random() < probability:
                     alignment_data['subjects'].append(data.subject)
-
-        return data
 
     def is_sample_subject(self) -> bool:
         return self.__sample_subject

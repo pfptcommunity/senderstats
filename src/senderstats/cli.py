@@ -18,7 +18,7 @@ def main():
     print_list_with_title("Domains constrained or processing:", args.restricted_domains)
 
     field_mapper = configure_field_mapper(args)
-    pipeline = build_pipeline(args)
+    pipeline = build_pipeline(args, field_mapper)
 
     # Add to calculate date metrics
     date_processor = DateProcessor(DEFAULT_DATE_FORMAT)
@@ -35,8 +35,8 @@ def main():
 
     report.create_hourly_summary(date_processor)
 
-
     report.close()
+
 
 if __name__ == "__main__":
     main()

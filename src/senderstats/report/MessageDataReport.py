@@ -23,7 +23,7 @@ class MessageDataReport:
     __data_cell_format: Format
 
     def __init__(self, output_file: str, threshold: int, days: int):
-        #self.__threshold = threshold
+        # self.__threshold = threshold
         self.__days = days
         self.__threshold = threshold
 
@@ -164,7 +164,8 @@ class MessageDataReport:
         summary.autofit()
 
     def create_summary(self, processor: TMessageProcessor):
-        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor, 'is_sample_subject'):
+        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor,
+                                                                                          'is_sample_subject'):
             sheet = self.__workbook.add_worksheet(processor.sheet_name)
 
             if processor.is_sample_subject():
@@ -175,11 +176,11 @@ class MessageDataReport:
             sheet.autofit()
 
     def create_hourly_summary(self, processor: DateProcessor):
-            sheet = self.__workbook.add_worksheet("Hourly Metrics")
-            self.__write_headers(sheet, ['Date','Messages'])
-            row = 1
-            for k, v in processor.get_hourly_counter().items():
-                sheet.write_string(row, 0, k, self.__data_cell_format)
-                sheet.write_number(row, 1, v, self.__data_cell_format)
-                row += 1
-            sheet.autofit()
+        sheet = self.__workbook.add_worksheet("Hourly Metrics")
+        self.__write_headers(sheet, ['Date', 'Messages'])
+        row = 1
+        for k, v in processor.get_hourly_counter().items():
+            sheet.write_string(row, 0, k, self.__data_cell_format)
+            sheet.write_number(row, 1, v, self.__data_cell_format)
+            row += 1
+        sheet.autofit()

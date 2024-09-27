@@ -1,13 +1,11 @@
 from random import random
-from typing import TypeVar, Generic, Dict
+from typing import Dict
 
 from data.MessageData import MessageData
 from data.common.Processor import Processor
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
-
-class MIDProcessor(Processor[MessageData], Generic[TMessageData]):
+class MIDProcessor(Processor[MessageData]):
     sheet_name = "MFrom + Message ID"
     headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __msgid_data: Dict[tuple, Dict]
@@ -18,7 +16,7 @@ class MIDProcessor(Processor[MessageData], Generic[TMessageData]):
         self.__msgid_data = dict()
         self.__sample_subject = sample_subject
 
-    def execute(self, data: TMessageData) -> TMessageData:
+    def execute(self, data: MessageData) -> None:
         mid_host_domain_index = (data.mfrom, data.msgid_host, data.msgid_domain)
         self.__msgid_data.setdefault(mid_host_domain_index, {})
 
@@ -36,8 +34,6 @@ class MIDProcessor(Processor[MessageData], Generic[TMessageData]):
                 # Ensure at least one subject is added if subjects array is empty
                 if not msgid_data['subjects'] or random() < probability:
                     msgid_data['subjects'].append(data.subject)
-
-        return data
 
     def is_sample_subject(self) -> bool:
         return self.__sample_subject

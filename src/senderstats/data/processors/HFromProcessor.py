@@ -18,7 +18,7 @@ class HFromProcessor(Processor[MessageData], Generic[TMessageData]):
         self.__hfrom_data = dict()
         self.__sample_subject = sample_subject
 
-    def execute(self, data: TMessageData) -> TMessageData:
+    def execute(self, data: TMessageData) -> None:
         self.__hfrom_data.setdefault(data.hfrom, {})
 
         hfrom_data = self.__hfrom_data[data.hfrom]
@@ -35,8 +35,6 @@ class HFromProcessor(Processor[MessageData], Generic[TMessageData]):
                 # Ensure at least one subject is added if subjects array is empty
                 if not hfrom_data['subjects'] or random() < probability:
                     hfrom_data['subjects'].append(data.subject)
-
-        return data
 
     def is_sample_subject(self) -> bool:
         return self.__sample_subject

@@ -1,15 +1,15 @@
 from abc import abstractmethod
 from typing import Optional, final, Generic
 
-from data.common.Handler import AbstractHandler, TData
+from data.common.Handler import AbstractHandler, TInput
 
 
-class Processor(AbstractHandler[TData], Generic[TData]):
+class Processor(AbstractHandler[TInput, TInput], Generic[TInput]):
     @final
-    def handle(self, data: TData) -> Optional[TData]:
+    def handle(self, data: TInput) -> Optional[TInput]:
         self.execute(data)
         return super().handle(data)
 
     @abstractmethod
-    def execute(self, data: TData) -> None:
+    def execute(self, data: TInput) -> None:
         pass
