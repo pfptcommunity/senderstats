@@ -19,8 +19,12 @@ class MessageDataReport:
     __header_format: Format
     __summary_format: Format
     __summary_values_format: Format
+    __summary_highlight_format: Format
+    __summary_highlight_values: Format
+    __summary_values_format: Format
     __subject_format: Format
     __data_cell_format: Format
+    __field_values_format: Format
 
     def __init__(self, output_file: str, threshold: int, days: int):
         # self.__threshold = threshold
@@ -28,12 +32,23 @@ class MessageDataReport:
         self.__threshold = threshold
 
         self.__workbook = Workbook(output_file)
-        self.__summary_format = self.__workbook.add_format()
+        self.__summary_format = self.__workbook.add_format({'hidden': True})
         self.__summary_format.set_bold()
         self.__summary_format.set_align('right')
+        self.__summary_highlight_format = self.__workbook.add_format({'hidden': True, 'bg_color': '#FFFF00'})
+        self.__summary_highlight_format.set_bold()
+        self.__summary_highlight_format.set_align('right')
 
-        self.__summary_values_format = self.__workbook.add_format()
+        self.__summary_values_format = self.__workbook.add_format({'hidden': True})
         self.__summary_values_format.set_align('right')
+
+        self.__summary_highlight_values = self.__workbook.add_format({'hidden': True, 'bg_color': '#FFFF00'})
+        self.__summary_highlight_values.set_align('right')
+
+        self.__field_values_format = self.__workbook.add_format({'locked': False, 'hidden': True})
+
+
+
 
         self.__header_format = self.__workbook.add_format()
         self.__header_format.set_bold()
@@ -97,53 +112,64 @@ class MessageDataReport:
 
     def create_sizing_summary(self):
         summary = self.__workbook.add_worksheet("Summary")
+        summary.protect()
 
         summary.write(0, 0, "Estimated App Data ({} days)".format(self.__days), self.__summary_format)
         summary.write(1, 0, "Estimated App Messages ({} days)".format(self.__days), self.__summary_format)
         summary.write(2, 0, "Estimated App Average Message Size ({} days)".format(self.__days), self.__summary_format)
         summary.write(3, 0, "Estimated App Peak Hourly Volume ({} days)".format(self.__days), self.__summary_format)
 
-        summary.write(5, 0, "Estimated Monthly App Data", self.__summary_format)
-        summary.write(6, 0, "Estimated Monthly App Messages", self.__summary_format)
+        summary.write(5, 0, "Estimated Monthly App Data", self.__summary_highlight_format)
+        summary.write(6, 0, "Estimated Monthly App Messages", self.__summary_highlight_format)
 
         summary.write(8, 0, "Total Outbound Data", self.__summary_format)
         summary.write(9, 0, "Total Messages", self.__summary_format)
         summary.write(10, 0, "Total Average Message Size", self.__summary_format)
         summary.write(11, 0, "Total Peak Hourly Volume", self.__summary_format)
 
+        # Write some instructions
+        summary.write(13, 0, 'App Email Threshold (Enter number between 1 and 10):', self.__summary_format)
+        summary.write_number(13, 1, self.__threshold, self.__field_values_format)
+        summary.set_column(1, 1, 25)
+
+        # Add integer validation (restricting the input to between 1 and 10)
+        summary.data_validation(13,1,13,1, {'validate': 'integer',
+                                         'criteria': '>',
+                                         'value': 0})
+
         # Total summary of App data
         summary.write_formula(0, 1,
-                              "=IF(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)&\" B\",IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)>=1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/1024),1)&\" KB\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/POWER(1024,2)),1)&\" MB\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/POWER(1024,3)),1)&\" GB\"))))".format(
+                              "=IF(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)<1024,SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)&\" B\",IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)>=1024,SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/1024),1)&\" KB\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/POWER(1024,2)),1)&\" MB\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/POWER(1024,3)),1)&\" GB\"))))".format(
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
-        summary.write_formula(1, 1, "=SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)".format(
+        summary.write_formula(1, 1, "=SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)".format(
             threshold=self.__threshold),
                               self.__summary_values_format)
 
         summary.write_formula(2, 1,
-                              "=ROUNDUP((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B))/1024,0)&\" KB\"".format(
+                              "=ROUNDUP((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B))/1024,0)&\" KB\"".format(
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
         summary.write_formula(3, 1,
-                              "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}/8,0)".format(
+                              "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{days}/8,0)".format(
                                   days=self.__days,
                                   threshold=self.__threshold),
                               self.__summary_values_format)
 
         # 30 day calculation divide total days * 30
         summary.write_formula(5, 1,
-                              "=IF(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30&\" B\",IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=1024,SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/1024),1)&\" KB\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,2)),1)&\" MB\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!E:E)/{days}*30/POWER(1024,3)),1)&\" GB\"))))".format(
+                              "=IF(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30<1024,SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30&\" B\",IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30>=1024,SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30<POWER(1024,2)),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30/1024),1)&\" KB\"),IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30>=POWER(1024,2),SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30<POWER(1024,3)),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30/POWER(1024,2)),1)&\" MB\"),(ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!E:E)/{days}*30/POWER(1024,3)),1)&\" GB\"))))".format(
                                   days=self.__days,
                                   threshold=self.__threshold),
-                              self.__summary_values_format)
+                              self.__summary_highlight_values)
 
         summary.write_formula(6, 1,
-                              "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">={threshold}\",'Envelope Senders'!B:B)/{days}*30,0)".format(
+                              "=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{days}*30,0)".format(
                                   days=self.__days,
                                   threshold=self.__threshold),
-                              self.__summary_values_format)
+                              self.__summary_highlight_values)
 
         # Total message volume data
         summary.write_formula(8, 1,

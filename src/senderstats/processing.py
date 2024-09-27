@@ -57,38 +57,58 @@ def configure_field_mapper(args):
 
 
 def build_pipeline(args, field_mapper: Mapper):
+    # Convert CSV lines to MessageData
     csv_to_message_data_transform = MessageDataTransform(field_mapper)
+
+    # Filters
     exclude_empty_sender_filter = ExcludeEmptySenderFilter()
     exclude_domain_filter = ExcludeDomainFilter(args.excluded_domains)
     exclude_senders_filter = ExcludeSenderFilter(args.excluded_senders)
     restrict_senders_filter = RestrictDomainFilter(args.restricted_domains)
+
+    # Transformers
     mfrom_transform = MFromTransform(args.decode_srs, args.remove_prvs)
     hfrom_transform = HFromTransform(args.no_display, args.no_empty_hfrom)
     msgid_transform = MIDTransform()
     rpath_transform = RPathTransform(args.decode_srs, args.remove_prvs)
+
+    # Processors
     mfrom_processor = MFromProcessor(args.sample_subject)
     hfrom_processor = HFromProcessor(args.sample_subject)
     msgid_processor = MIDProcessor(args.sample_subject)
     rpath_processor = RPathProcessor(args.sample_subject)
     align_processor = AlignmentProcessor(args.sample_subject)
+
+    # Pipeline build
     pipeline = (csv_to_message_data_transform.set_next(exclude_empty_sender_filter)
                 .set_next(mfrom_transform)
                 .set_next(exclude_domain_filter)
                 .set_next(exclude_senders_filter)
                 .set_next(restrict_senders_filter)
                 .set_next(mfrom_processor))
+
+    # Both HFrom or Alignment will require HFrom Transform
     if args.gen_hfrom or args.gen_alignment:
         pipeline.set_next(hfrom_transform)
+
+    # Generate the HFrom Data
     if args.gen_hfrom:
         pipeline.set_next(hfrom_processor)
+
+    # Generate the Rpath Data
     if args.gen_rpath:
         pipeline.set_next(rpath_transform)
         pipeline.set_next(rpath_processor)
+
+    # Generate Message ID Data
     if args.gen_msgid:
         pipeline.set_next(msgid_transform)
         pipeline.set_next(msgid_processor)
+
+    # Generate Alignment Data
     if args.gen_alignment:
         pipeline.set_next(align_processor)
+
     return pipeline
 
 
