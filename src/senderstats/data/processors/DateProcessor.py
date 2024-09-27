@@ -8,7 +8,7 @@ from data.common.Processor import Processor
 
 class DateProcessor(Processor[MessageData]):
     __date_counter: DefaultDict[str, int]
-    __volume_counter: DefaultDict[str, int]
+    __hourly_counter: DefaultDict[str, int]
     __date_format: str
 
     def __init__(self, date_format: str):
@@ -20,7 +20,7 @@ class DateProcessor(Processor[MessageData]):
     def execute(self, data: MessageData) -> None:
         date = datetime.datetime.strptime(data.date, self.__date_format)
         str_date = date.strftime('%Y-%m-%d')
-        str_hourly_date = date.strftime('%Y-%m-%d %Y-%m-%d %H:00:00')
+        str_hourly_date = date.strftime('%Y-%m-%d %H:00:00')
         self.__date_counter[str_date] += 1
         self.__hourly_counter[str_hourly_date] += 1
 
