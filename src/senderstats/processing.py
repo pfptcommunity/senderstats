@@ -10,6 +10,7 @@ from senderstats.data.processors import *
 from senderstats.data.transformers import *
 
 
+
 def process_input_files(input_files):
     file_names = []
     for f in input_files:

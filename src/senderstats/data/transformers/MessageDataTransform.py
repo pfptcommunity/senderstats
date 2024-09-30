@@ -8,17 +8,14 @@ from senderstats.data.common.Transform import Transform
 # MessageDataTransform inherits from Transform with List[str] as input and MessageData as output
 class MessageDataTransform(Transform[List[str], MessageData]):
     _field_mapper: Mapper
-#    __data: MessageData
-
+    __data: MessageData
     def __init__(self, field_mapper: Mapper):
         super().__init__()
         self._field_mapper = field_mapper
-#        self.__data = MessageData()
+        self.__data = MessageData()
 
     def transform(self, data: List[str]) -> MessageData:
-        mdata = MessageData()
-        mapped_fields = self._field_mapper.get_mapped_fields()
-        for field in mapped_fields:
+        for field in self._field_mapper._index_map.keys():
             value = self._field_mapper.get_field(data, field)
             if field == 'msgsz':
                 value = int(value) if value.isdigit() else 0
@@ -26,8 +23,8 @@ class MessageDataTransform(Transform[List[str], MessageData]):
                 value = value.casefold().strip().split(',')
             else:
                 value = value.casefold().strip()
-            setattr(mdata, field, value)
+            setattr(self.__data, field, value)
 
         # Dump fields mapped
         # print(self.__data)
-        return mdata
+        return self.__data

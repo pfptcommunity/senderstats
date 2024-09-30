@@ -18,8 +18,9 @@ class DateProcessor(Processor[MessageData]):
 
     def execute(self, data: MessageData) -> None:
         # Strftime takes too long
-        str_date = f"{data.date.year}-{data.date.month:02d}-{data.date.day:02d}"
-        str_hourly_date = f"{data.date.year}-{data.date.month:02d}-{data.date.day:02d} {data.date.hour:02d}:00:00"
+        str_date = "{:04d}-{:02d}-{:02d}".format(data.date.year, data.date.month, data.date.day)
+        str_hourly_date = "{:04d}-{:02d}-{:02d} {:02d}:00:00".format(data.date.year, data.date.month, data.date.day,
+                                                                     data.date.hour)
         if self.__expand_recipients:
             self.__date_counter[str_date] += len(data.rcpts)
             self.__hourly_counter[str_hourly_date] += len(data.rcpts)

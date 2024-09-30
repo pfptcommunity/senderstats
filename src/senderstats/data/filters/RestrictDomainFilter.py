@@ -1,4 +1,4 @@
-import re
+import regex as re
 from typing import List, TypeVar
 
 from senderstats.common.utils import compile_domains_pattern
