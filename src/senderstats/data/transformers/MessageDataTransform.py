@@ -15,16 +15,18 @@ class MessageDataTransform(Transform[List[str], MessageData]):
         self._field_mapper = field_mapper
         self.__data = MessageData()
 
-    def transform(self, data: List[str]) -> MessageData:  # Input is List[str], output is MessageData
-        self.__data.message_size = int(self._field_mapper.get_field(data, 'msgsz')) if self._field_mapper.get_field(
-            data, 'msgsz').isdigit() else 0
-        self.__data.mfrom = self._field_mapper.get_field(data, 'mfrom').casefold().strip()
-        self.__data.hfrom = self._field_mapper.get_field(data, 'hfrom').casefold().strip()
-        self.__data.rpath = self._field_mapper.get_field(data, 'rpath').casefold().strip()
-        self.__data.rcpts = self._field_mapper.get_field(data, 'rcpts').casefold().strip().split(',')
-        self.__data.msgid = self._field_mapper.get_field(data, 'msgid').casefold().strip('<>[] ')
-        self.__data.msgid_domain = ''
-        self.__data.msgid_host = ''
-        self.__data.subject = self._field_mapper.get_field(data, 'subject').strip()
-        self.__data.date = self._field_mapper.get_field(data, 'date').strip()
+    def transform(self, data: List[str]) -> MessageData:
+        mapped_fields = self._field_mapper.get_mapped_fields()
+        for field in mapped_fields:
+            value = self._field_mapper.get_field(data, field)
+            if field == 'msgsz':
+                value = int(value) if value.isdigit() else 0
+            elif field == 'rcpts':
+                value = value.casefold().strip().split(',')
+            else:
+                value = value.casefold().strip()
+            self.__data.set_field(field, value)
+
+        # Dump fields mapped
+        # print(self.__data)
         return self.__data

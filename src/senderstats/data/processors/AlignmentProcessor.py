@@ -25,9 +25,9 @@ class AlignmentProcessor(Processor[MessageData]):
         alignment_data = self.__alignment_data[sender_header_index]
 
         if self.__expand_recipients:
-            alignment_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+            alignment_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            alignment_data.setdefault("message_size", []).append(data.message_size)
+            alignment_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
             alignment_data.setdefault("subjects", [])

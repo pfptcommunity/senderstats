@@ -1,4 +1,3 @@
-import datetime
 from collections import defaultdict
 from typing import DefaultDict
 
@@ -9,20 +8,18 @@ from senderstats.data.common.Processor import Processor
 class DateProcessor(Processor[MessageData]):
     __date_counter: DefaultDict[str, int]
     __hourly_counter: DefaultDict[str, int]
-    __date_format: str
     __expand_recipients: bool
 
-    def __init__(self, date_format: str, expand_recipients: bool = False):
+    def __init__(self, expand_recipients: bool = False):
         super().__init__()
         self.__date_counter = defaultdict(int)
         self.__hourly_counter = defaultdict(int)
-        self.__date_format = date_format
         self.__expand_recipients = expand_recipients
 
     def execute(self, data: MessageData) -> None:
-        date = datetime.datetime.strptime(data.date, self.__date_format)
-        str_date = date.strftime('%Y-%m-%d')
-        str_hourly_date = date.strftime('%Y-%m-%d %H:00:00')
+        # Strftime takes too long
+        str_date = f"{data.date.year}-{data.date.month:02d}-{data.date.day:02d}"
+        str_hourly_date = f"{data.date.year}-{data.date.month:02d}-{data.date.day:02d} {data.date.hour:02d}:00:00"
         if self.__expand_recipients:
             self.__date_counter[str_date] += len(data.rcpts)
             self.__hourly_counter[str_hourly_date] += len(data.rcpts)

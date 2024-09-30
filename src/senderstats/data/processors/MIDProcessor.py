@@ -26,9 +26,9 @@ class MIDProcessor(Processor[MessageData]):
         msgid_data = self.__msgid_data[mid_host_domain_index]
 
         if self.__expand_recipients:
-            msgid_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+            msgid_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            msgid_data.setdefault("message_size", []).append(data.message_size)
+            msgid_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
             msgid_data.setdefault("subjects", [])

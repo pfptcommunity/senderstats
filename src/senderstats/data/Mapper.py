@@ -6,20 +6,21 @@ class Mapper:
         self.__mappings = default_mappings
         self.__index_map = {}
 
-    def configure(self, headers: List[str]):
+    def reindex(self, headers: List[str]):
+        error = False
         self.__index_map = {}
         for key, value in self.__mappings.items():
             if value in headers:
                 self.__index_map[key] = headers.index(value)
             else:
-                print(f"Warning: Expected header '{value}' not found in provided headers.")
+                print(f"Required header '{value}' not found in provided headers.")
+                error = True
+        if error:
+            print(f"Please make sure the required headers exist or are mapped, and try again.")
+            exit(1)
 
-    def add_mapping(self, field_name: str, csv_field_name: str, headers: List[str]):
+    def add_mapping(self, field_name: str, csv_field_name: str):
         self.__mappings[field_name] = csv_field_name
-        if csv_field_name in headers:
-            self.__index_map[field_name] = headers.index(csv_field_name)
-        else:
-            print(f"Warning: Added header '{csv_field_name}' not found in provided headers.")
 
     def delete_mapping(self, field_name: str) -> bool:
         if field_name in self.__mappings:
@@ -35,6 +36,9 @@ class Mapper:
             return csv_row[index]
         else:
             raise ValueError(f"Field '{field_name}' not found or not mapped correctly.")
+
+    def get_mapped_fields(self) -> List[str]:
+        return list(self.__index_map.keys())
 
     def set_field(self, csv_row: List[str], field_name: str, field_value: str):
         if field_name in self.__index_map:

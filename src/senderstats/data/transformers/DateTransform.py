@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from senderstats.data.MessageData import MessageData
 from senderstats.data.common.Transform import Transform
 

@@ -27,9 +27,9 @@ class HFromProcessor(Processor[MessageData], Generic[TMessageData]):
         hfrom_data = self.__hfrom_data[data.hfrom]
 
         if self.__expand_recipients:
-            hfrom_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+            hfrom_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            hfrom_data.setdefault("message_size", []).append(data.message_size)
+            hfrom_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
             hfrom_data.setdefault("subjects", [])

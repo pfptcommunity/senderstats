@@ -24,9 +24,9 @@ class RPathProcessor(Processor[MessageData]):
         rpath_data = self.__rpath_data[data.rpath]
 
         if self.__expand_recipients:
-            rpath_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+            rpath_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            rpath_data.setdefault("message_size", []).append(data.message_size)
+            rpath_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
             rpath_data.setdefault("subjects", [])
