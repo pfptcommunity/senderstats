@@ -107,7 +107,8 @@ def parse_arguments():
 
     parser_group.add_argument('--date-format', metavar='DateFmt', dest="date_format",
                               type=str, required=False,
-                              help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})')
+                              help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})',
+                              default=DEFAULT_DATE_FORMAT)
 
     output_group.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
                               help='Show skipped details')
