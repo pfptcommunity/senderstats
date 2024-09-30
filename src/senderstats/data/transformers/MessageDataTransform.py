@@ -8,14 +8,15 @@ from senderstats.data.common.Transform import Transform
 # MessageDataTransform inherits from Transform with List[str] as input and MessageData as output
 class MessageDataTransform(Transform[List[str], MessageData]):
     _field_mapper: Mapper
-    __data: MessageData
+#    __data: MessageData
 
     def __init__(self, field_mapper: Mapper):
         super().__init__()
         self._field_mapper = field_mapper
-        self.__data = MessageData()
+#        self.__data = MessageData()
 
     def transform(self, data: List[str]) -> MessageData:
+        mdata = MessageData()
         mapped_fields = self._field_mapper.get_mapped_fields()
         for field in mapped_fields:
             value = self._field_mapper.get_field(data, field)
@@ -25,8 +26,8 @@ class MessageDataTransform(Transform[List[str], MessageData]):
                 value = value.casefold().strip().split(',')
             else:
                 value = value.casefold().strip()
-            self.__data.set_field(field, value)
+            setattr(mdata, field, value)
 
         # Dump fields mapped
         # print(self.__data)
-        return self.__data
+        return mdata

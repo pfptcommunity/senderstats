@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from ciso8601 import parse_datetime
 from senderstats.data.MessageData import MessageData
 from senderstats.data.common.Transform import Transform
 
@@ -10,5 +10,5 @@ class DateTransform(Transform[MessageData, MessageData]):
         self.__date_format = date_format
 
     def transform(self, data: MessageData) -> MessageData:
-        data.date = datetime.strptime(data.date, self.__date_format)
+        data.date = parse_datetime(data.date)
         return data
