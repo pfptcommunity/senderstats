@@ -1,9 +1,9 @@
 import re
 from typing import List, TypeVar
 
-from common.utils import compile_domains_pattern
-from data.MessageData import MessageData
-from data.common.Filter import Filter
+from senderstats.common.utils import compile_domains_pattern
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Filter import Filter
 
 TMessageData = TypeVar('TMessageData', bound=MessageData)
 

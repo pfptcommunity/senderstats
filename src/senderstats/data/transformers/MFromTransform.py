@@ -1,6 +1,6 @@
-from common.utils import parse_email_details, convert_srs, remove_prvs
-from data.MessageData import MessageData
-from data.common.Transform import Transform
+from senderstats.common.utils import parse_email_details, convert_srs, remove_prvs
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Transform import Transform
 
 
 class MFromTransform(Transform[MessageData, MessageData]):

@@ -1,10 +1,10 @@
-from common.defaults import DEFAULT_DATE_FORMAT
-from data.processors.DateProcessor import DateProcessor
-from report.MessageDataReport import MessageDataReport
+from senderstats.common.defaults import DEFAULT_DATE_FORMAT
 from senderstats.common.utils import print_list_with_title
 from senderstats.common.validators import parse_arguments
+from senderstats.data.processors.DateProcessor import DateProcessor
 from senderstats.processing import process_input_files, process_exclusions, configure_field_mapper, build_pipeline, \
     process_files, get_processors
+from senderstats.report.MessageDataReport import MessageDataReport
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
     pipeline = build_pipeline(args, field_mapper)
 
     # Add to calculate date metrics
-    date_processor = DateProcessor(DEFAULT_DATE_FORMAT)
+    date_processor = DateProcessor(DEFAULT_DATE_FORMAT, args.expand_recipients)
     pipeline.set_next(date_processor)
 
     process_files(file_names, field_mapper, pipeline)

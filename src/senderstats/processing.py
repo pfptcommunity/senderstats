@@ -2,13 +2,13 @@ import csv
 import os
 from glob import glob
 
-from data.Mapper import Mapper
-from data.common.Processor import Processor
-from data.filters import *
-from data.processors import *
-from data.transformers import *
-from data.transformers.MessageDataTransform import MessageDataTransform
 from senderstats.common.defaults import *
+from senderstats.data.Mapper import Mapper
+from senderstats.data.common.Processor import Processor
+from senderstats.data.filters import *
+from senderstats.data.processors import *
+from senderstats.data.transformers import *
+from senderstats.data.transformers.MessageDataTransform import MessageDataTransform
 
 
 def process_input_files(input_files):
@@ -43,6 +43,8 @@ def configure_field_mapper(args):
         field_mapper.add_mapping('mfrom', args.mfrom_field)
     if args.hfrom_field:
         field_mapper.add_mapping('hfrom', args.hfrom_field)
+    if args.rcpts_field:
+        field_mapper.add_mapping('rcpts', args.rcpts_field)
     if args.rpath_field:
         field_mapper.add_mapping('rpath', args.rpath_field)
     if args.msgid_field:
@@ -73,11 +75,11 @@ def build_pipeline(args, field_mapper: Mapper):
     rpath_transform = RPathTransform(args.decode_srs, args.remove_prvs)
 
     # Processors
-    mfrom_processor = MFromProcessor(args.sample_subject)
-    hfrom_processor = HFromProcessor(args.sample_subject)
-    msgid_processor = MIDProcessor(args.sample_subject)
-    rpath_processor = RPathProcessor(args.sample_subject)
-    align_processor = AlignmentProcessor(args.sample_subject)
+    mfrom_processor = MFromProcessor(args.sample_subject, args.expand_recipients)
+    hfrom_processor = HFromProcessor(args.sample_subject, args.expand_recipients)
+    msgid_processor = MIDProcessor(args.sample_subject, args.expand_recipients)
+    rpath_processor = RPathProcessor(args.sample_subject, args.expand_recipients)
+    align_processor = AlignmentProcessor(args.sample_subject, args.expand_recipients)
 
     # Pipeline build
     pipeline = (csv_to_message_data_transform.set_next(exclude_empty_sender_filter)

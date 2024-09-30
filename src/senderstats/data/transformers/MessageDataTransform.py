@@ -1,8 +1,8 @@
 from typing import List
 
-from data.Mapper import Mapper
-from data.MessageData import MessageData
-from data.common.Transform import Transform
+from senderstats.data.Mapper import Mapper
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Transform import Transform
 
 
 # MessageDataTransform inherits from Transform with List[str] as input and MessageData as output

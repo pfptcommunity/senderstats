@@ -1,8 +1,8 @@
 from random import random
 from typing import Dict
 
-from data.MessageData import MessageData
-from data.common.Processor import Processor
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Processor import Processor
 
 
 class RPathProcessor(Processor[MessageData]):
@@ -10,18 +10,23 @@ class RPathProcessor(Processor[MessageData]):
     headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __rpath_data: Dict[str, Dict]
     __sample_subject: bool
+    __expand_recipients: bool
 
-    def __init__(self, sample_subject=False):
+    def __init__(self, sample_subject=False, expand_recipients=False):
         super().__init__()
         self.__rpath_data = dict()
         self.__sample_subject = sample_subject
+        self.__expand_recipients = expand_recipients
 
     def execute(self, data: MessageData) -> None:
         self.__rpath_data.setdefault(data.rpath, {})
 
         rpath_data = self.__rpath_data[data.rpath]
 
-        rpath_data.setdefault("message_size", []).append(data.message_size)
+        if self.__expand_recipients:
+            rpath_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+        else:
+            rpath_data.setdefault("message_size", []).append(data.message_size)
 
         if self.__sample_subject:
             rpath_data.setdefault("subjects", [])

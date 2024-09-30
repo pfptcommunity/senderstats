@@ -38,6 +38,10 @@ def parse_arguments():
                              type=str, required=False,
                              help=f'CSV field of the header From: address. (default={DEFAULT_HFROM_FIELD})')
 
+    field_group.add_argument('--rcpts', metavar='Rcpts', dest="rcpts_field",
+                             type=str, required=False,
+                             help=f'CSV field of the header recipient addresses. (default={DEFAULT_RCPTS_FIELD})')
+
     field_group.add_argument('--rpath', metavar='RPath', dest="rpath_field",
                              type=str, required=False,
                              help=f'CSV field of the Return-Path: address. (default={DEFAULT_RPATH_FIELD})')
@@ -73,6 +77,9 @@ def parse_arguments():
     reporting_group.add_argument('-t', '--threshold', dest="threshold", metavar='N', type=int, required=False,
                                  help=f'Adjust summary report threshold for messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
                                  default=DEFAULT_THRESHOLD)
+
+    parser_group.add_argument('--expand-recipients', action='store_true', dest="expand_recipients",
+                              help='Expand recipients counts messages by destination. E.g. 1 message going to 3 people, is 3 messages sent.')
 
     parser_group.add_argument('--no-display-name', action='store_true', dest="no_display",
                               help='Remove display and use address only. Converts \'Display Name <user@domain.com>\' to \'user@domain.com\'')

@@ -1,20 +1,23 @@
 from random import random
 from typing import Dict
 
-from data.MessageData import MessageData
-from data.common.Processor import Processor
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Processor import Processor
 
 
+# MIDProcessor.py
 class MIDProcessor(Processor[MessageData]):
     sheet_name = "MFrom + Message ID"
     headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __msgid_data: Dict[tuple, Dict]
     __sample_subject: bool
+    __expand_recipients: bool
 
-    def __init__(self, sample_subject=False):
+    def __init__(self, sample_subject=False, expand_recipients=False):
         super().__init__()
         self.__msgid_data = dict()
         self.__sample_subject = sample_subject
+        self.__expand_recipients = expand_recipients
 
     def execute(self, data: MessageData) -> None:
         mid_host_domain_index = (data.mfrom, data.msgid_host, data.msgid_domain)
@@ -22,16 +25,15 @@ class MIDProcessor(Processor[MessageData]):
 
         msgid_data = self.__msgid_data[mid_host_domain_index]
 
-        msgid_data.setdefault("message_size", []).append(data.message_size)
+        if self.__expand_recipients:
+            msgid_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+        else:
+            msgid_data.setdefault("message_size", []).append(data.message_size)
 
         if self.__sample_subject:
             msgid_data.setdefault("subjects", [])
-            # Avoid storing empty subject lines
             if data.subject:
-                # Calculate probability based on the number of processed records
                 probability = 1 / len(msgid_data['message_size'])
-
-                # Ensure at least one subject is added if subjects array is empty
                 if not msgid_data['subjects'] or random() < probability:
                     msgid_data['subjects'].append(data.subject)
 

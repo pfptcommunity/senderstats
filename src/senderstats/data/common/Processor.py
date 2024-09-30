@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional, final, Generic
 
-from data.common.Handler import AbstractHandler, TInput
+from senderstats.data.common.Handler import AbstractHandler, TInput
 
 
 class Processor(AbstractHandler[TInput, TInput], Generic[TInput]):

@@ -1,8 +1,8 @@
 from random import random
 from typing import Dict
 
-from data.MessageData import MessageData
-from data.common.Processor import Processor
+from senderstats.data.MessageData import MessageData
+from senderstats.data.common.Processor import Processor
 
 
 class AlignmentProcessor(Processor[MessageData]):
@@ -10,31 +10,29 @@ class AlignmentProcessor(Processor[MessageData]):
     headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
     __alignment_data: Dict[tuple, Dict]
     __sample_subject: bool
+    __expand_recipients: bool
 
-    def __init__(self, sample_subject=False):
+    def __init__(self, sample_subject=False, expand_recipients=False):
         super().__init__()
         self.__alignment_data = dict()
         self.__sample_subject = sample_subject
+        self.__expand_recipients = expand_recipients
 
     def execute(self, data: MessageData) -> None:
-        """Aggregate alignment data without modifying the MessageData."""
-        # Fat index for binding commonality
         sender_header_index = (data.mfrom, data.hfrom)
-
         self.__alignment_data.setdefault(sender_header_index, {})
 
         alignment_data = self.__alignment_data[sender_header_index]
 
-        alignment_data.setdefault("message_size", []).append(data.message_size)
+        if self.__expand_recipients:
+            alignment_data.setdefault("message_size", []).extend([data.message_size] * len(data.rcpts))
+        else:
+            alignment_data.setdefault("message_size", []).append(data.message_size)
 
         if self.__sample_subject:
             alignment_data.setdefault("subjects", [])
-            # Avoid storing empty subject lines
             if data.subject:
-                # Calculate probability based on the number of processed records
                 probability = 1 / len(alignment_data['message_size'])
-
-                # Ensure at least one subject is added if subjects array is empty
                 if not alignment_data['subjects'] or random() < probability:
                     alignment_data['subjects'].append(data.subject)
 

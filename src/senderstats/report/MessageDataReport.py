@@ -4,11 +4,12 @@ from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
 
-from data.processors import AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor
-from data.processors.DateProcessor import DateProcessor
 from senderstats.common.utils import average
+from senderstats.data.processors import AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor
+from senderstats.data.processors.DateProcessor import DateProcessor
 
-TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor)
+TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor,
+                            RPathProcessor)
 
 
 class MessageDataReport:
@@ -33,9 +34,11 @@ class MessageDataReport:
     def __initialize_formats(self):
         self.__header_format = self.__workbook.add_format({'bold': True})
         self.__summary_format = self.__workbook.add_format({'bold': True, 'align': 'right', 'hidden': True})
-        self.__summary_highlight_format = self.__workbook.add_format({'bold': True, 'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
+        self.__summary_highlight_format = self.__workbook.add_format(
+            {'bold': True, 'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
         self.__summary_values_format = self.__workbook.add_format({'align': 'right', 'hidden': True})
-        self.__summary_highlight_values = self.__workbook.add_format({'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
+        self.__summary_highlight_values = self.__workbook.add_format(
+            {'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
         self.__field_values_format = self.__workbook.add_format({'locked': False, 'hidden': True})
         self.__data_cell_format = self.__workbook.add_format({'valign': 'top'})
         self.__subject_format = self.__workbook.add_format({'text_wrap': True})
@@ -99,19 +102,30 @@ class MessageDataReport:
 
         summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>', 'value': 0})
 
-        summary.write_formula(0, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB'), self.__summary_values_format)
-        summary.write_formula(1, 1, f"=SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)", self.__summary_values_format)
-        summary.write_formula(2, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'), self.__summary_values_format)
-        summary.write_formula(3, 1, f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}/8,0)", self.__summary_values_format)
-        summary.write_formula(5, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB', monthly=True), self.__summary_highlight_values)
-        summary.write_formula(6, 1, f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}*30,0)", self.__summary_highlight_values)
-        summary.write_formula(8, 1, self.__get_total_data_formula('E', '1024', 'KB', 'MB', 'GB'), self.__summary_values_format)
+        summary.write_formula(0, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB'),
+                              self.__summary_values_format)
+        summary.write_formula(1, 1, f"=SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)",
+                              self.__summary_values_format)
+        summary.write_formula(2, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'),
+                              self.__summary_values_format)
+        summary.write_formula(3, 1,
+                              f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}/8,0)",
+                              self.__summary_values_format)
+        summary.write_formula(5, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB', monthly=True),
+                              self.__summary_highlight_values)
+        summary.write_formula(6, 1,
+                              f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}*30,0)",
+                              self.__summary_highlight_values)
+        summary.write_formula(8, 1, self.__get_total_data_formula('E', '1024', 'KB', 'MB', 'GB'),
+                              self.__summary_values_format)
         summary.write_formula(9, 1, "=SUM('Envelope Senders'!B:B)", self.__summary_values_format)
-        summary.write_formula(10, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'), self.__summary_values_format)
+        summary.write_formula(10, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'),
+                              self.__summary_values_format)
         summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
         summary.autofit()
 
-    def __get_data_formula(self, col_data, col_messages, threshold_cell, unit, unit_kb, unit_mb, unit_gb, monthly=False):
+    def __get_data_formula(self, col_data, col_messages, threshold_cell, unit, unit_kb, unit_mb, unit_gb,
+                           monthly=False):
         days_multiplier = f"/{self.__days}*30" if monthly else ""
         return f"""=IF(SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}<1024,
                         SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}&" B",
@@ -139,7 +153,8 @@ class MessageDataReport:
                                (ROUND((SUM('Envelope Senders'!{col_data}:{col_data})/POWER(1024,3)),1)&" {unit_gb}"))))"""
 
     def create_summary(self, processor: TMessageProcessor):
-        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor, 'is_sample_subject'):
+        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor,
+                                                                                          'is_sample_subject'):
             sheet = self.__workbook.add_worksheet(processor.sheet_name)
 
             if processor.is_sample_subject():
