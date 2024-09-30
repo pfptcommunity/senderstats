@@ -8,7 +8,6 @@ from senderstats.data.common.Processor import Processor
 from senderstats.data.filters import *
 from senderstats.data.processors import *
 from senderstats.data.transformers import *
-from senderstats.data.transformers.MessageDataTransform import MessageDataTransform
 
 
 def process_input_files(input_files):
@@ -55,13 +54,35 @@ def configure_field_mapper(args):
         field_mapper.add_mapping('subject', args.subject_field)
     if args.date_field:
         field_mapper.add_mapping('date', args.date_field)
+
+    # Only require HFrom if it's needed
+    if not (args.gen_hfrom or args.gen_alignment):
+        field_mapper.delete_mapping('hfrom')
+
+    # Only require RPath if it's needed
+    if not args.gen_rpath:
+        field_mapper.delete_mapping('rpath')
+
+    # Only use if we are sampling subjects
+    if not args.sample_subject:
+        field_mapper.delete_mapping('subject')
+
+    # Only require Message ID if it's needed
+    if not args.gen_msgid:
+        field_mapper.delete_mapping('msgid')
+
+    # Only use if we are expanding recipients
+    if not args.expand_recipients:
+        field_mapper.delete_mapping('rcpts')
+
     return field_mapper
 
 
 def build_pipeline(args, field_mapper: Mapper):
     # Convert CSV lines to MessageData
     csv_to_message_data_transform = MessageDataTransform(field_mapper)
-
+    # date_validator = DateValidator(args.date_format)
+    date_transform = DateTransform(args.date_format)
     # Filters
     exclude_empty_sender_filter = ExcludeEmptySenderFilter()
     exclude_domain_filter = ExcludeDomainFilter(args.excluded_domains)
@@ -87,6 +108,7 @@ def build_pipeline(args, field_mapper: Mapper):
                 .set_next(exclude_domain_filter)
                 .set_next(exclude_senders_filter)
                 .set_next(restrict_senders_filter)
+                .set_next(date_transform)
                 .set_next(mfrom_processor))
 
     # Both HFrom or Alignment will require HFrom Transform
@@ -132,7 +154,7 @@ def process_files(file_names, field_mapper, pipeline):
         with open(input_file, 'r', encoding='utf-8-sig') as file:
             reader = csv.reader(file)
             headers = next(reader)
-            pipeline._field_mapper.configure(headers)
+            pipeline._field_mapper.reindex(headers)
             for csv_line in reader:
                 pipeline.handle(csv_line)
         f_current += 1
