@@ -1,3 +1,4 @@
+from senderstats.common.defaults import DEFAULT_THRESHOLD
 from senderstats.common.validators import parse_arguments
 from senderstats.processing import PipelineProcessor
 from senderstats.report.MessageDataReport import MessageDataReport
@@ -9,7 +10,7 @@ def main():
     processor.exclusion_summary()
     processor.process_files()
 
-    report = MessageDataReport(args.output_file, args.threshold, processor.get_date_count())
+    report = MessageDataReport(args.output_file, DEFAULT_THRESHOLD, processor.get_date_count())
     report.create_sizing_summary()
 
     for proc in processor.get_processors():

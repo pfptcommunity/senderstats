@@ -74,9 +74,9 @@ def parse_arguments():
     reporting_group.add_argument('--gen-msgid', action='store_true', dest="gen_msgid",
                                  help='Generate report showing parsed Message ID. Helps determine the sending system')
 
-    reporting_group.add_argument('-t', '--threshold', dest="threshold", metavar='N', type=int, required=False,
-                                 help=f'Adjust summary report threshold for messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
-                                 default=DEFAULT_THRESHOLD)
+    # reporting_group.add_argument('-t', '--threshold', dest="threshold", metavar='N', type=int, required=False,
+    #                              help=f'Adjust summary report threshold for messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
+    #                              default=DEFAULT_THRESHOLD)
 
     parser_group.add_argument('--expand-recipients', action='store_true', dest="expand_recipients",
                               help='Expand recipients counts messages by destination. E.g. 1 message going to 3 people, is 3 messages sent.')
