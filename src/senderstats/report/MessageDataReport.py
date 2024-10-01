@@ -49,7 +49,7 @@ class MessageDataReport:
         self.__workbook.close()
         print()
         print("Please see report: {}".format(self.__output_file))
-        
+
     def __write_headers(self, worksheet: Worksheet, headers: list):
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, self.__header_format)
@@ -99,7 +99,7 @@ class MessageDataReport:
         summary.write(9, 0, "Total Average Message Size", self.__summary_format)
         summary.write(10, 0, "Total Peak Hourly Volume", self.__summary_format)
 
-        summary.write(12, 0, 'App Email Threshold (Enter number between 1 and 10):', self.__summary_format)
+        summary.write(12, 0, 'App Email Threshold (Number must be > 0):', self.__summary_format)
         summary.write_number(12, 1, self.__threshold, self.__field_values_format)
         summary.set_column(1, 1, 25)
 
