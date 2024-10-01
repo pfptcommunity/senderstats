@@ -110,8 +110,8 @@ def parse_arguments():
                               help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})',
                               default=DEFAULT_DATE_FORMAT)
 
-    output_group.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
-                              help='Show skipped details')
+    # output_group.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
+    #                           help='Show skipped details')
 
     if len(sys.argv) == 1:
         parser.print_usage()  # Print usage information if no arguments are passed
