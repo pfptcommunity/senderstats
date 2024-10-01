@@ -15,6 +15,7 @@ TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProces
 class MessageDataReport:
     __threshold: int
     __days: int
+    __output_file: str
     __workbook: Workbook
     __header_format: Format
     __summary_format: Format
@@ -27,6 +28,7 @@ class MessageDataReport:
 
     def __init__(self, output_file: str, threshold: int, days: int):
         self.__threshold = threshold
+        self.__output_file = output_file
         self.__days = days
         self.__workbook = Workbook(output_file)
         self.__initialize_formats()
@@ -45,7 +47,9 @@ class MessageDataReport:
 
     def close(self):
         self.__workbook.close()
-
+        print()
+        print("Please see report: {}".format(self.__output_file))
+        
     def __write_headers(self, worksheet: Worksheet, headers: list):
         for col, header in enumerate(headers):
             worksheet.write(0, col, header, self.__header_format)
