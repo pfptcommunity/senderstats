@@ -1,14 +1,15 @@
 from typing import List
 
-from senderstats.data.mappers.Mapper import Mapper
 from senderstats.data.MessageData import MessageData
 from senderstats.data.common.Transform import Transform
+from senderstats.data.mappers.Mapper import Mapper
 
 
 # MessageDataTransform inherits from Transform with List[str] as input and MessageData as output
 class MessageDataTransform(Transform[List[str], MessageData]):
     _field_mapper: Mapper
     __data: MessageData
+
     def __init__(self, field_mapper: Mapper):
         super().__init__()
         self._field_mapper = field_mapper

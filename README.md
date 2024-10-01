@@ -20,7 +20,9 @@ or can install the tool using pip.
 # When testing on Ubuntu 24.04 the following will not work:
 pip install senderstats
 ```
+
 If you see an error similar to the following:
+
 ```
 error: externally-managed-environment
 
@@ -43,7 +45,9 @@ error: externally-managed-environment
 note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
 hint: See PEP 668 for the detailed specification.
 ```
+
 You should use install pipx or you can configure your own virtual environment and use the command referenced above.
+
 ```
 pipx install senderstats
 ```
@@ -130,8 +134,8 @@ window exceeds 1M records. The tool can ingest multiple CSVs files at once.
 Once the files are downlaoded to a target folder, you can run the following command with the path to the files you
 downloaded and specify a wildard.
 
-
 The following example is the most basic usage:
+
 ```
 # Windows
 senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx
@@ -150,7 +154,9 @@ senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_202
 
 Expanding recipients counts messages by destination via --expand-recipients:
 
-This is useful if you need to determine how many messages were sent to a destination, as a single message can be addressed to multiple recipients.
+This is useful if you need to determine how many messages were sent to a destination, as a single message can be
+addressed to multiple recipients.
+
 ```
 # Windows
 senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --expand-recipients

@@ -1,5 +1,6 @@
-import regex as re
 from typing import List, TypeVar
+
+import regex as re
 
 from senderstats.common.utils import compile_domains_pattern
 from senderstats.data.MessageData import MessageData

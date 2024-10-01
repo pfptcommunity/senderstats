@@ -1,15 +1,15 @@
-import os
 import csv
+import os
 from glob import glob
-
-from senderstats.data.common import Processor
 
 from senderstats.common.defaults import *
 from senderstats.common.utils import print_list_with_title
+from senderstats.data.common import Processor
 from senderstats.data.filters import *
-from senderstats.data.transformers import *
-from senderstats.data.processors import *
 from senderstats.data.mappers import *
+from senderstats.data.processors import *
+from senderstats.data.transformers import *
+
 
 class PipelineProcessor:
     def __init__(self, args):

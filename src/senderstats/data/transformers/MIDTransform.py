@@ -19,12 +19,12 @@ class MIDTransform(Transform[MessageData, MessageData]):
         if msgid_parts['email_address'] or '@' in msgid:
             # Use the extracted domain if available; otherwise, split the msgid
             domain = msgid_parts['domain'] if msgid_parts['domain'] else msgid.split('@')[-1]
-            setattr(data, 'msgid_host',find_ip_in_text(domain))
+            setattr(data, 'msgid_host', find_ip_in_text(domain))
             if not data.msgid_host:
                 # Extract the components using tldextract
                 extracted = tldextract.extract(domain)
                 # Combine domain and suffix if the suffix is present
-                setattr(data, 'msgid_domain',f"{extracted.domain}.{extracted.suffix}")
+                setattr(data, 'msgid_domain', f"{extracted.domain}.{extracted.suffix}")
                 setattr(data, 'msgid_host', extracted.subdomain)
 
                 # Adjust msgid_host and msgid_domain based on the presence of subdomain

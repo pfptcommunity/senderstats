@@ -37,7 +37,6 @@ class Mapper:
         else:
             raise ValueError(f"Field '{field_name}' not found or not mapped correctly.")
 
-
     def set_field(self, csv_row: List[str], field_name: str, field_value: str):
         if field_name in self._index_map:
             index = self._index_map[field_name]
