@@ -1,6 +1,6 @@
 from typing import List
 
-from senderstats.data.Mapper import Mapper
+from data.mappers.Mapper import Mapper
 from senderstats.data.MessageData import MessageData
 from senderstats.data.common.Transform import Transform
 

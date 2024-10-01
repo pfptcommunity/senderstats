@@ -86,71 +86,88 @@ class MessageDataReport:
         summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__summary_format)
         summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__summary_format)
         summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__summary_format)
-        summary.write(3, 0, f"Estimated App Peak Hourly Volume ({self.__days} days)", self.__summary_format)
 
-        summary.write(5, 0, "Estimated Monthly App Data", self.__summary_highlight_format)
-        summary.write(6, 0, "Estimated Monthly App Messages", self.__summary_highlight_format)
+        summary.write(4, 0, "Estimated Monthly App Data", self.__summary_highlight_format)
+        summary.write(5, 0, "Estimated Monthly App Messages", self.__summary_highlight_format)
 
-        summary.write(8, 0, "Total Outbound Data", self.__summary_format)
-        summary.write(9, 0, "Total Messages", self.__summary_format)
-        summary.write(10, 0, "Total Average Message Size", self.__summary_format)
-        summary.write(11, 0, "Total Peak Hourly Volume", self.__summary_format)
+        summary.write(7, 0, "Total Data", self.__summary_format)
+        summary.write(8, 0, "Total Messages", self.__summary_format)
+        summary.write(9, 0, "Total Average Message Size", self.__summary_format)
+        summary.write(10, 0, "Total Peak Hourly Volume", self.__summary_format)
 
-        summary.write(13, 0, 'App Email Threshold (Enter number between 1 and 10):', self.__summary_format)
-        summary.write_number(13, 1, self.__threshold, self.__field_values_format)
+        summary.write(12, 0, 'App Email Threshold (Enter number between 1 and 10):', self.__summary_format)
+        summary.write_number(12, 1, self.__threshold, self.__field_values_format)
         summary.set_column(1, 1, 25)
 
-        summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>', 'value': 0})
+        summary.data_validation(12, 1, 12, 1, {'validate': 'integer', 'criteria': '>', 'value': 0})
 
-        summary.write_formula(0, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB'),
+        # Based on daily message volume being over a threshold N
+        summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders','D','E',  'B13' ),
                               self.__summary_values_format)
-        summary.write_formula(1, 1, f"=SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)",
+
+        summary.write_formula(1, 1, self.__get_conditional_count('Envelope Senders','D','B', 'B13'),
                               self.__summary_values_format)
-        summary.write_formula(2, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'),
+
+        summary.write_formula(2, 1, self.__get_conditional_average('Envelope Senders','D','E', 'B', 'B13'),
                               self.__summary_values_format)
-        summary.write_formula(3, 1,
-                              f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}/8,0)",
-                              self.__summary_values_format)
-        summary.write_formula(5, 1, self.__get_data_formula('E', 'B', 'B14', '1024', 'KB', 'MB', 'GB', monthly=True),
+
+        # Based on daily volumes scaled for a 30 day period
+        summary.write_formula(4, 1, self.__get_conditional_size('Envelope Senders','D','E',  'B13',  True),
                               self.__summary_highlight_values)
-        summary.write_formula(6, 1,
-                              f"=ROUNDUP(SUMIF('Envelope Senders'!D:D,\">=\"&B14,'Envelope Senders'!B:B)/{self.__days}*30,0)",
+
+        summary.write_formula(5, 1,
+                              self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B13', True),
                               self.__summary_highlight_values)
-        summary.write_formula(8, 1, self.__get_total_data_formula('E', '1024', 'KB', 'MB', 'GB'),
+
+        # These are total volumes for the complete data set, excluding any data that was filtered out.
+        summary.write_formula(7, 1, self.__get_total_size('Envelope Senders','E'),
                               self.__summary_values_format)
-        summary.write_formula(9, 1, "=SUM('Envelope Senders'!B:B)", self.__summary_values_format)
-        summary.write_formula(10, 1, self.__get_average_message_size_formula('E', 'B', 'B14', '1024', 'KB'),
+
+        summary.write_formula(8, 1, self.__get_total_count('Envelope Senders','B'),
                               self.__summary_values_format)
-        summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
+
+        summary.write_formula(9, 1, self.__get_total_average('Envelope Senders','E', 'B'),
+                              self.__summary_values_format)
+        summary.write_formula(10, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
         summary.autofit()
 
-    def __get_data_formula(self, col_data, col_messages, threshold_cell, unit, unit_kb, unit_mb, unit_gb,
-                           monthly=False):
+    def __get_conditional_size(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
         days_multiplier = f"/{self.__days}*30" if monthly else ""
-        return f"""=IF(SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}<1024,
-                        SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}&" B",
-                        IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}>=1024,
-                               SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}<POWER(1024,2)),
-                           (ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}/1024),1)&" {unit_kb}"),
-                           IF(AND(SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}>=POWER(1024,2),
-                                  SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}<POWER(1024,3)),
-                               (ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}/POWER(1024,2)),1)&" {unit_mb}"),
-                               (ROUND((SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data}){days_multiplier}/POWER(1024,3)),1)&" {unit_gb}"))))"""
+        return f"""=IF(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<1024,
+                        SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}&" B",
+                        IF(AND(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}>=1024,
+                               SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<POWER(1024,2)),
+                           (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/1024),1)&" KB"),
+                           IF(AND(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}>=POWER(1024,2),
+                                  SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<POWER(1024,3)),
+                               (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/POWER(1024,2)),1)&" MB"),
+                               (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/POWER(1024,3)),1)&" GB"))))"""
 
-    def __get_average_message_size_formula(self, col_data, col_messages, threshold_cell, unit, unit_kb):
-        return f"""=ROUNDUP((SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_data}:{col_data})/
-                              SUMIF('Envelope Senders'!D:D,\">=\"&{threshold_cell},'Envelope Senders'!{col_messages}:{col_messages}))/1024,0)&" {unit_kb}" """
+    def __get_conditional_count(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
+        days_multiplier = f"/{self.__days}*30" if monthly else ""
+        return f"""=ROUNDUP(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}, 0)"""
 
-    def __get_total_data_formula(self, col_data, unit, unit_kb, unit_mb, unit_gb):
-        return f"""=IF(SUM('Envelope Senders'!{col_data}:{col_data})<1024,
-                        SUM('Envelope Senders'!{col_data}:{col_data})&" B",
-                        IF(AND(SUM('Envelope Senders'!{col_data}:{col_data})>=1024,
-                               SUM('Envelope Senders'!{col_data}:{col_data})<POWER(1024,2)),
-                           (ROUND((SUM('Envelope Senders'!{col_data}:{col_data})/1024),1)&" {unit_kb}"),
-                           IF(AND(SUM('Envelope Senders'!{col_data}:{col_data})>=POWER(1024,2),
-                                  SUM('Envelope Senders'!{col_data}:{col_data})<POWER(1024,3)),
-                               (ROUND((SUM('Envelope Senders'!{col_data}:{col_data})/POWER(1024,2)),1)&" {unit_mb}"),
-                               (ROUND((SUM('Envelope Senders'!{col_data}:{col_data})/POWER(1024,3)),1)&" {unit_gb}"))))"""
+    def __get_conditional_average(self, sheet_name, col_cond, col_data, col_messages, threshold_cell, monthly=False):
+        return f"""=ROUNDUP((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data})/
+                              SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
+
+
+    def __get_total_size(self, sheet_name, col_data):
+        return f"""=IF(SUM('{sheet_name}'!{col_data}:{col_data})<1024,
+                        SUM('{sheet_name}'!{col_data}:{col_data})&" B",
+                        IF(AND(SUM('{sheet_name}'!{col_data}:{col_data})>=1024,
+                               SUM('{sheet_name}'!{col_data}:{col_data})<POWER(1024,2)),
+                           (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/1024),1)&" KB"),
+                           IF(AND(SUM('{sheet_name}'!{col_data}:{col_data})>=POWER(1024,2),
+                                  SUM('{sheet_name}'!{col_data}:{col_data})<POWER(1024,3)),
+                               (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/POWER(1024,2)),1)&" MB"),
+                               (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/POWER(1024,3)),1)&" GB"))))"""
+
+    def __get_total_count(self, sheet_name, col_data):
+        return f"""=SUM('{sheet_name}'!{col_data}:{col_data})"""
+
+    def __get_total_average(self, sheet_name, col_data, col_messages):
+        return f"""=ROUNDUP((SUM('{sheet_name}'!{col_data}:{col_data})/SUM('{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
 
     def create_summary(self, processor: TMessageProcessor):
         if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor,
