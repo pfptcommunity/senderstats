@@ -99,11 +99,11 @@ class MessageDataReport:
         summary.write(9, 0, "Total Average Message Size", self.__summary_format)
         summary.write(10, 0, "Total Peak Hourly Volume", self.__summary_format)
 
-        summary.write(12, 0, 'App Email Threshold (Number must be > 0):', self.__summary_format)
+        summary.write(12, 0, 'App Email Threshold (Number must be >= 0):', self.__summary_format)
         summary.write_number(12, 1, self.__threshold, self.__field_values_format)
         summary.set_column(1, 1, 25)
 
-        summary.data_validation(12, 1, 12, 1, {'validate': 'integer', 'criteria': '>', 'value': 0})
+        summary.data_validation(12, 1, 12, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
 
         # Based on daily message volume being over a threshold N
         summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B13'),
