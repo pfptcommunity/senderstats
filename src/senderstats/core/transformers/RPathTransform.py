@@ -1,6 +1,6 @@
 from senderstats.common.utils import parse_email_details, convert_srs, remove_prvs
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Transform import Transform
+from senderstats.interfaces.Transform import Transform
 
 
 class RPathTransform(Transform[MessageData, MessageData]):

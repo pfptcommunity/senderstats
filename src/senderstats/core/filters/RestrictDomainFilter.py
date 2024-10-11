@@ -1,10 +1,9 @@
 from typing import List, TypeVar
 
 import regex as re
-
 from senderstats.common.utils import compile_domains_pattern
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Filter import Filter
+from senderstats.interfaces.Filter import Filter
 
 TMessageData = TypeVar('TMessageData', bound=MessageData)
 

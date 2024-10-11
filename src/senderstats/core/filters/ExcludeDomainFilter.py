@@ -2,7 +2,7 @@ from typing import List
 
 from senderstats.common.utils import compile_domains_pattern
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Filter import Filter
+from senderstats.interfaces.Filter import Filter
 
 
 # ExcludeDomainFilter inherits from Filter and works with MessageData

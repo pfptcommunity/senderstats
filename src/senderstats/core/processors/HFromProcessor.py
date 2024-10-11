@@ -2,7 +2,7 @@ from random import random
 from typing import TypeVar, Generic, Dict
 
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Processor import Processor
+from senderstats.interfaces.Processor import Processor
 
 TMessageData = TypeVar('TMessageData', bound=MessageData)
 

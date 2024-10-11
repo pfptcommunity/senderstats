@@ -4,11 +4,11 @@ from glob import glob
 
 from senderstats.common.defaults import *
 from senderstats.common.utils import print_list_with_title
-from senderstats.data.common import Processor
-from senderstats.data.filters import *
-from senderstats.data.mappers import *
-from senderstats.data.processors import *
-from senderstats.data.transformers import *
+from senderstats.core.filters import *
+from senderstats.core.mappers import *
+from senderstats.core.processors import *
+from senderstats.core.transformers import *
+from senderstats.interfaces import Processor
 
 
 class PipelineProcessor:

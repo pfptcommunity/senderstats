@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional, final, Generic
 
-from senderstats.data.common.Handler import AbstractHandler, TInput
+from senderstats.interfaces.Handler import AbstractHandler, TInput
 
 
 # Filter class filters the data and passes it down the chain if it meets the condition

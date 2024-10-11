@@ -1,6 +1,6 @@
 import regex as re
 
-from .regex_patterns import *
+from senderstats.common.regex_patterns import *
 
 # Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
 prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)

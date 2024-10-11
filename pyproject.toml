@@ -7,7 +7,7 @@ where = ["src"]
 
 [project]
 name = "senderstats"
-version = "2.0.1"
+version = "2.0.2"
 readme = "README.md"
 description = "Tool to Process Smart Search Results and Identify Top Senders"
 license = { text = "MIT" }
@@ -25,4 +25,4 @@ repository = "https://github.com/pfptcommunity/senderstats"
 #changelog = "https://github.com/pfptcommunity/senderstats"
 
 [project.scripts]
-senderstats = "senderstats.cli:main"
+senderstats = "senderstats.senderstats_cli:main"

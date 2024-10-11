@@ -1,7 +1,7 @@
 from senderstats.common.defaults import DEFAULT_THRESHOLD
 from senderstats.common.validators import parse_arguments
-from senderstats.processing import PipelineProcessor
-from senderstats.report.MessageDataReport import MessageDataReport
+from senderstats.processing.PipelineProcessor import PipelineProcessor
+from senderstats.reporting.MessageDataReport import MessageDataReport
 
 
 def main():

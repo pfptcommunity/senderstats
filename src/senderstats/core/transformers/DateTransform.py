@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Transform import Transform
+from senderstats.interfaces.Transform import Transform
 
 
 class DateTransform(Transform[MessageData, MessageData]):

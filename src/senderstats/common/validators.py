@@ -2,9 +2,8 @@ import argparse
 import sys
 
 import regex as re
-
-from .defaults import *
-from .regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
+from senderstats.common.defaults import *
+from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
 
 
 def parse_arguments():

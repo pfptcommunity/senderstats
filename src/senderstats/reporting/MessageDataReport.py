@@ -1,12 +1,11 @@
 from typing import TypeVar
 
+from senderstats.common.utils import average
+from senderstats.core.processors import AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor
+from senderstats.core.processors import DateProcessor
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
-
-from senderstats.common.utils import average
-from senderstats.data.processors import AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor, RPathProcessor
-from senderstats.data.processors.DateProcessor import DateProcessor
 
 TMessageProcessor = TypeVar('TMessageProcessor', AlignmentProcessor, HFromProcessor, MFromProcessor, MIDProcessor,
                             RPathProcessor)

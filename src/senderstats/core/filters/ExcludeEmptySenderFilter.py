@@ -1,5 +1,5 @@
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Filter import Filter
+from senderstats.interfaces.Filter import Filter
 
 
 class ExcludeEmptySenderFilter(Filter[MessageData]):

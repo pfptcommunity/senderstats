@@ -2,7 +2,7 @@ from collections import defaultdict
 from typing import DefaultDict
 
 from senderstats.data.MessageData import MessageData
-from senderstats.data.common.Processor import Processor
+from senderstats.interfaces.Processor import Processor
 
 
 class DateProcessor(Processor[MessageData]):
