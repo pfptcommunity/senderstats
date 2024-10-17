@@ -5,7 +5,13 @@ import regex as re
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
+from importlib.metadata import version, PackageNotFoundError
 
+def get_version():
+    try:
+        return version("senderstats")
+    except PackageNotFoundError:
+        return "0.0.0"
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
@@ -21,6 +27,9 @@ def parse_arguments():
     # Manually add the help option to the new group
     usage.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                        help='Show this help message and exit')
+
+    usage.add_argument('--version', action='version', help="Show the program's version and exit",
+                       version=f'SenderStats {get_version()}')
 
     required_group.add_argument('-i', '--input', metavar='<file>', dest="input_files",
                                 nargs='+', type=str, required=True,
