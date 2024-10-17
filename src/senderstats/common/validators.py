@@ -2,6 +2,7 @@ import argparse
 import sys
 
 import regex as re
+
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
 
