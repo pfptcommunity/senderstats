@@ -2,22 +2,17 @@
 requires = ['setuptools', 'setuptools-scm']
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools_scm]
-version_scheme = "post-release"
-local_scheme = "node-and-date"
-
 [tools.setuptools.packages.find]
 where = ["src"]
 
 [project]
 name = "senderstats"
-dynamic = ["version"]
+version = "2.0.2"
 readme = "README.md"
 description = "Tool to Process Smart Search Results and Identify Top Senders"
 license = { text = "MIT" }
 requires-python = ">3.9"
 dependencies = [
-    'setuptools_scm',
     'xlsxwriter',
     'tldextract',
     'regex'
@@ -30,4 +25,4 @@ repository = "https://github.com/pfptcommunity/senderstats"
 #changelog = "https://github.com/pfptcommunity/senderstats"
 
 [project.scripts]
-senderstats = "senderstats.cli:main"
+senderstats = "senderstats.senderstats_cli:main"

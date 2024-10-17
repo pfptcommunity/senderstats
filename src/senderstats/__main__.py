@@ -1,4 +1,4 @@
-from senderstats.cli import main
+from senderstats.senderstats_cli import main
 
 if __name__ == "__main__":
     main()

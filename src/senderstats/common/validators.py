@@ -2,16 +2,12 @@ import argparse
 import sys
 
 import regex as re
-from setuptools_scm import get_version
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
 
 
 def parse_arguments():
-    # Retrieve the dynamically generated version
-    version = get_version()
-
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
                                      description="""This tool helps identify the top senders based on smart search outbound message exports.""",
                                      formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=80))
@@ -25,9 +21,6 @@ def parse_arguments():
     # Manually add the help option to the new group
     usage.add_argument('-h', '--help', action='help', default=argparse.SUPPRESS,
                        help='Show this help message and exit')
-
-    usage.add_argument('--version', action='version', help="Show the program's version and exit",
-                       version=f'SenderStats {version}')
 
     required_group.add_argument('-i', '--input', metavar='<file>', dest="input_files",
                                 nargs='+', type=str, required=True,
