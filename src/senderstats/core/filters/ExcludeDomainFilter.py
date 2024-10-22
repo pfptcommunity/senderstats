@@ -10,6 +10,13 @@ class ExcludeDomainFilter(Filter[MessageData]):
     def __init__(self, excluded_domains: List[str]):
         super().__init__()
         self.__excluded_domains = compile_domains_pattern(excluded_domains)
+        self.__excluded_count = 0
 
     def filter(self, data: MessageData) -> bool:
-        return not self.__excluded_domains.search(data.mfrom)
+        if self.__excluded_domains.search(data.mfrom):
+            self.__excluded_count += 1
+            return False
+        return True
+
+    def get_excluded_count(self) -> int:
+        return self.__excluded_count

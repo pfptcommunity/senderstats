@@ -1,17 +1,19 @@
 import argparse
 import sys
+from importlib.metadata import version, PackageNotFoundError
 
 import regex as re
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
-from importlib.metadata import version, PackageNotFoundError
+
 
 def get_version():
     try:
         return version("senderstats")
     except PackageNotFoundError:
         return "0.0.0"
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,
@@ -83,10 +85,6 @@ def parse_arguments():
     reporting_group.add_argument('--gen-msgid', action='store_true', dest="gen_msgid",
                                  help='Generate report showing parsed Message ID. Helps determine the sending system')
 
-    # reporting_group.add_argument('-t', '--threshold', dest="threshold", metavar='N', type=int, required=False,
-    #                              help=f'Adjust summary report threshold for messages per day to be considered application traffic. (default={DEFAULT_THRESHOLD})',
-    #                              default=DEFAULT_THRESHOLD)
-
     parser_group.add_argument('--expand-recipients', action='store_true', dest="expand_recipients",
                               help='Expand recipients counts messages by destination. E.g. 1 message going to 3 people, is 3 messages sent.')
 
@@ -119,9 +117,8 @@ def parse_arguments():
                               help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})',
                               default=DEFAULT_DATE_FORMAT)
 
-    # output_group.add_argument('--show-skip-detail', action='store_true', dest="show_skip_detail",
-    #                           help='Show skipped details')
-
+    output_group.add_argument('--no-default-exclude-domains', action='store_true', dest="no_default_exclude_domains",
+                              help='Will not include the default Proofpoint excluded domains.')
     if len(sys.argv) == 1:
         parser.print_usage()  # Print usage information if no arguments are passed
         sys.exit(1)
