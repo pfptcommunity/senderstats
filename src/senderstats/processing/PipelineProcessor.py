@@ -2,119 +2,57 @@ import csv
 import os
 from glob import glob
 
-from senderstats.common.defaults import *
+from senderstats.processing.PipelineBuilder import PipelineBuilder
+from senderstats.processing.FilterManager import FilterManager
+from senderstats.processing.ProcessorManager import ProcessorManager
+from senderstats.processing.TransformManager import TransformManager
+from senderstats.processing.ExclusionManager import ExclusionManager
+from senderstats.processing.MapperManager import MapperManager
 from senderstats.common.utils import print_list_with_title
-from senderstats.core.filters import *
-from senderstats.core.mappers import *
 from senderstats.core.processors import *
-from senderstats.core.transformers import *
 from senderstats.interfaces import Processor
 
 
 class PipelineProcessor:
     def __init__(self, args):
-        self.__field_mapper = self.__configure_field_mapper(args)
         self.__input_files = self.__process_input_files(args.input_files)
-        self.__excluded_senders = self.__prepare_exclusions(args.excluded_senders)
-        self.__excluded_domains = self.__prepare_exclusions(DEFAULT_DOMAIN_EXCLUSIONS + args.excluded_domains)
-        self.__restricted_domains = self.__prepare_exclusions(args.restricted_domains)
+        self.__mapper_manager = MapperManager(args)
+        self.__exclusion_manager = ExclusionManager(args)
+        self.__filter_manager = FilterManager(self.__exclusion_manager)
+        self.__transform_manager = TransformManager(args, self.__mapper_manager)
+        self.__processor_manager = ProcessorManager(args)
 
-        self.__initialize_transforms(args)
-        self.__initialize_processors(args)
-        self.__pipeline = self.__build_pipeline(args)
+        self.__pipeline = PipelineBuilder(
+            self.__transform_manager,
+            self.__filter_manager,
+            self.__processor_manager
+        ).build_pipeline(args)
 
-    def __prepare_exclusions(self, exclusions):
-        return sorted(list({item.casefold() for item in exclusions}))
-
-    def __initialize_transforms(self, args):
-        self.__csv_to_message_data_transform = MessageDataTransform(self.__field_mapper)
-        self.__date_transform = DateTransform(args.date_format)
-        self.__exclude_empty_sender_filter = ExcludeEmptySenderFilter()
-        self.__exclude_domain_filter = ExcludeDomainFilter(self.__excluded_domains)
-        self.__exclude_senders_filter = ExcludeSenderFilter(self.__excluded_senders)
-        self.__restrict_senders_filter = RestrictDomainFilter(self.__restricted_domains)
-        self.__mfrom_transform = MFromTransform(args.decode_srs, args.remove_prvs)
-        self.__hfrom_transform = HFromTransform(args.no_display, args.no_empty_hfrom)
-        self.__msgid_transform = MIDTransform()
-        self.__rpath_transform = RPathTransform(args.decode_srs, args.remove_prvs)
-
-    def __initialize_processors(self, args):
-        self.__mfrom_processor = MFromProcessor(args.sample_subject, args.expand_recipients)
-        self.__hfrom_processor = HFromProcessor(args.sample_subject, args.expand_recipients)
-        self.__msgid_processor = MIDProcessor(args.sample_subject, args.expand_recipients)
-        self.__rpath_processor = RPathProcessor(args.sample_subject, args.expand_recipients)
-        self.__align_processor = AlignmentProcessor(args.sample_subject, args.expand_recipients)
-        self.__date_processor = DateProcessor(args.expand_recipients)
-
-    def __configure_field_mapper(self, args):
-        default_field_mappings = {
-            'mfrom': DEFAULT_MFROM_FIELD,
-            'hfrom': DEFAULT_HFROM_FIELD,
-            'rpath': DEFAULT_RPATH_FIELD,
-            'rcpts': DEFAULT_RCPTS_FIELD,
-            'msgsz': DEFAULT_MSGSZ_FIELD,
-            'msgid': DEFAULT_MSGID_FIELD,
-            'subject': DEFAULT_SUBJECT_FIELD,
-            'date': DEFAULT_DATE_FIELD
-        }
-        field_mapper = Mapper(default_field_mappings)
-        self.__add_custom_mappings(field_mapper, args)
-        self.__remove_unnecessary_mappings(field_mapper, args)
-        return field_mapper
-
-    def __add_custom_mappings(self, field_mapper, args):
-        if args.mfrom_field:
-            field_mapper.add_mapping('mfrom', args.mfrom_field)
-        if args.hfrom_field:
-            field_mapper.add_mapping('hfrom', args.hfrom_field)
-        if args.rcpts_field:
-            field_mapper.add_mapping('rcpts', args.rcpts_field)
-        if args.rpath_field:
-            field_mapper.add_mapping('rpath', args.rpath_field)
-        if args.msgid_field:
-            field_mapper.add_mapping('msgid', args.msgid_field)
-        if args.msgsz_field:
-            field_mapper.add_mapping('msgsz', args.msgsz_field)
-        if args.subject_field:
-            field_mapper.add_mapping('subject', args.subject_field)
-        if args.date_field:
-            field_mapper.add_mapping('date', args.date_field)
-
-    def __remove_unnecessary_mappings(self, field_mapper, args):
-        if not (args.gen_hfrom or args.gen_alignment):
-            field_mapper.delete_mapping('hfrom')
-        if not args.gen_rpath:
-            field_mapper.delete_mapping('rpath')
-        if not args.sample_subject:
-            field_mapper.delete_mapping('subject')
-        if not args.gen_msgid:
-            field_mapper.delete_mapping('msgid')
-        if not args.expand_recipients:
-            field_mapper.delete_mapping('rcpts')
+        #self.__pipeline = self.__build_pipeline(args)
 
     def __build_pipeline(self, args):
-        pipeline = (self.__csv_to_message_data_transform.set_next(self.__exclude_empty_sender_filter)
-                    .set_next(self.__mfrom_transform)
-                    .set_next(self.__exclude_domain_filter)
-                    .set_next(self.__exclude_senders_filter)
-                    .set_next(self.__restrict_senders_filter)
-                    .set_next(self.__date_transform)
-                    .set_next(self.__mfrom_processor))
+        pipeline = (self.__transform_manager.csv_to_message_data_transform.set_next(self.__filter_manager.exclude_empty_sender_filter)
+                    .set_next(self.__transform_manager.mfrom_transform)
+                    .set_next(self.__filter_manager.exclude_domain_filter)
+                    .set_next(self.__filter_manager.exclude_senders_filter)
+                    .set_next(self.__filter_manager.restrict_senders_filter)
+                    .set_next(self.__transform_manager.date_transform)
+                    .set_next(self.__processor_manager.mfrom_processor))
 
         if args.gen_hfrom or args.gen_alignment:
-            pipeline.set_next(self.__hfrom_transform)
+            pipeline.set_next(self.__transform_manager.hfrom_transform)
         if args.gen_hfrom:
-            pipeline.set_next(self.__hfrom_processor)
+            pipeline.set_next(self.__processor_manager.hfrom_processor)
         if args.gen_rpath:
-            pipeline.set_next(self.__rpath_transform)
-            pipeline.set_next(self.__rpath_processor)
+            pipeline.set_next(self.__transform_manager.rpath_transform)
+            pipeline.set_next(self.__processor_manager.rpath_processor)
         if args.gen_msgid:
-            pipeline.set_next(self.__msgid_transform)
-            pipeline.set_next(self.__msgid_processor)
+            pipeline.set_next(self.__transform_manager.msgid_transform)
+            pipeline.set_next(self.__processor_manager.msgid_processor)
         if args.gen_alignment:
-            pipeline.set_next(self.__align_processor)
+            pipeline.set_next(self.__processor_manager.align_processor)
 
-        pipeline.set_next(self.__date_processor)
+        pipeline.set_next(self.__processor_manager.date_processor)
 
         return pipeline
 
@@ -127,7 +65,7 @@ class PipelineProcessor:
                 with open(input_file, 'r', encoding='utf-8-sig') as file:
                     reader = csv.reader(file)
                     headers = next(reader)
-                    self.__csv_to_message_data_transform._field_mapper.reindex(headers)
+                    self.__mapper_manager.field_mapper.reindex(headers)
                     for csv_line in reader:
                         self.__pipeline.handle(csv_line)
             except Exception as e:
@@ -143,12 +81,18 @@ class PipelineProcessor:
 
     def exclusion_summary(self):
         print_list_with_title("Files to be processed:", self.__input_files)
-        print_list_with_title("Senders excluded from processing:", self.__excluded_senders)
-        print_list_with_title("Domains excluded from processing:", self.__excluded_domains)
-        print_list_with_title("Domains constrained or processing:", self.__restricted_domains)
+        print_list_with_title("Senders excluded from processing:", self.__exclusion_manager.excluded_senders)
+        print_list_with_title("Domains excluded from processing:", self.__exclusion_manager.excluded_domains)
+        print_list_with_title("Domains constrained for processing:", self.__exclusion_manager.restricted_domains)
+
+    def filter_summary(self):
+        print("Messages Excluded by Empty Senders:",self.__filter_manager.exclude_empty_sender_filter.get_excluded_count())
+        print("Messages Excluded by Domain:",self.__filter_manager.exclude_domain_filter.get_excluded_count())
+        print("Messages Excluded by Sender:", self.__filter_manager.exclude_senders_filter.get_excluded_count())
+        print("Messages Excluded by Restriction:", self.__filter_manager.restrict_senders_filter.get_excluded_count())
 
     def get_date_count(self) -> int:
-        return len(self.__date_processor.get_date_counter())
+        return len(self.__processor_manager.date_processor.get_date_counter())
 
     def get_processors(self) -> list:
         processors = []
@@ -160,4 +104,4 @@ class PipelineProcessor:
         return processors
 
     def get_date_processor(self) -> DateProcessor:
-        return self.__date_processor
+        return self.__processor_manager.date_processor

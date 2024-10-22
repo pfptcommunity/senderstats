@@ -9,6 +9,7 @@ def main():
     processor = PipelineProcessor(args)
     processor.exclusion_summary()
     processor.process_files()
+    processor.filter_summary()
 
     report = MessageDataReport(args.output_file, DEFAULT_THRESHOLD, processor.get_date_count())
     report.create_sizing_summary()
