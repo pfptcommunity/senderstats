@@ -1,5 +1,6 @@
 import csv
 
+
 class CSVProcessor:
     def __init__(self, mapper_manager):
         self.mapper_manager = mapper_manager
@@ -14,4 +15,3 @@ class CSVProcessor:
                     pipeline.handle(csv_line)
         except Exception as e:
             print(f"Error processing file {input_file}: {e}")
-

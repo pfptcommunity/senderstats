@@ -1,5 +1,6 @@
-from senderstats.processing.MapperManager import MapperManager
 from senderstats.core.transformers import *
+from senderstats.processing.MapperManager import MapperManager
+
 
 class TransformManager:
     def __init__(self, args, mapper_manager: MapperManager):

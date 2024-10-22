@@ -2,15 +2,15 @@ import csv
 import os
 from glob import glob
 
-from senderstats.processing.PipelineBuilder import PipelineBuilder
-from senderstats.processing.FilterManager import FilterManager
-from senderstats.processing.ProcessorManager import ProcessorManager
-from senderstats.processing.TransformManager import TransformManager
-from senderstats.processing.ExclusionManager import ExclusionManager
-from senderstats.processing.MapperManager import MapperManager
 from senderstats.common.utils import print_list_with_title
 from senderstats.core.processors import *
 from senderstats.interfaces import Processor
+from senderstats.processing.ExclusionManager import ExclusionManager
+from senderstats.processing.FilterManager import FilterManager
+from senderstats.processing.MapperManager import MapperManager
+from senderstats.processing.PipelineBuilder import PipelineBuilder
+from senderstats.processing.ProcessorManager import ProcessorManager
+from senderstats.processing.TransformManager import TransformManager
 
 
 class PipelineProcessor:
@@ -28,10 +28,11 @@ class PipelineProcessor:
             self.__processor_manager
         ).build_pipeline(args)
 
-        #self.__pipeline = self.__build_pipeline(args)
+        # self.__pipeline = self.__build_pipeline(args)
 
     def __build_pipeline(self, args):
-        pipeline = (self.__transform_manager.csv_to_message_data_transform.set_next(self.__filter_manager.exclude_empty_sender_filter)
+        pipeline = (self.__transform_manager.csv_to_message_data_transform.set_next(
+            self.__filter_manager.exclude_empty_sender_filter)
                     .set_next(self.__transform_manager.mfrom_transform)
                     .set_next(self.__filter_manager.exclude_domain_filter)
                     .set_next(self.__filter_manager.exclude_senders_filter)
@@ -86,8 +87,9 @@ class PipelineProcessor:
         print_list_with_title("Domains constrained for processing:", self.__exclusion_manager.restricted_domains)
 
     def filter_summary(self):
-        print("Messages Excluded by Empty Senders:",self.__filter_manager.exclude_empty_sender_filter.get_excluded_count())
-        print("Messages Excluded by Domain:",self.__filter_manager.exclude_domain_filter.get_excluded_count())
+        print("Messages Excluded by Empty Senders:",
+              self.__filter_manager.exclude_empty_sender_filter.get_excluded_count())
+        print("Messages Excluded by Domain:", self.__filter_manager.exclude_domain_filter.get_excluded_count())
         print("Messages Excluded by Sender:", self.__filter_manager.exclude_senders_filter.get_excluded_count())
         print("Messages Excluded by Restriction:", self.__filter_manager.restrict_senders_filter.get_excluded_count())
 

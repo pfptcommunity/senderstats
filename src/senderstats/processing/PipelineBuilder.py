@@ -4,7 +4,8 @@ from senderstats.processing.TransformManager import TransformManager
 
 
 class PipelineBuilder:
-    def __init__(self, transform_manager: TransformManager, filter_manager: FilterManager, processor_manager: ProcessorManager):
+    def __init__(self, transform_manager: TransformManager, filter_manager: FilterManager,
+                 processor_manager: ProcessorManager):
         self.transform_manager = transform_manager
         self.filter_manager = filter_manager
         self.processor_manager = processor_manager

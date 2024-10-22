@@ -1,17 +1,19 @@
 import argparse
 import sys
+from importlib.metadata import version, PackageNotFoundError
 
 import regex as re
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
-from importlib.metadata import version, PackageNotFoundError
+
 
 def get_version():
     try:
         return version("senderstats")
     except PackageNotFoundError:
         return "0.0.0"
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(prog="senderstats", add_help=False,

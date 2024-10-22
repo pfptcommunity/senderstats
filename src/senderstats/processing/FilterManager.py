@@ -1,5 +1,6 @@
-from senderstats.processing.ExclusionManager import ExclusionManager
 from senderstats.core.filters import *
+from senderstats.processing.ExclusionManager import ExclusionManager
+
 
 class FilterManager:
     def __init__(self, exclusion_manager: ExclusionManager):

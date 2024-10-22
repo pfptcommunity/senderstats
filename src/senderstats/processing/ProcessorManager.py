@@ -1,5 +1,6 @@
 from senderstats.core.processors import *
 
+
 class ProcessorManager:
     def __init__(self, args):
         self.mfrom_processor = MFromProcessor(args.sample_subject, args.expand_recipients)

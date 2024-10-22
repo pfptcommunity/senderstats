@@ -1,6 +1,7 @@
 from senderstats.common.defaults import *
 from senderstats.core.mappers import *
 
+
 class MapperManager:
     def __init__(self, args):
         self.field_mapper = self.__configure_field_mapper(args)
