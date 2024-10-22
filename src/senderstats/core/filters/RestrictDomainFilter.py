@@ -20,7 +20,6 @@ class RestrictDomainFilter(Filter[MessageData]):
     def filter(self, data: MessageData) -> bool:
         if not self.__restricted_domains.search(data.mfrom):
             self.__excluded_count += 1
-            print(data.mfrom)
             return False
         return True
 

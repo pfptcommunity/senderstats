@@ -20,5 +20,5 @@ class MFromTransform(Transform[MessageData, MessageData]):
         if self.__remove_prvs:
             mfrom = remove_prvs(mfrom)
 
-        data.mfrom = mfrom.strip()
+        data.mfrom = mfrom
         return data
