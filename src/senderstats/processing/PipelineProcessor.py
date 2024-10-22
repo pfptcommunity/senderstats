@@ -1,5 +1,4 @@
 from senderstats.common.utils import print_list_with_title
-from senderstats.core.processors import *
 from senderstats.interfaces import Processor
 from senderstats.processing.CSVProcessor import CSVProcessor
 from senderstats.processing.ExclusionManager import ExclusionManager
@@ -16,14 +15,14 @@ class PipelineProcessor:
         self.__input_file_manager = InputFileManager(args)
         self.__mapper_manager = MapperManager(args)
         self.__exclusion_manager = ExclusionManager(args)
-        self.__filter_manager = FilterManager(self.__exclusion_manager)
-        self.__transform_manager = TransformManager(args, self.__mapper_manager)
-        self.__processor_manager = ProcessorManager(args)
+        self._filter_manager = FilterManager(self.__exclusion_manager)
+        self._transform_manager = TransformManager(args, self.__mapper_manager)
+        self._processor_manager = ProcessorManager(args)
 
         self.__pipeline = PipelineBuilder(
-            self.__transform_manager,
-            self.__filter_manager,
-            self.__processor_manager
+            self._transform_manager,
+            self._filter_manager,
+            self._processor_manager
         ).build_pipeline(args)
 
     def process_files(self):
@@ -41,13 +40,10 @@ class PipelineProcessor:
 
     def filter_summary(self):
         print("Messages excluded by empty senders:",
-              self.__filter_manager.exclude_empty_sender_filter.get_excluded_count())
-        print("Messages excluded by domain:", self.__filter_manager.exclude_domain_filter.get_excluded_count())
-        print("Messages excluded by sender:", self.__filter_manager.exclude_senders_filter.get_excluded_count())
-        print("Messages excluded by constraint:", self.__filter_manager.restrict_senders_filter.get_excluded_count())
-
-    def get_date_count(self) -> int:
-        return len(self.__processor_manager.date_processor.get_date_counter())
+              self._filter_manager.exclude_empty_sender_filter.get_excluded_count())
+        print("Messages excluded by domain:", self._filter_manager.exclude_domain_filter.get_excluded_count())
+        print("Messages excluded by sender:", self._filter_manager.exclude_senders_filter.get_excluded_count())
+        print("Messages excluded by constraint:", self._filter_manager.restrict_senders_filter.get_excluded_count())
 
     def get_processors(self) -> list:
         processors = []
@@ -57,6 +53,3 @@ class PipelineProcessor:
                 processors.append(current)
             current = current.get_next()
         return processors
-
-    def get_date_processor(self) -> DateProcessor:
-        return self.__processor_manager.date_processor
