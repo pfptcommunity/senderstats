@@ -93,46 +93,51 @@ class MessageDataReport:
 
         summary.write(4, 0, "Estimated Monthly App Data", self.__summary_highlight_format)
         summary.write(5, 0, "Estimated Monthly App Messages", self.__summary_highlight_format)
+        summary.write(6, 0, "Estimated Monthly App Message Size", self.__summary_highlight_format)
 
-        summary.write(7, 0, "Total Data", self.__summary_format)
-        summary.write(8, 0, "Total Messages", self.__summary_format)
-        summary.write(9, 0, "Total Average Message Size", self.__summary_format)
-        summary.write(10, 0, "Total Peak Hourly Volume", self.__summary_format)
+        summary.write(8, 0, "Total Data", self.__summary_format)
+        summary.write(9, 0, "Total Messages", self.__summary_format)
+        summary.write(10, 0, "Total Average Message Size", self.__summary_format)
+        summary.write(11, 0, "Total Peak Hourly Volume", self.__summary_format)
 
-        summary.write(12, 0, 'App Email Threshold (Number must be >= 0):', self.__summary_format)
-        summary.write_number(12, 1, self.__threshold, self.__field_values_format)
+        summary.write(13, 0, 'App Email Threshold (Number must be >= 0):', self.__summary_format)
+        summary.write_number(13, 1, self.__threshold, self.__field_values_format)
         summary.set_column(1, 1, 25)
 
-        summary.data_validation(12, 1, 12, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
+        summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
 
         # Based on daily message volume being over a threshold N
-        summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B13'),
+        summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14'),
                               self.__summary_values_format)
 
-        summary.write_formula(1, 1, self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B13'),
+        summary.write_formula(1, 1, self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14'),
                               self.__summary_values_format)
 
-        summary.write_formula(2, 1, self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B13'),
+        summary.write_formula(2, 1, self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14'),
                               self.__summary_values_format)
 
         # Based on daily volumes scaled for a 30 day period
-        summary.write_formula(4, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B13', True),
+        summary.write_formula(4, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14', True),
                               self.__summary_highlight_values)
 
         summary.write_formula(5, 1,
-                              self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B13', True),
+                              self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14', True),
+                              self.__summary_highlight_values)
+
+        summary.write_formula(6, 1,
+                              self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14', True),
                               self.__summary_highlight_values)
 
         # These are total volumes for the complete data set, excluding any data that was filtered out.
-        summary.write_formula(7, 1, self.__get_total_size('Envelope Senders', 'E'),
+        summary.write_formula(8, 1, self.__get_total_size('Envelope Senders', 'E'),
                               self.__summary_values_format)
 
-        summary.write_formula(8, 1, self.__get_total_count('Envelope Senders', 'B'),
+        summary.write_formula(9, 1, self.__get_total_count('Envelope Senders', 'B'),
                               self.__summary_values_format)
 
-        summary.write_formula(9, 1, self.__get_total_average('Envelope Senders', 'E', 'B'),
+        summary.write_formula(10, 1, self.__get_total_average('Envelope Senders', 'E', 'B'),
                               self.__summary_values_format)
-        summary.write_formula(10, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
+        summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
         summary.autofit()
 
     def __get_conditional_size(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
@@ -152,8 +157,11 @@ class MessageDataReport:
         return f"""=ROUNDUP(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}, 0)"""
 
     def __get_conditional_average(self, sheet_name, col_cond, col_data, col_messages, threshold_cell, monthly=False):
-        return f"""=ROUNDUP((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data})/
-                              SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
+        days_multiplier = f"/{self.__days}*30" if monthly else ""
+        return f"""ROUNDUP(
+(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier})/
+(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_messages}:{col_messages}){days_multiplier})/1024
+,0)&" KB" """
 
     def __get_total_size(self, sheet_name, col_data):
         return f"""=IF(SUM('{sheet_name}'!{col_data}:{col_data})<1024,
