@@ -277,6 +277,11 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 
 ![image](https://github.com/user-attachments/assets/66279533-6582-440f-bf5b-d7496d6fc29a)
 
+### Current Class Heirarchy
+![senderstats](https://github.com/user-attachments/assets/0d08b90e-9b12-4e1b-bded-73ec2c092914)
+
+
+
 
 
 
