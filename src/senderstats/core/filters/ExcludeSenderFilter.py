@@ -10,8 +10,13 @@ class ExcludeSenderFilter(Filter[MessageData]):
     def __init__(self, excluded_senders: List[str]):
         super().__init__()
         self.__excluded_senders = set(excluded_senders)
+        self.__excluded_count = 0
 
     def filter(self, data: MessageData) -> bool:
         if data.mfrom in self.__excluded_senders:
-            return False  # Exclude record
+            self.__excluded_count += 1
+            return False
         return True
+
+    def get_excluded_count(self) -> int:
+        return self.__excluded_count
