@@ -2,44 +2,21 @@ from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
 
+from senderstats.reporting.FormatManager import FormatManager
 from senderstats.common.utils import average
 from senderstats.core.processors import DateProcessor
 from senderstats.processing import PipelineProcessor
 
 
 class PipelineProcessorReport:
-    __threshold: int
-    __days: int
-    __output_file: str
-    __workbook: Workbook
-    __header_format: Format
-    __summary_format: Format
-    __summary_values_format: Format
-    __summary_highlight_format: Format
-    __summary_highlight_values: Format
-    __subject_format: Format
-    __data_cell_format: Format
-    __field_values_format: Format
-
     def __init__(self, output_file: str, pipeline_processor: PipelineProcessor):
         self.__threshold = 100
         self.__output_file = output_file
+        self.__workbook = Workbook(output_file)
+        self.__format_manager = FormatManager(self.__workbook)
         self.__pipeline_processor = pipeline_processor
         self.__days = len(pipeline_processor._processor_manager.date_processor.get_date_counter())
-        self.__workbook = Workbook(output_file)
-        self.__initialize_formats()
 
-    def __initialize_formats(self):
-        self.__header_format = self.__workbook.add_format({'bold': True})
-        self.__summary_format = self.__workbook.add_format({'bold': True, 'align': 'right', 'hidden': True})
-        self.__summary_highlight_format = self.__workbook.add_format(
-            {'bold': True, 'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
-        self.__summary_values_format = self.__workbook.add_format({'align': 'right', 'hidden': True})
-        self.__summary_highlight_values = self.__workbook.add_format(
-            {'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
-        self.__field_values_format = self.__workbook.add_format({'locked': False, 'hidden': True})
-        self.__data_cell_format = self.__workbook.add_format({'valign': 'top'})
-        self.__subject_format = self.__workbook.add_format({'text_wrap': True})
 
     def close(self):
         self.__workbook.close()
@@ -48,7 +25,7 @@ class PipelineProcessorReport:
 
     def __write_headers(self, worksheet: Worksheet, headers: list):
         for col, header in enumerate(headers):
-            worksheet.write(0, col, header, self.__header_format)
+            worksheet.write(0, col, header, self.__format_manager.header_format)
 
     def __write_data(self, worksheet: Worksheet, data: dict):
         row = 1
@@ -56,10 +33,10 @@ class PipelineProcessorReport:
             col = 0
             if isinstance(k, tuple):
                 for item in k:
-                    worksheet.write_string(row, col, item, self.__data_cell_format)
+                    worksheet.write_string(row, col, item, self.__format_manager.data_cell_format)
                     col += 1
             else:
-                worksheet.write_string(row, col, k, self.__data_cell_format)
+                worksheet.write_string(row, col, k, self.__format_manager.data_cell_format)
                 col += 1
 
             messages_per_sender = len(v['message_size'])
@@ -67,73 +44,73 @@ class PipelineProcessorReport:
             average_message_size = average(v['message_size'])
             messages_per_sender_per_day = messages_per_sender / self.__days
 
-            worksheet.write_number(row, col, messages_per_sender, self.__data_cell_format)
+            worksheet.write_number(row, col, messages_per_sender, self.__format_manager.data_cell_format)
             col += 1
-            worksheet.write_number(row, col, average_message_size, self.__data_cell_format)
+            worksheet.write_number(row, col, average_message_size, self.__format_manager.data_cell_format)
             col += 1
-            worksheet.write_number(row, col, messages_per_sender_per_day, self.__data_cell_format)
+            worksheet.write_number(row, col, messages_per_sender_per_day, self.__format_manager.data_cell_format)
             col += 1
-            worksheet.write_number(row, col, total_bytes, self.__data_cell_format)
+            worksheet.write_number(row, col, total_bytes, self.__format_manager.data_cell_format)
             if 'subjects' in v:
                 col += 1
-                worksheet.write_string(row, col, '\n'.join(v['subjects']), self.__subject_format)
+                worksheet.write_string(row, col, '\n'.join(v['subjects']), self.__format_manager.subject_format)
             row += 1
 
     def create_sizing_summary(self):
         summary = self.__workbook.add_worksheet("Summary")
         summary.protect()
 
-        summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__summary_format)
-        summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__summary_format)
-        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__summary_format)
+        summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__format_manager.summary_format)
+        summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__format_manager.summary_format)
+        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__format_manager.summary_format)
 
-        summary.write(4, 0, "Estimated Monthly App Data", self.__summary_highlight_format)
-        summary.write(5, 0, "Estimated Monthly App Messages", self.__summary_highlight_format)
-        summary.write(6, 0, "Estimated Monthly App Message Size", self.__summary_highlight_format)
+        summary.write(4, 0, "Estimated Monthly App Data", self.__format_manager.summary_highlight_format)
+        summary.write(5, 0, "Estimated Monthly App Messages", self.__format_manager.summary_highlight_format)
+        summary.write(6, 0, "Estimated Monthly App Message Size", self.__format_manager.summary_highlight_format)
 
-        summary.write(8, 0, "Total Data", self.__summary_format)
-        summary.write(9, 0, "Total Messages", self.__summary_format)
-        summary.write(10, 0, "Total Average Message Size", self.__summary_format)
-        summary.write(11, 0, "Total Peak Hourly Volume", self.__summary_format)
+        summary.write(8, 0, "Total Data", self.__format_manager.summary_format)
+        summary.write(9, 0, "Total Messages", self.__format_manager.summary_format)
+        summary.write(10, 0, "Total Average Message Size", self.__format_manager.summary_format)
+        summary.write(11, 0, "Total Peak Hourly Volume", self.__format_manager.summary_format)
 
-        summary.write(13, 0, 'App Email Threshold (Number must be >= 0):', self.__summary_format)
-        summary.write_number(13, 1, self.__threshold, self.__field_values_format)
+        summary.write(13, 0, 'App Email Threshold (Number must be >= 0):', self.__format_manager.summary_format)
+        summary.write_number(13, 1, self.__threshold, self.__format_manager.field_values_format)
         summary.set_column(1, 1, 25)
 
         summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
 
         # Based on daily message volume being over a threshold N
         summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14'),
-                              self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
 
         summary.write_formula(1, 1, self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14'),
-                              self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
 
         summary.write_formula(2, 1, self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14'),
-                              self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
 
         # Based on daily volumes scaled for a 30 day period
         summary.write_formula(4, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14', True),
-                              self.__summary_highlight_values)
+                              self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(5, 1,
                               self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14', True),
-                              self.__summary_highlight_values)
+                              self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(6, 1,
                               self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14', True),
-                              self.__summary_highlight_values)
+                              self.__format_manager.summary_highlight_values_format)
 
         # These are total volumes for the complete data set, excluding any data that was filtered out.
         summary.write_formula(8, 1, self.__get_total_size('Envelope Senders', 'E'),
-                              self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
 
         summary.write_formula(9, 1, self.__get_total_count('Envelope Senders', 'B'),
-                              self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
 
         summary.write_formula(10, 1, self.__get_total_average('Envelope Senders', 'E', 'B'),
-                              self.__summary_values_format)
-        summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__summary_values_format)
+                              self.__format_manager.summary_values_format)
+        summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__format_manager.summary_values_format)
         summary.autofit()
 
     def __get_conditional_size(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
@@ -193,8 +170,8 @@ class PipelineProcessorReport:
         self.__write_headers(sheet, ['Date', 'Messages'])
         row = 1
         for k, v in processor.get_hourly_counter().items():
-            sheet.write_string(row, 0, k, self.__data_cell_format)
-            sheet.write_number(row, 1, v, self.__data_cell_format)
+            sheet.write_string(row, 0, k, self.__format_manager.data_cell_format)
+            sheet.write_number(row, 1, v, self.__format_manager.data_cell_format)
             row += 1
         sheet.autofit()
 
