@@ -24,7 +24,6 @@ class PipelineBuilder:
         if args.restricted_domains:
             pipeline.set_next(self.filter_manager.restrict_senders_filter)
 
-
         pipeline.set_next(self.transform_manager.date_transform)
         pipeline.set_next(self.processor_manager.mfrom_processor)
 
