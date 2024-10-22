@@ -1,4 +1,3 @@
-from senderstats.reporting.MessageDataReport import TMessageProcessor
 from xlsxwriter import Workbook
 from xlsxwriter.format import Format
 from xlsxwriter.worksheet import Worksheet
@@ -177,7 +176,7 @@ class PipelineProcessorReport:
     def __get_total_average(self, sheet_name, col_data, col_messages):
         return f"""=ROUNDUP((SUM('{sheet_name}'!{col_data}:{col_data})/SUM('{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
 
-    def create_summary(self, processor: TMessageProcessor):
+    def create_summary(self, processor):
         if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor,
                                                                                           'is_sample_subject'):
             sheet = self.__workbook.add_worksheet(processor.sheet_name)
