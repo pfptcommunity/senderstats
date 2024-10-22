@@ -257,6 +257,10 @@ Processing:  C:\Users\ljerabek\Downloads\smart_search_results_cluster_hosted_202
 Processing:  C:\Users\ljerabek\Downloads\smart_search_results_cluster_hosted_2024_03_04_173656.csv
 Processing:  C:\Users\ljerabek\Downloads\smart_search_results_cluster_hosted_2024_03_04_173754.csv
 Processing:  C:\Users\ljerabek\Downloads\smart_search_results_cluster_hosted_2024_03_04_173834.csv
+Messages excluded by empty senders: 1523573
+Messages excluded by domain: 484664
+Messages excluded by sender: 0
+Messages excluded by constraint: 0
 
 Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ```
