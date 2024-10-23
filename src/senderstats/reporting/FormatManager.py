@@ -1,4 +1,3 @@
-
 class FormatManager:
     def __init__(self, workbook):
         self.workbook = workbook
@@ -10,8 +9,7 @@ class FormatManager:
         self.summary_highlight_values_format = self.create_format(
             {'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
         self.field_values_format = self.create_format({'locked': False, 'hidden': True})
-        self.data_cell_format = self.create_format({'valign': 'top'})
-        self.subject_format = self.create_format({'text_wrap': True})
+        self.data_cell_format = self.create_format({'valign': 'top', 'text_wrap': True})
 
     def create_format(self, properties):
         return self.workbook.add_format(properties)

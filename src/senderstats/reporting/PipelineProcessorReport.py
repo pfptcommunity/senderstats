@@ -1,11 +1,8 @@
 from xlsxwriter import Workbook
-from xlsxwriter.format import Format
-from xlsxwriter.worksheet import Worksheet
 
-from senderstats.reporting.FormatManager import FormatManager
-from senderstats.common.utils import average
-from senderstats.core.processors import DateProcessor
+from senderstats.interfaces.Reportable import Reportable
 from senderstats.processing import PipelineProcessor
+from senderstats.reporting.FormatManager import FormatManager
 
 
 class PipelineProcessorReport:
@@ -17,44 +14,10 @@ class PipelineProcessorReport:
         self.__pipeline_processor = pipeline_processor
         self.__days = len(pipeline_processor._processor_manager.date_processor.get_date_counter())
 
-
     def close(self):
         self.__workbook.close()
         print()
         print("Please see report: {}".format(self.__output_file))
-
-    def __write_headers(self, worksheet: Worksheet, headers: list):
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header, self.__format_manager.header_format)
-
-    def __write_data(self, worksheet: Worksheet, data: dict):
-        row = 1
-        for k, v in data.items():
-            col = 0
-            if isinstance(k, tuple):
-                for item in k:
-                    worksheet.write_string(row, col, item, self.__format_manager.data_cell_format)
-                    col += 1
-            else:
-                worksheet.write_string(row, col, k, self.__format_manager.data_cell_format)
-                col += 1
-
-            messages_per_sender = len(v['message_size'])
-            total_bytes = sum(v['message_size'])
-            average_message_size = average(v['message_size'])
-            messages_per_sender_per_day = messages_per_sender / self.__days
-
-            worksheet.write_number(row, col, messages_per_sender, self.__format_manager.data_cell_format)
-            col += 1
-            worksheet.write_number(row, col, average_message_size, self.__format_manager.data_cell_format)
-            col += 1
-            worksheet.write_number(row, col, messages_per_sender_per_day, self.__format_manager.data_cell_format)
-            col += 1
-            worksheet.write_number(row, col, total_bytes, self.__format_manager.data_cell_format)
-            if 'subjects' in v:
-                col += 1
-                worksheet.write_string(row, col, '\n'.join(v['subjects']), self.__format_manager.subject_format)
-            row += 1
 
     def create_sizing_summary(self):
         summary = self.__workbook.add_worksheet("Summary")
@@ -62,7 +25,8 @@ class PipelineProcessorReport:
 
         summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__format_manager.summary_format)
         summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__format_manager.summary_format)
-        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__format_manager.summary_format)
+        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)",
+                      self.__format_manager.summary_format)
 
         summary.write(4, 0, "Estimated Monthly App Data", self.__format_manager.summary_highlight_format)
         summary.write(5, 0, "Estimated Monthly App Messages", self.__format_manager.summary_highlight_format)
@@ -153,34 +117,23 @@ class PipelineProcessorReport:
     def __get_total_average(self, sheet_name, col_data, col_messages):
         return f"""=ROUNDUP((SUM('{sheet_name}'!{col_data}:{col_data})/SUM('{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
 
-    def create_summary(self, processor):
-        if hasattr(processor, 'sheet_name') and hasattr(processor, 'headers') and hasattr(processor,
-                                                                                          'is_sample_subject'):
-            sheet = self.__workbook.add_worksheet(processor.sheet_name)
+    def __report(self, processor):
+        if isinstance(processor, Reportable):
+            for report_name, data in processor.report(self.__days):
+                sheet = self.__workbook.add_worksheet(report_name)
+                for r_index, row in enumerate(data, start=0):
+                    format = self.__format_manager.data_cell_format
+                    if r_index == 0:
+                        format = self.__format_manager.header_format
+                    for c_index, value in enumerate(row, start=0):
+                        if isinstance(value, str):
+                            sheet.write_string(r_index, c_index, value, format)
+                        if isinstance(value, int) or isinstance(value, float):
+                            sheet.write_number(r_index, c_index, value, format)
+                sheet.autofit()
 
-            if processor.is_sample_subject():
-                processor.headers.append('Subjects')
-
-            self.__write_headers(sheet, processor.headers)
-            self.__write_data(sheet, processor.get_data())
-            sheet.autofit()
-
-    def create_hourly_summary(self, processor: DateProcessor):
-        sheet = self.__workbook.add_worksheet("Hourly Metrics")
-        self.__write_headers(sheet, ['Date', 'Messages'])
-        row = 1
-        for k, v in processor.get_hourly_counter().items():
-            sheet.write_string(row, 0, k, self.__format_manager.data_cell_format)
-            sheet.write_number(row, 1, v, self.__format_manager.data_cell_format)
-            row += 1
-        sheet.autofit()
-
-    def create(self):
+    def generate(self):
         self.create_sizing_summary()
 
         for proc in self.__pipeline_processor.get_processors():
-            self.create_summary(proc)
-
-        self.create_hourly_summary(self.__pipeline_processor._processor_manager.date_processor)
-
-        self.close()
+            self.__report(proc)

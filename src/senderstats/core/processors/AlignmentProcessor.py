@@ -1,13 +1,13 @@
 from random import random
-from typing import Dict
+from typing import Dict, Optional
 
+from senderstats.common.utils import average
 from senderstats.data.MessageData import MessageData
 from senderstats.interfaces.Processor import Processor
+from senderstats.interfaces.Reportable import Reportable
 
 
-class AlignmentProcessor(Processor[MessageData]):
-    sheet_name = "MFrom + HFrom (Alignment)"
-    headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+class AlignmentProcessor(Processor[MessageData], Reportable):
     __alignment_data: Dict[tuple, Dict]
     __sample_subject: bool
     __expand_recipients: bool
@@ -36,8 +36,24 @@ class AlignmentProcessor(Processor[MessageData]):
                 if not alignment_data['subjects'] or random() < probability:
                     alignment_data['subjects'].append(data.subject)
 
-    def is_sample_subject(self) -> bool:
-        return self.__sample_subject
+    def report(self, context: Optional = None) -> dict:
+        # Yield the report name and the data generator together
+        def get_report_name():
+            return "MFrom + HFrom (Alignment)"
 
-    def get_data(self) -> Dict:
-        return self.__alignment_data
+        def get_report_data():
+            headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+            if self.__sample_subject:
+                headers.append('Subjects')
+            yield headers
+            for k, v in self.__alignment_data.items():
+                messages_per_sender = len(v['message_size'])
+                total_bytes = sum(v['message_size'])
+                average_message_size = average(v['message_size'])
+                messages_per_sender_per_day = messages_per_sender / context
+                row = [k[0], k[1], messages_per_sender, average_message_size, messages_per_sender_per_day, total_bytes]
+                if self.__sample_subject:
+                    row.append('\n'.join(v['subjects']))
+                yield row
+
+        yield get_report_name(), get_report_data()

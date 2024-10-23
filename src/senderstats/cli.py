@@ -11,7 +11,8 @@ def main():
     processor.filter_summary()
 
     report = PipelineProcessorReport(args.output_file, processor)
-    report.create()
+    report.generate()
+    report.close()
 
 
 if __name__ == "__main__":

@@ -1,14 +1,14 @@
 # MFromProcessor.py
 from random import random
-from typing import Dict
+from typing import Dict, Optional
 
+from senderstats.common.utils import average
 from senderstats.data.MessageData import MessageData
 from senderstats.interfaces.Processor import Processor
+from senderstats.interfaces.Reportable import Reportable
 
 
-class MFromProcessor(Processor[MessageData]):
-    sheet_name = "Envelope Senders"
-    headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+class MFromProcessor(Processor[MessageData], Reportable):
     __mfrom_data: Dict[str, Dict]
     __sample_subject: bool
     __expand_recipients: bool
@@ -36,8 +36,24 @@ class MFromProcessor(Processor[MessageData]):
                 if not mfrom_data['subjects'] or random() < probability:
                     mfrom_data['subjects'].append(data.subject)
 
-    def is_sample_subject(self) -> bool:
-        return self.__sample_subject
+    def report(self, context: Optional = None) -> dict:
+        # Yield the report name and the data generator together
+        def get_report_name():
+            return "Envelope Senders"
 
-    def get_data(self) -> Dict:
-        return self.__mfrom_data
+        def get_report_data():
+            headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+            if self.__sample_subject:
+                headers.append('Subjects')
+            yield headers
+            for k, v in self.__mfrom_data.items():
+                messages_per_sender = len(v['message_size'])
+                total_bytes = sum(v['message_size'])
+                average_message_size = average(v['message_size'])
+                messages_per_sender_per_day = messages_per_sender / context
+                row = [k, messages_per_sender, average_message_size, messages_per_sender_per_day, total_bytes]
+                if self.__sample_subject:
+                    row.append('\n'.join(v['subjects']))
+                yield row
+
+        yield get_report_name(), get_report_data()

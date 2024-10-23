@@ -1,11 +1,12 @@
 from collections import defaultdict
-from typing import DefaultDict
+from typing import DefaultDict, Optional
 
 from senderstats.data.MessageData import MessageData
 from senderstats.interfaces.Processor import Processor
+from senderstats.interfaces.Reportable import Reportable
 
 
-class DateProcessor(Processor[MessageData]):
+class DateProcessor(Processor[MessageData], Reportable):
     __date_counter: DefaultDict[str, int]
     __hourly_counter: DefaultDict[str, int]
     __expand_recipients: bool
@@ -33,3 +34,15 @@ class DateProcessor(Processor[MessageData]):
 
     def get_hourly_counter(self) -> DefaultDict[str, int]:
         return self.__hourly_counter
+
+    def report(self, context: Optional = None) -> dict:
+        # Yield the report name and the data generator together
+        def get_report_name():
+            return "Hourly Metrics"
+
+        def get_report_data():
+            yield ['Date', 'Messages']
+            for k, v in self.__hourly_counter.items():
+                yield [k, v]
+
+        yield get_report_name(), get_report_data()
