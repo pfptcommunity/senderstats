@@ -14,6 +14,9 @@ name = "senderstats"
 dynamic = ["version"]
 readme = "README.md"
 description = "Tool to Process Smart Search Results and Identify Top Senders"
+authors = [
+    { name = "Ludvik Jerabek" }
+]
 license = { text = "MIT" }
 requires-python = ">3.9"
 dependencies = [
