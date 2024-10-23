@@ -55,7 +55,7 @@ class MIDProcessor(Processor[MessageData], Reportable):
                 total_bytes = sum(v['message_size'])
                 average_message_size = average(v['message_size'])
                 messages_per_sender_per_day = messages_per_sender / context
-                row = [k[0], k[1], k[1], messages_per_sender, average_message_size, messages_per_sender_per_day,
+                row = [k[0], k[1], k[2], messages_per_sender, average_message_size, messages_per_sender_per_day,
                        total_bytes]
                 if self.__sample_subject:
                     row.append('\n'.join(v['subjects']))
