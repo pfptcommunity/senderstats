@@ -133,6 +133,8 @@ class PipelineProcessorReport:
                 sheet.autofit()
 
     def generate(self):
+        print()
+        print("Generating report, please wait.")
         self.create_sizing_summary()
 
         for proc in self.__pipeline_processor.get_processors():

@@ -33,12 +33,14 @@ class PipelineProcessor:
             csv_processor.process(input_file, self.__pipeline)
 
     def exclusion_summary(self):
+        print()
         print_list_with_title("Files to be processed:", self.__input_file_manager.input_files)
         print_list_with_title("Senders excluded from processing:", self.__exclusion_manager.excluded_senders)
         print_list_with_title("Domains excluded from processing:", self.__exclusion_manager.excluded_domains)
         print_list_with_title("Domains constrained for processing:", self.__exclusion_manager.restricted_domains)
 
     def filter_summary(self):
+        print()
         print("Messages excluded by empty senders:",
               self._filter_manager.exclude_empty_sender_filter.get_excluded_count())
         print("Messages excluded by domain:", self._filter_manager.exclude_domain_filter.get_excluded_count())
