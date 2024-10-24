@@ -4,6 +4,7 @@ from importlib.metadata import version, PackageNotFoundError
 
 import regex as re
 
+from common.regex_patterns import IPV46_REGEX
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX
 
@@ -40,6 +41,10 @@ def parse_arguments():
     required_group.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file",
                                 type=validate_xlsx_file, required=True,
                                 help='Output file')
+
+    field_group.add_argument('--ip', metavar='IP', dest="ip_field",
+                             type=str, required=False,
+                             help=f'CSV field of the IP address. (default={DEFAULT_IP_FIELD})')
 
     field_group.add_argument('--mfrom', metavar='MFrom', dest="mfrom_field",
                              type=str, required=False,
@@ -103,13 +108,16 @@ def parse_arguments():
     parser_group.add_argument('--sample-subject', action='store_true', dest="sample_subject",
                               help='Enable probabilistic random sampling of subject lines found during processing')
 
-    parser_group.add_argument('--excluded-domains', default=[], metavar='<domain>', dest="excluded_domains",
+    parser_group.add_argument('--exclude-ips', default=[], metavar='<ip>', dest="exclude_ips",
+                              nargs='+', type=is_valid_ip_syntax, help='Exclude ips from processing.')
+
+    parser_group.add_argument('--exclude-domains', default=[], metavar='<domain>', dest="exclude_domains",
                               nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
 
-    parser_group.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restricted_domains",
+    parser_group.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restrict_domains",
                               nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
 
-    parser_group.add_argument('--excluded-senders', default=[], metavar='<sender>', dest="excluded_senders",
+    parser_group.add_argument('--exclude-senders', default=[], metavar='<sender>', dest="exclude_senders",
                               nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
 
     parser_group.add_argument('--date-format', metavar='DateFmt', dest="date_format",
@@ -138,6 +146,17 @@ def is_valid_domain_syntax(domain_name: str):
         raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
     return domain_name
 
+def is_valid_ip_syntax(ip: str):
+    """
+    Validates if the provided domain name follows the expected syntax.
+
+    :param domain_name: Domain name to validate.
+    :return: The domain name if valid.
+    :raises: argparse.ArgumentTypeError if the domain name syntax is invalid.
+    """
+    if not re.match(IPV46_REGEX, ip, re.IGNORECASE):
+        raise argparse.ArgumentTypeError(f"Invalid ip address syntax: {ip}")
+    return ip
 
 def is_valid_email_syntax(email: str):
     """

@@ -35,6 +35,7 @@ class PipelineProcessor:
     def exclusion_summary(self):
         print()
         print_list_with_title("Files to be processed:", self.__input_file_manager.input_files)
+        print_list_with_title("IPs excluded from processing:", self.__exclusion_manager.excluded_ips)
         print_list_with_title("Senders excluded from processing:", self.__exclusion_manager.excluded_senders)
         print_list_with_title("Domains excluded from processing:", self.__exclusion_manager.excluded_domains)
         print_list_with_title("Domains constrained for processing:", self.__exclusion_manager.restricted_domains)
@@ -43,6 +44,10 @@ class PipelineProcessor:
         print()
         print("Messages excluded by empty senders:",
               self._filter_manager.exclude_empty_sender_filter.get_excluded_count())
+        print("Messages excluded by invalid size:",
+              self._filter_manager.exclude_invalid_size_filter.get_excluded_count())
+        print("Messages excluded by IP addresses:",
+              self._filter_manager.exclude_ip_filter.get_excluded_count())
         print("Messages excluded by domain:", self._filter_manager.exclude_domain_filter.get_excluded_count())
         print("Messages excluded by sender:", self._filter_manager.exclude_senders_filter.get_excluded_count())
         print("Messages excluded by constraint:", self._filter_manager.restrict_senders_filter.get_excluded_count())

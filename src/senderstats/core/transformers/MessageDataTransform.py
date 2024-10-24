@@ -19,7 +19,7 @@ class MessageDataTransform(Transform[List[str], MessageData]):
         for field in self._field_mapper._index_map.keys():
             value = self._field_mapper.get_field(data, field)
             if field == 'msgsz':
-                value = int(value) if value.isdigit() else 0
+                value = int(value) if value.isdigit() else -1
             elif field == 'rcpts':
                 value = value.casefold().strip().split(',')
             else:

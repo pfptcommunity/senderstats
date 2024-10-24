@@ -13,15 +13,19 @@ class PipelineBuilder:
     def build_pipeline(self, args):
         pipeline = (self.transform_manager.csv_to_message_data_transform
                     .set_next(self.filter_manager.exclude_empty_sender_filter)
+                    .set_next(self.filter_manager.exclude_invalid_size_filter)
                     .set_next(self.transform_manager.mfrom_transform))
 
-        if args.excluded_domains:
+        if args.exclude_ips:
+            pipeline.set_next(self.filter_manager.exclude_ip_filter)
+
+        if args.exclude_domains:
             pipeline.set_next(self.filter_manager.exclude_domain_filter)
 
-        if args.excluded_senders:
+        if args.exclude_senders:
             pipeline.set_next(self.filter_manager.exclude_senders_filter)
 
-        if args.restricted_domains:
+        if args.restrict_domains:
             pipeline.set_next(self.filter_manager.restrict_senders_filter)
 
         pipeline.set_next(self.transform_manager.date_transform)

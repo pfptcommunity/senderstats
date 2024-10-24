@@ -15,7 +15,8 @@ class MapperManager:
             'msgsz': DEFAULT_MSGSZ_FIELD,
             'msgid': DEFAULT_MSGID_FIELD,
             'subject': DEFAULT_SUBJECT_FIELD,
-            'date': DEFAULT_DATE_FIELD
+            'date': DEFAULT_DATE_FIELD,
+            'ip': DEFAULT_IP_FIELD
         }
         field_mapper = Mapper(default_field_mappings)
         self.__add_custom_mappings(field_mapper, args)
@@ -39,6 +40,8 @@ class MapperManager:
             field_mapper.add_mapping('subject', args.subject_field)
         if args.date_field:
             field_mapper.add_mapping('date', args.date_field)
+        if args.ip_field:
+            field_mapper.add_mapping('ip', args.ip_field)
 
     def __remove_unnecessary_mappings(self, field_mapper, args):
         if not (args.gen_hfrom or args.gen_alignment):
@@ -51,3 +54,5 @@ class MapperManager:
             field_mapper.delete_mapping('msgid')
         if not args.expand_recipients:
             field_mapper.delete_mapping('rcpts')
+        if not args.exclude_ips:
+            field_mapper.delete_mapping('ip')
