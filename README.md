@@ -79,16 +79,17 @@ pipx install senderstats
 ### Usage Options:
 
 ```
-usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx>
+usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP]
                    [--mfrom MFrom] [--hfrom HFrom] [--rcpts Rcpts]
                    [--rpath RPath] [--msgid MsgID] [--subject Subject]
                    [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath]
                    [--gen-alignment] [--gen-msgid] [--expand-recipients]
                    [--no-display-name] [--remove-prvs] [--decode-srs]
                    [--no-empty-hfrom] [--sample-subject]
-                   [--excluded-domains <domain> [<domain> ...]]
+                   [--exclude-ips <ip> [<ip> ...]]
+                   [--exclude-domains <domain> [<domain> ...]]
                    [--restrict-domains <domain> [<domain> ...]]
-                   [--excluded-senders <sender> [<sender> ...]]
+                   [--exclude-senders <sender> [<sender> ...]]
                    [--date-format DateFmt] [--no-default-exclude-domains]
 
 This tool helps identify the top senders based on smart search outbound
@@ -100,6 +101,9 @@ Input / Output arguments (required):
   -o <xlsx>, --output <xlsx>                           Output file
 
 Field mapping arguments (optional):
+  --ip IP                                              CSV field of the IP
+                                                       address. (default=Sende
+                                                       r_IP_Address)
   --mfrom MFrom                                        CSV field of the
                                                        envelope sender
                                                        address.
@@ -172,11 +176,13 @@ Parsing behavior arguments (optional):
                                                        random sampling of
                                                        subject lines found
                                                        during processing
-  --excluded-domains <domain> [<domain> ...]           Exclude domains from
+  --exclude-ips <ip> [<ip> ...]                        Exclude ips from
+                                                       processing.
+  --exclude-domains <domain> [<domain> ...]            Exclude domains from
                                                        processing.
   --restrict-domains <domain> [<domain> ...]           Constrain domains for
                                                        processing.
-  --excluded-senders <sender> [<sender> ...]           Exclude senders from
+  --exclude-senders <sender> [<sender> ...]            Exclude senders from
                                                        processing.
   --date-format DateFmt                                Date format used to
                                                        parse the timestamps. (
@@ -193,6 +199,7 @@ Usage:
                                                        and exit
   --version                                            Show the program's
                                                        version and exit
+
 ```
 
 ### Using the Tool with Proofpoint Smart Search
