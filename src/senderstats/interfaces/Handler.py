@@ -1,3 +1,4 @@
+from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional, Generic, TypeVar, Any
 
@@ -5,17 +6,13 @@ from typing import Optional, Generic, TypeVar, Any
 TInput = TypeVar('TInput', bound=Any)
 TOutput = TypeVar('TOutput', bound=Any)
 
-# Define THandler, bound to a Handler that outputs TOutput and accepts any for further chaining
-THandler = TypeVar('THandler', bound='Handler')
-
-
 class Handler(ABC, Generic[TInput, TOutput]):
     @abstractmethod
-    def set_next(self, handler: THandler) -> THandler:
+    def set_next(self, handler: Handler[TOutput,Any]) -> Handler[TInput, TOutput]:
         pass
 
     @abstractmethod
-    def get_next(self) -> Optional[THandler]:
+    def get_next(self) -> Optional[Handler[TOutput, Any]]:
         pass
 
     @abstractmethod
@@ -24,9 +21,9 @@ class Handler(ABC, Generic[TInput, TOutput]):
 
 
 class AbstractHandler(Handler[TInput, TOutput], Generic[TInput, TOutput]):
-    _next_handler: Optional[THandler] = None
+    _next_handler: Optional[Handler[TOutput, Any]] = None
 
-    def set_next(self, handler: THandler) -> THandler:
+    def set_next(self, handler: Handler[TOutput, Any]) -> Handler[TInput, TOutput]:
         if self._next_handler is None:
             self._next_handler = handler
         else:
@@ -38,7 +35,7 @@ class AbstractHandler(Handler[TInput, TOutput], Generic[TInput, TOutput]):
             last_handler.set_next(handler)
         return self
 
-    def get_next(self) -> Optional[THandler]:
+    def get_next(self) -> Optional[Handler[TOutput, Any]]:
         return self._next_handler
 
     def handle(self, data: TInput) -> Optional[TOutput]:
