@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar
 
 # Define generic type for the data
 TData = TypeVar('TData')
+
 
 # Criteria base class
 class Criteria(ABC, Generic[TData]):

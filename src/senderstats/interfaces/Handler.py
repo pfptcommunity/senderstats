@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from typing import Optional, Generic, TypeVar, Any
 
@@ -6,9 +7,10 @@ from typing import Optional, Generic, TypeVar, Any
 TInput = TypeVar('TInput', bound=Any)
 TOutput = TypeVar('TOutput', bound=Any)
 
+
 class Handler(ABC, Generic[TInput, TOutput]):
     @abstractmethod
-    def set_next(self, handler: Handler[TOutput,Any]) -> Handler[TInput, TOutput]:
+    def set_next(self, handler: Handler[TOutput, Any]) -> Handler[TInput, TOutput]:
         pass
 
     @abstractmethod

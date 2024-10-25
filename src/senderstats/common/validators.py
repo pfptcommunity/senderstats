@@ -145,6 +145,7 @@ def is_valid_domain_syntax(domain_name: str):
         raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
     return domain_name
 
+
 def is_valid_ip_syntax(ip: str):
     """
     Validates if the provided domain name follows the expected syntax.
@@ -156,6 +157,7 @@ def is_valid_ip_syntax(ip: str):
     if not re.match(IPV46_REGEX, ip, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid ip address syntax: {ip}")
     return ip
+
 
 def is_valid_email_syntax(email: str):
     """

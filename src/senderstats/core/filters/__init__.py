@@ -1,7 +1,7 @@
 from .ExcludeDomainFilter import ExcludeDomainFilter
 from .ExcludeEmptySenderFilter import ExcludeEmptySenderFilter
-from .ExcludeInvalidSizeFilter import ExcludeInvalidSizeFilter
 from .ExcludeIPFilter import ExcludeIPFilter
+from .ExcludeInvalidSizeFilter import ExcludeInvalidSizeFilter
 from .ExcludeSenderFilter import ExcludeSenderFilter
 from .RestrictDomainFilter import RestrictDomainFilter
 
