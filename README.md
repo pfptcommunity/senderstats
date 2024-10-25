@@ -52,7 +52,7 @@ You should use install pipx or you can configure your own virtual environment an
 pipx install senderstats
 ```
 
-### Use Cases:
+### Use Cases
 
 **Outbound message volumes and data transferred by:**
 
@@ -76,7 +76,33 @@ pipx install senderstats
     * Total outbound average size
     * Total outbound peak hourly volume
 
-### Usage Options:
+### Processing Behavior
+
+The primary purpose of this tool is to identify sender message volumes and calculate data transfer rates for legitimate
+emails.
+
+#### Input Requirements
+
+- **Expected Fields**: The input CSV should include at least the envelope sender and message size fields.
+- **Exclusions**: Messages will be excluded if:
+    - The envelope sender is empty (common for bounce replies or calendar actions).
+    - The message size is missing or not a valid number (typically rejects that can skew reporting).
+
+#### Exclusion Rules
+
+1. **Domain-Based Exclusions**:
+    - Messages from system domains such as `ppops.net`, `pphosted.com`, and `knowledgefront.com` are omitted by default
+      to filter out monitoring messages.
+    - To include these messages, use the `--no-default-exclude-domains` flag.
+
+2. **IP-Based Exclusions**:
+    - For messages from `127.0.0.1` (e.g., system reports and digests on Proofpoint Protection Gateway), use the
+      `--exclude-ips` flag to exclude them.
+    - This option requires sender IP addresses to be included in the CSV.
+
+Each exclusion step ensures the accuracy of volume and average message size reporting by filtering out unnecessary data.
+
+### Usage Options
 
 ```
 usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP]
@@ -292,6 +318,7 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ![image](https://github.com/user-attachments/assets/66279533-6582-440f-bf5b-d7496d6fc29a)
 
 ### Current Class Heirarchy
+
 ![senderstats](https://github.com/user-attachments/assets/a097705a-89cb-46ac-9180-041033c31c06)
 
 
