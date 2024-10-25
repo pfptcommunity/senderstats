@@ -42,11 +42,11 @@ class PipelineProcessor:
 
     def filter_summary(self):
         print()
-        print("Messages excluded by empty senders:",
+        print("Messages excluded by empty sender:",
               self._filter_manager.exclude_empty_sender_filter.get_excluded_count())
         print("Messages excluded by invalid size:",
               self._filter_manager.exclude_invalid_size_filter.get_excluded_count())
-        print("Messages excluded by IP addresses:",
+        print("Messages excluded by IP address:",
               self._filter_manager.exclude_ip_filter.get_excluded_count())
         print("Messages excluded by domain:", self._filter_manager.exclude_domain_filter.get_excluded_count())
         print("Messages excluded by sender:", self._filter_manager.exclude_senders_filter.get_excluded_count())
