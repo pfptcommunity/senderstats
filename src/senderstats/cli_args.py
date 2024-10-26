@@ -1,10 +1,12 @@
 import argparse
-import sys
 from importlib.metadata import version, PackageNotFoundError
+
 import regex as re
+
+from senderstats.processing.DataSourceManager import SourceType
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
-from senderstats.processing.MapperManager import SourceType
+
 
 def get_version():
     try:
@@ -12,25 +14,30 @@ def get_version():
     except PackageNotFoundError:
         return "0.0.0"
 
+
 def is_valid_domain_syntax(domain_name: str):
     if not re.match(VALID_DOMAIN_REGEX, domain_name, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid domain name syntax: {domain_name}")
     return domain_name
+
 
 def is_valid_ip_syntax(ip: str):
     if not re.match(IPV46_REGEX, ip, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid ip address syntax: {ip}")
     return ip
 
+
 def is_valid_email_syntax(email: str):
     if not re.match(EMAIL_ADDRESS_REGEX, email, re.IGNORECASE):
         raise argparse.ArgumentTypeError(f"Invalid email address syntax: {email}")
     return email
 
+
 def validate_xlsx_file(file_path):
     if not file_path.lower().endswith('.xlsx'):
         raise argparse.ArgumentTypeError("File must have a .xlsx extension.")
     return file_path
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -56,7 +63,7 @@ def parse_arguments():
                                 nargs='+', type=str,
                                 help='Smart search CSV files to read. Required if --token and --cluster-id are not specified.')
 
-    required_group.add_argument('-o','--output', metavar='<xlsx>', dest="output_file",
+    required_group.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file",
                                 type=validate_xlsx_file, required=True,
                                 help='Output file')
 
@@ -121,16 +128,16 @@ def parse_arguments():
     args = parser.parse_args()
 
     if args.input_files and (args.token or args.cluster_id):
-        parser.error("Specify either --input for CSV processing, or both --token and --cluster-id for websocket processing, not both.")
-    elif args.token and not args.cluster_id:
-        parser.error("Both --token and --cluster-id are required for websocket processing.")
-    elif args.cluster_id and not args.token:
-        parser.error("Both --token and --cluster-id are required for websocket processing.")
+        parser.error(
+            "Specify either --input for CSV processing, or both --token and --cluster-id for websocket processing, not both.")
     elif args.token and args.cluster_id:
         args.source_type = SourceType.JSON
     elif args.input_files:
         args.source_type = SourceType.CSV
+        args.token = None
+        args.cluster_id = None
     else:
-        parser.error("You must provide either --input for CSV processing or both --token and --cluster-id for websocket processing.")
+        parser.error(
+            "You must provide either --input for CSV processing or both --token and --cluster-id for websocket processing.")
 
     return args
