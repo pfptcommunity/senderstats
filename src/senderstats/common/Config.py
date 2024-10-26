@@ -2,7 +2,7 @@ import os
 from glob import glob
 from typing import List
 
-from common.defaults import DEFAULT_DOMAIN_EXCLUSIONS
+from senderstats.common.defaults import DEFAULT_DOMAIN_EXCLUSIONS
 
 
 class Config:
