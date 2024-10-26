@@ -1,5 +1,5 @@
-from .Mapper import Mapper
+from .CSVMapper import CSVMapper
 
 __all__ = [
-    'Mapper',
+    'CSVMapper',
 ]

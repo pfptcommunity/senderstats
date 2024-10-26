@@ -18,7 +18,7 @@ class MapperManager:
             'date': DEFAULT_DATE_FIELD,
             'ip': DEFAULT_IP_FIELD
         }
-        field_mapper = Mapper(default_field_mappings)
+        field_mapper = CSVMapper(default_field_mappings)
         self.__add_custom_mappings(field_mapper, args)
         self.__remove_unnecessary_mappings(field_mapper, args)
         return field_mapper

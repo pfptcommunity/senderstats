@@ -1,5 +1,7 @@
+from data.CSVDataSource import CSVDataSource
 from senderstats.common.utils import print_list_with_title
 from senderstats.interfaces import Processor
+from senderstats.interfaces.DataSource import DataSource
 from senderstats.processing.CSVProcessor import CSVProcessor
 from senderstats.processing.ExclusionManager import ExclusionManager
 from senderstats.processing.FilterManager import FilterManager
@@ -11,14 +13,14 @@ from senderstats.processing.TransformManager import TransformManager
 
 
 class PipelineProcessor:
-    def __init__(self, args):
+    def __init__(self, args, data_source: DataSource = None):
         self.__input_file_manager = InputFileManager(args)
         self.__mapper_manager = MapperManager(args)
         self.__exclusion_manager = ExclusionManager(args)
         self._filter_manager = FilterManager(self.__exclusion_manager)
         self._transform_manager = TransformManager(args, self.__mapper_manager)
         self._processor_manager = ProcessorManager(args)
-
+        self.__data_source = CSVDataSource(self.__input_file_manager.input_files, self.__mapper_manager.field_mapper)
         self.__pipeline = PipelineBuilder(
             self._transform_manager,
             self._filter_manager,
@@ -31,6 +33,11 @@ class PipelineProcessor:
         for f_current, input_file in enumerate(self.__input_file_manager.input_files, start=1):
             print(f"Processing: {input_file} ({f_current} of {f_total})")
             csv_processor.process(input_file, self.__pipeline)
+
+    async def process_data(self):
+        async for message_data in self.__data_source.read_data():
+            # print("Processed Row:", vars(normalized_data))
+            self.__pipeline.handle(message_data)
 
     def exclusion_summary(self):
         print()
