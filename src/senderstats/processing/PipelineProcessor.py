@@ -1,31 +1,26 @@
-from senderstats.data.CSVDataSource import CSVDataSource
+from senderstats.common.Config import Config
+from processing.DataSourceManager import DataSourceManager
 from senderstats.common.utils import print_list_with_title
 from senderstats.interfaces import Processor
-from senderstats.interfaces.DataSource import DataSource
 from senderstats.processing.CSVProcessor import CSVProcessor
-from senderstats.processing.ExclusionManager import ExclusionManager
 from senderstats.processing.FilterManager import FilterManager
-from senderstats.processing.InputFileManager import InputFileManager
-from senderstats.processing.MapperManager import MapperManager, SourceType
 from senderstats.processing.PipelineBuilder import PipelineBuilder
 from senderstats.processing.ProcessorManager import ProcessorManager
 from senderstats.processing.TransformManager import TransformManager
 
 
 class PipelineProcessor:
-    def __init__(self, args, data_source: DataSource = None):
-        self.__input_file_manager = InputFileManager(args)
-        self.__mapper_manager = MapperManager(args, SourceType.CSV)
-        self.__exclusion_manager = ExclusionManager(args)
-        self._filter_manager = FilterManager(self.__exclusion_manager)
-        self._transform_manager = TransformManager(args, self.__mapper_manager)
-        self._processor_manager = ProcessorManager(args)
-        self.__data_source = CSVDataSource(self.__input_file_manager.input_files, self.__mapper_manager.field_mapper)
+    def __init__(self, config: Config, data_source_manager: DataSourceManager):
+        self.__config = config
+        self.__data_source = data_source_manager.get_data_source()
+        self._filter_manager = FilterManager(config)
+        self._transform_manager = TransformManager(config)
+        self._processor_manager = ProcessorManager(config)
         self.__pipeline = PipelineBuilder(
             self._transform_manager,
             self._filter_manager,
             self._processor_manager
-        ).build_pipeline(args)
+        ).build_pipeline(config)
 
     def process_files(self):
         csv_processor = CSVProcessor(self.__mapper_manager)
@@ -41,11 +36,11 @@ class PipelineProcessor:
 
     def exclusion_summary(self):
         print()
-        print_list_with_title("Files to be processed:", self.__input_file_manager.input_files)
-        print_list_with_title("IPs excluded from processing:", self.__exclusion_manager.excluded_ips)
-        print_list_with_title("Senders excluded from processing:", self.__exclusion_manager.excluded_senders)
-        print_list_with_title("Domains excluded from processing:", self.__exclusion_manager.excluded_domains)
-        print_list_with_title("Domains constrained for processing:", self.__exclusion_manager.restricted_domains)
+        print_list_with_title("Files to be processed:", self.__config.input_files)
+        print_list_with_title("IPs excluded from processing:", self.__config.exclude_ips)
+        print_list_with_title("Senders excluded from processing:", self.__config.exclude_senders)
+        print_list_with_title("Domains excluded from processing:", self.__config.exclude_domains)
+        print_list_with_title("Domains constrained for processing:", self.__config.restrict_domains)
 
     def filter_summary(self):
         print()

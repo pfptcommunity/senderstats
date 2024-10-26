@@ -1,11 +1,11 @@
+from senderstats.common.Config import Config
 from senderstats.core.transformers import *
-from senderstats.processing.MapperManager import MapperManager
 
 
 class TransformManager:
-    def __init__(self, args, mapper_manager: MapperManager):
-        self.date_transform = DateTransform(args.date_format)
-        self.mfrom_transform = MFromTransform(args.decode_srs, args.remove_prvs)
-        self.hfrom_transform = HFromTransform(args.no_display, args.no_empty_hfrom)
+    def __init__(self, config: Config):
+        self.date_transform = DateTransform(config.date_format)
+        self.mfrom_transform = MFromTransform(config.decode_srs, config.remove_prvs)
+        self.hfrom_transform = HFromTransform(config.no_display_name, config.no_empty_hfrom)
         self.msgid_transform = MIDTransform()
-        self.rpath_transform = RPathTransform(args.decode_srs, args.remove_prvs)
+        self.rpath_transform = RPathTransform(config.decode_srs, config.remove_prvs)
