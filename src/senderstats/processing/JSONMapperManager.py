@@ -1,6 +1,6 @@
-from senderstats.core.mappers.JSONMapper import JSONMapper
 from senderstats.common.Config import Config
 from senderstats.common.defaults import *
+from senderstats.core.mappers.JSONMapper import JSONMapper
 
 
 class JSONMapperManager:

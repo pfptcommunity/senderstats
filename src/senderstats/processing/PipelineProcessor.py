@@ -1,8 +1,7 @@
-from senderstats.common.Config import Config
 from processing.DataSourceManager import DataSourceManager
+from senderstats.common.Config import Config
 from senderstats.common.utils import print_list_with_title
 from senderstats.interfaces import Processor
-from senderstats.processing.CSVProcessor import CSVProcessor
 from senderstats.processing.FilterManager import FilterManager
 from senderstats.processing.PipelineBuilder import PipelineBuilder
 from senderstats.processing.ProcessorManager import ProcessorManager
@@ -22,25 +21,10 @@ class PipelineProcessor:
             self._processor_manager
         ).build_pipeline(config)
 
-    def process_files(self):
-        csv_processor = CSVProcessor(self.__mapper_manager)
-        f_total = len(self.__input_file_manager.input_files)
-        for f_current, input_file in enumerate(self.__input_file_manager.input_files, start=1):
-            print(f"Processing: {input_file} ({f_current} of {f_total})")
-            csv_processor.process(input_file, self.__pipeline)
-
     async def process_data(self):
         async for message_data in self.__data_source.read_data():
             # print("Processed Row:", vars(normalized_data))
             self.__pipeline.handle(message_data)
-
-    def exclusion_summary(self):
-        print()
-        print_list_with_title("Files to be processed:", self.__config.input_files)
-        print_list_with_title("IPs excluded from processing:", self.__config.exclude_ips)
-        print_list_with_title("Senders excluded from processing:", self.__config.exclude_senders)
-        print_list_with_title("Domains excluded from processing:", self.__config.exclude_domains)
-        print_list_with_title("Domains constrained for processing:", self.__config.restrict_domains)
 
     def filter_summary(self):
         print()

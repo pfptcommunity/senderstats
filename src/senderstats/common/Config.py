@@ -1,6 +1,7 @@
 import os
 from glob import glob
 from typing import List
+
 from common.defaults import DEFAULT_DOMAIN_EXCLUSIONS
 
 
@@ -11,7 +12,6 @@ class Config:
         self.input_files = Config.__prepare_input_files(args.input_files)
         self.token = args.token
         self.cluster_id = args.cluster_id
-
 
         # Output configurations
         self.output_file = args.output_file

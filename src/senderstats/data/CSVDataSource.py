@@ -19,7 +19,7 @@ class CSVDataSource(DataSource):
                 with open(input_file, mode="r", encoding="utf-8-sig") as file:
                     reader = csv.reader(file)
                     headers = next(reader)
-                    self.__field_mapper.reindex(headers)  # Setup the mapper with headers
+                    self.__field_mapper.reindex(headers)
                     for row in reader:
                         normalized_row = self.__field_mapper.map_fields(row)
                         yield normalized_row

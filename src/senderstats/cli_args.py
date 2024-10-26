@@ -3,9 +3,9 @@ from importlib.metadata import version, PackageNotFoundError
 
 import regex as re
 
-from senderstats.processing.DataSourceManager import SourceType
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
+from senderstats.processing.DataSourceManager import SourceType
 
 
 def get_version():

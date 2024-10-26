@@ -1,15 +1,15 @@
-import os
-from glob import glob
-
-from senderstats.processing.CSVMapperManager import CSVMapperManager
-from senderstats.data.WebSocketDataSource import WebSocketDataSource
-from senderstats.data.CSVDataSource import CSVDataSource
-from senderstats.common.Config import Config
 from enum import Enum
+
+from senderstats.common.Config import Config
+from senderstats.data.CSVDataSource import CSVDataSource
+from senderstats.data.WebSocketDataSource import WebSocketDataSource
+from senderstats.processing.CSVMapperManager import CSVMapperManager
+
 
 class SourceType(Enum):
     CSV = "CSV"
     JSON = "JSON"
+
 
 class DataSourceManager:
     def __init__(self, config: Config):
