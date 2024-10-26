@@ -1,4 +1,4 @@
-from data.CSVDataSource import CSVDataSource
+from senderstats.data.CSVDataSource import CSVDataSource
 from senderstats.common.utils import print_list_with_title
 from senderstats.interfaces import Processor
 from senderstats.interfaces.DataSource import DataSource
@@ -6,7 +6,7 @@ from senderstats.processing.CSVProcessor import CSVProcessor
 from senderstats.processing.ExclusionManager import ExclusionManager
 from senderstats.processing.FilterManager import FilterManager
 from senderstats.processing.InputFileManager import InputFileManager
-from senderstats.processing.MapperManager import MapperManager
+from senderstats.processing.MapperManager import MapperManager, SourceType
 from senderstats.processing.PipelineBuilder import PipelineBuilder
 from senderstats.processing.ProcessorManager import ProcessorManager
 from senderstats.processing.TransformManager import TransformManager
@@ -15,7 +15,7 @@ from senderstats.processing.TransformManager import TransformManager
 class PipelineProcessor:
     def __init__(self, args, data_source: DataSource = None):
         self.__input_file_manager = InputFileManager(args)
-        self.__mapper_manager = MapperManager(args)
+        self.__mapper_manager = MapperManager(args, SourceType.CSV)
         self.__exclusion_manager = ExclusionManager(args)
         self._filter_manager = FilterManager(self.__exclusion_manager)
         self._transform_manager = TransformManager(args, self.__mapper_manager)
