@@ -1,18 +1,18 @@
 from xlsxwriter import Workbook
 
+from senderstats.processing.PipelineManager import PipelineManager
 from senderstats.interfaces.Reportable import Reportable
-from senderstats.processing import PipelineProcessor
 from senderstats.reporting.FormatManager import FormatManager
 
 
 class PipelineProcessorReport:
-    def __init__(self, output_file: str, pipeline_processor: PipelineProcessor):
+    def __init__(self, output_file: str, pipeline_manager: PipelineManager):
         self.__threshold = 100
         self.__output_file = output_file
         self.__workbook = Workbook(output_file)
         self.__format_manager = FormatManager(self.__workbook)
-        self.__pipeline_processor = pipeline_processor
-        self.__days = len(pipeline_processor._processor_manager.date_processor.get_date_counter())
+        self.__pipeline_manager = pipeline_manager
+        self.__days = len(self.__pipeline_manager.get_processor_manager().date_processor.get_date_counter())
 
     def close(self):
         self.__workbook.close()
@@ -137,5 +137,5 @@ class PipelineProcessorReport:
         print("Generating report, please wait.")
         self.create_sizing_summary()
 
-        for proc in self.__pipeline_processor.get_processors():
+        for proc in self.__pipeline_manager.get_active_processors():
             self.__report(proc)

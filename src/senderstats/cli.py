@@ -1,5 +1,6 @@
 import asyncio
 
+from processing.PipelineManager import PipelineManager
 from senderstats.cli_args import parse_arguments
 from senderstats.common.Config import Config
 from senderstats.common.utils import print_list_with_title
@@ -20,15 +21,20 @@ def main():
     print_list_with_title("Domains excluded from processing:", config.exclude_domains)
     print_list_with_title("Domains constrained for processing:", config.restrict_domains)
 
+    # This will create a CSV data source or WebSocket for PoD Log API
     data_source_manager = DataSourceManager(config)
 
-    processor = PipelineProcessor(config, data_source_manager)
+    # Pipeline manager builds the correct filters and processing depending on the report options
+    pipeline_manager = PipelineManager(config)
+
+    processor = PipelineProcessor(data_source_manager, pipeline_manager)
 
     asyncio.run(processor.process_data())
 
-    processor.filter_summary()
+    # Display filtering statistics
+    pipeline_manager.get_filter_manager().display_summary()
 
-    report = PipelineProcessorReport(config.output_file, processor)
+    report = PipelineProcessorReport(config.output_file, pipeline_manager)
     report.generate()
     report.close()
 
