@@ -1,11 +1,11 @@
 from typing import List
 
 from senderstats.common.utils import compile_domains_pattern
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Filter import Filter
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.filter import Filter
 
 
-# ExcludeDomainFilter inherits from Filter and works with MessageData
+# ExcludeDomainFilter inherits from filter and works with MessageData
 class ExcludeDomainFilter(Filter[MessageData]):
     def __init__(self, excluded_domains: List[str]):
         super().__init__()

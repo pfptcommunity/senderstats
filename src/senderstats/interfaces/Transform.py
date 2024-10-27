@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional, final, Generic
 
-from senderstats.interfaces.Handler import AbstractHandler, TInput, TOutput
+from senderstats.interfaces.handler import AbstractHandler, TInput, TOutput
 
 
 # Transform now extends AbstractHandler with separate input and output types

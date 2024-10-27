@@ -1,9 +1,9 @@
 from collections import defaultdict
 from typing import DefaultDict, Optional
 
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Processor import Processor
-from senderstats.interfaces.Reportable import Reportable
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.processor import Processor
+from senderstats.interfaces.reportable import Reportable
 
 
 class DateProcessor(Processor[MessageData], Reportable):

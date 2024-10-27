@@ -1,57 +1,52 @@
+# MFromProcessor.py
 from random import random
 from typing import Dict, Optional
 
 from senderstats.common.utils import average
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Processor import Processor
-from senderstats.interfaces.Reportable import Reportable
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.processor import Processor
+from senderstats.interfaces.reportable import Reportable
 
 
-class RPathProcessor(Processor[MessageData], Reportable):
-    sheet_name = "Return Path"
-    headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-    __rpath_data: Dict[str, Dict]
+class MFromProcessor(Processor[MessageData], Reportable):
+    __mfrom_data: Dict[str, Dict]
     __sample_subject: bool
     __expand_recipients: bool
 
     def __init__(self, sample_subject=False, expand_recipients=False):
         super().__init__()
-        self.__rpath_data = dict()
+        self.__mfrom_data = dict()
         self.__sample_subject = sample_subject
         self.__expand_recipients = expand_recipients
 
     def execute(self, data: MessageData) -> None:
-        self.__rpath_data.setdefault(data.rpath, {})
+        self.__mfrom_data.setdefault(data.mfrom, {})
 
-        rpath_data = self.__rpath_data[data.rpath]
+        mfrom_data = self.__mfrom_data[data.mfrom]
 
         if self.__expand_recipients:
-            rpath_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            mfrom_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            rpath_data.setdefault("message_size", []).append(data.msgsz)
+            mfrom_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
-            rpath_data.setdefault("subjects", [])
-            # Avoid storing empty subject lines
+            mfrom_data.setdefault("subjects", [])
             if data.subject:
-                # Calculate probability based on the number of processed records
-                probability = 1 / len(rpath_data['message_size'])
-
-                # Ensure at least one subject is added if subjects array is empty
-                if not rpath_data['subjects'] or random() < probability:
-                    rpath_data['subjects'].append(data.subject)
+                probability = 1 / len(mfrom_data['message_size'])
+                if not mfrom_data['subjects'] or random() < probability:
+                    mfrom_data['subjects'].append(data.subject)
 
     def report(self, context: Optional = None) -> dict:
         # Yield the report name and the data generator together
         def get_report_name():
-            return "Return Path"
+            return "Envelope Senders"
 
         def get_report_data():
-            headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+            headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
             if self.__sample_subject:
                 headers.append('Subjects')
             yield headers
-            for k, v in self.__rpath_data.items():
+            for k, v in self.__mfrom_data.items():
                 messages_per_sender = len(v['message_size'])
                 total_bytes = sum(v['message_size'])
                 average_message_size = average(v['message_size'])

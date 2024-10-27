@@ -1,8 +1,8 @@
 from tldextract import tldextract
 
 from senderstats.common.utils import parse_email_details, find_ip_in_text
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Transform import Transform
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.transform import Transform
 
 
 class MIDTransform(Transform[MessageData, MessageData]):

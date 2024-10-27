@@ -2,9 +2,9 @@ from random import random
 from typing import Dict, Optional
 
 from senderstats.common.utils import average
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Processor import Processor
-from senderstats.interfaces.Reportable import Reportable
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.processor import Processor
+from senderstats.interfaces.reportable import Reportable
 
 
 class AlignmentProcessor(Processor[MessageData], Reportable):

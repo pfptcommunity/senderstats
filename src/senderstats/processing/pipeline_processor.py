@@ -1,5 +1,5 @@
-from senderstats.processing.DataSourceManager import DataSourceManager
-from senderstats.processing.PipelineManager import PipelineManager
+from senderstats.processing.data_source_manager import DataSourceManager
+from senderstats.processing.pipeline_manager import PipelineManager
 
 
 class PipelineProcessor:

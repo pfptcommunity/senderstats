@@ -1,4 +1,4 @@
-from senderstats.interfaces.DataSource import DataSource
+from senderstats.interfaces.data_source import DataSource
 
 
 class WebSocketDataSource(DataSource):

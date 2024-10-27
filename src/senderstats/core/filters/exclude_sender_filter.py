@@ -1,7 +1,7 @@
 from typing import List, Set
 
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Filter import Filter
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.filter import Filter
 
 
 class ExcludeSenderFilter(Filter[MessageData]):

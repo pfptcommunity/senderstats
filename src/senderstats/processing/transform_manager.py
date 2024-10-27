@@ -1,9 +1,9 @@
-from senderstats.common.Config import Config
 from senderstats.core.transformers import *
+from senderstats.processing.config_manager import ConfigManager
 
 
 class TransformManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.date_transform = DateTransform(config.date_format)
         self.mfrom_transform = MFromTransform(config.decode_srs, config.remove_prvs)
         self.hfrom_transform = HFromTransform(config.no_display_name, config.no_empty_hfrom)

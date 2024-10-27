@@ -5,7 +5,7 @@ import regex as re
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
-from senderstats.processing.DataSourceManager import SourceType
+from senderstats.data.data_source_type import DataSourceType
 
 
 def get_version():
@@ -131,9 +131,9 @@ def parse_arguments():
         parser.error(
             "Specify either --input for CSV processing, or both --token and --cluster-id for websocket processing, not both.")
     elif args.token and args.cluster_id:
-        args.source_type = SourceType.JSON
+        args.source_type = DataSourceType.JSON
     elif args.input_files:
-        args.source_type = SourceType.CSV
+        args.source_type = DataSourceType.CSV
         args.token = None
         args.cluster_id = None
     else:

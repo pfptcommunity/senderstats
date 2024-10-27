@@ -1,9 +1,9 @@
-from senderstats.common.Config import Config
 from senderstats.core.filters import *
+from senderstats.processing.config_manager import ConfigManager
 
 
 class FilterManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.exclude_empty_sender_filter = ExcludeEmptySenderFilter()
         self.exclude_invalid_size_filter = ExcludeInvalidSizeFilter()
         self.exclude_domain_filter = ExcludeDomainFilter(config.exclude_domains)

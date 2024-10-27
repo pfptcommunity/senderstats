@@ -1,4 +1,4 @@
-from .CSVMapper import CSVMapper
+from .csv_mapper import CSVMapper
 
 __all__ = [
     'CSVMapper',

@@ -1,8 +1,8 @@
 from xlsxwriter import Workbook
 
-from senderstats.processing.PipelineManager import PipelineManager
-from senderstats.interfaces.Reportable import Reportable
-from senderstats.reporting.FormatManager import FormatManager
+from senderstats.interfaces.reportable import Reportable
+from senderstats.processing.pipeline_manager import PipelineManager
+from senderstats.reporting.format_manager import FormatManager
 
 
 class PipelineProcessorReport:

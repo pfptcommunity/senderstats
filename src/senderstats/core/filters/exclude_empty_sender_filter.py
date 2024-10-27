@@ -1,14 +1,14 @@
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Filter import Filter
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.filter import Filter
 
 
-class ExcludeInvalidSizeFilter(Filter[MessageData]):
+class ExcludeEmptySenderFilter(Filter[MessageData]):
     def __init__(self):
         super().__init__()
         self.__excluded_count = 0
 
     def filter(self, data: MessageData) -> bool:
-        if data.msgsz == -1:
+        if not data.mfrom:
             self.__excluded_count += 1
             return False
         return True

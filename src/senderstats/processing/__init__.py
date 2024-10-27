@@ -1,5 +1,5 @@
-from .PipelineProcessor import PipelineProcessor
+from . import pipeline_processor
 
 __all__ = [
-    'PipelineProcessor'
+    'pipeline_processor'
 ]

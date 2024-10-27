@@ -1,52 +1,54 @@
-# MFromProcessor.py
 from random import random
-from typing import Dict, Optional
+from typing import TypeVar, Generic, Dict, Optional
 
 from senderstats.common.utils import average
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Processor import Processor
-from senderstats.interfaces.Reportable import Reportable
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.processor import Processor
+from senderstats.interfaces.reportable import Reportable
+
+TMessageData = TypeVar('TMessageData', bound=MessageData)
 
 
-class MFromProcessor(Processor[MessageData], Reportable):
-    __mfrom_data: Dict[str, Dict]
+# HFromProcessor.py
+class HFromProcessor(Processor[MessageData], Reportable, Generic[TMessageData]):
+    __hfrom_data: Dict[str, Dict]
     __sample_subject: bool
     __expand_recipients: bool
 
     def __init__(self, sample_subject=False, expand_recipients=False):
         super().__init__()
-        self.__mfrom_data = dict()
+        self.__hfrom_data = dict()
         self.__sample_subject = sample_subject
         self.__expand_recipients = expand_recipients
 
-    def execute(self, data: MessageData) -> None:
-        self.__mfrom_data.setdefault(data.mfrom, {})
+    def execute(self, data: TMessageData) -> None:
+        self.__hfrom_data.setdefault(data.hfrom, {})
 
-        mfrom_data = self.__mfrom_data[data.mfrom]
+        hfrom_data = self.__hfrom_data[data.hfrom]
 
         if self.__expand_recipients:
-            mfrom_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            hfrom_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
         else:
-            mfrom_data.setdefault("message_size", []).append(data.msgsz)
+            hfrom_data.setdefault("message_size", []).append(data.msgsz)
 
         if self.__sample_subject:
-            mfrom_data.setdefault("subjects", [])
+            hfrom_data.setdefault("subjects", [])
             if data.subject:
-                probability = 1 / len(mfrom_data['message_size'])
-                if not mfrom_data['subjects'] or random() < probability:
-                    mfrom_data['subjects'].append(data.subject)
+                probability = 1 / len(hfrom_data['message_size'])
+                if not hfrom_data['subjects'] or random() < probability:
+                    hfrom_data['subjects'].append(data.subject)
 
     def report(self, context: Optional = None) -> dict:
         # Yield the report name and the data generator together
         def get_report_name():
-            return "Envelope Senders"
+            return "Header From"
 
         def get_report_data():
-            headers = ['MFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
+            headers = ['HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
             if self.__sample_subject:
                 headers.append('Subjects')
             yield headers
-            for k, v in self.__mfrom_data.items():
+            for k, v in self.__hfrom_data.items():
                 messages_per_sender = len(v['message_size'])
                 total_bytes = sum(v['message_size'])
                 average_message_size = average(v['message_size'])

@@ -1,6 +1,6 @@
 from senderstats.common.utils import parse_email_details
-from senderstats.data.MessageData import MessageData
-from senderstats.interfaces.Transform import Transform
+from senderstats.data.message_data import MessageData
+from senderstats.interfaces.transform import Transform
 
 
 class HFromTransform(Transform[MessageData, MessageData]):

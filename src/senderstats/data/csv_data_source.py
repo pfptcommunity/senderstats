@@ -2,8 +2,8 @@ import asyncio
 import csv
 from typing import List
 
-from senderstats.core.mappers.CSVMapper import CSVMapper
-from senderstats.interfaces.DataSource import DataSource
+from senderstats.core.mappers.csv_mapper import CSVMapper
+from senderstats.interfaces.data_source import DataSource
 
 
 class CSVDataSource(DataSource):

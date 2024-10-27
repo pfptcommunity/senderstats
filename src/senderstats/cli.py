@@ -1,25 +1,18 @@
 import asyncio
 
-from processing.PipelineManager import PipelineManager
+from processing.pipeline_manager import PipelineManager
 from senderstats.cli_args import parse_arguments
-from senderstats.common.Config import Config
-from senderstats.common.utils import print_list_with_title
-from senderstats.processing.DataSourceManager import DataSourceManager
-from senderstats.processing.DataSourceManager import SourceType
-from senderstats.processing.PipelineProcessor import PipelineProcessor
-from senderstats.reporting.PipelineProcessorReport import PipelineProcessorReport
+from senderstats.processing.config_manager import ConfigManager
+from senderstats.processing.data_source_manager import DataSourceManager
+from senderstats.processing.pipeline_processor import PipelineProcessor
+from senderstats.reporting.pipeline_processor_report import PipelineProcessorReport
 
 
 def main():
     # Config object stores all arguments parsed
-    config = Config(parse_arguments())
+    config = ConfigManager(parse_arguments())
 
-    if config.source_type == SourceType.CSV:
-        print_list_with_title("Files to be processed:", config.input_files)
-    print_list_with_title("IPs excluded from processing:", config.exclude_ips)
-    print_list_with_title("Senders excluded from processing:", config.exclude_senders)
-    print_list_with_title("Domains excluded from processing:", config.exclude_domains)
-    print_list_with_title("Domains constrained for processing:", config.restrict_domains)
+    config.display_filter_criteria()
 
     # This will create a CSV data source or WebSocket for PoD Log API
     data_source_manager = DataSourceManager(config)

@@ -1,7 +1,5 @@
 from typing import Dict, List, Callable, Any
 
-from senderstats.interfaces.FieldMapper import FieldMapper
-
 
 class JSONMapper(FieldMapper):
     def __init__(self, mappings: Dict[str, List[str]], decoders: Dict[str, Callable] = None):

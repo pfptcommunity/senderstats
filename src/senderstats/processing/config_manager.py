@@ -3,13 +3,15 @@ from glob import glob
 from typing import List
 
 from senderstats.common.defaults import DEFAULT_DOMAIN_EXCLUSIONS
+from senderstats.common.utils import print_list_with_title
+from senderstats.data.data_source_type import DataSourceType
 
 
-class Config:
+class ConfigManager:
     def __init__(self, args):
         # Data source configurations
         self.source_type = args.source_type
-        self.input_files = Config.__prepare_input_files(args.input_files)
+        self.input_files = ConfigManager.__prepare_input_files(args.input_files)
         self.token = args.token
         self.cluster_id = args.cluster_id
 
@@ -38,13 +40,13 @@ class Config:
         self.decode_srs = args.decode_srs
         self.no_empty_hfrom = args.no_empty_hfrom
         self.sample_subject = args.sample_subject
-        self.exclude_ips = Config.__prepare_exclusions(args.exclude_ips)
+        self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)
         if args.no_default_exclude_domains:
-            self.exclude_domains = Config.__prepare_exclusions(args.exclude_domains)
+            self.exclude_domains = ConfigManager.__prepare_exclusions(args.exclude_domains)
         else:
-            self.exclude_domains = Config.__prepare_exclusions(DEFAULT_DOMAIN_EXCLUSIONS + args.exclude_domains)
-        self.restrict_domains = Config.__prepare_exclusions(args.restrict_domains)
-        self.exclude_senders = Config.__prepare_exclusions(args.exclude_senders)
+            self.exclude_domains = ConfigManager.__prepare_exclusions(DEFAULT_DOMAIN_EXCLUSIONS + args.exclude_domains)
+        self.restrict_domains = ConfigManager.__prepare_exclusions(args.restrict_domains)
+        self.exclude_senders = ConfigManager.__prepare_exclusions(args.exclude_senders)
         self.date_format = args.date_format
         self.no_default_exclude_domains = args.no_default_exclude_domains
 
@@ -59,3 +61,11 @@ class Config:
     @staticmethod
     def __prepare_exclusions(exclusions: List[str]):
         return sorted(list({item.casefold() for item in exclusions}))
+
+    def display_filter_criteria(self):
+        if self.source_type == DataSourceType.CSV:
+            print_list_with_title("Files to be processed:", self.input_files)
+        print_list_with_title("IPs excluded from processing:", self.exclude_ips)
+        print_list_with_title("Senders excluded from processing:", self.exclude_senders)
+        print_list_with_title("Domains excluded from processing:", self.exclude_domains)
+        print_list_with_title("Domains constrained for processing:", self.restrict_domains)

@@ -1,8 +1,8 @@
-from .Filter import Filter
-from .Handler import Handler
-from .Processor import Processor
-from .Transform import Transform
-from .Validator import Validator
+from .filter import Filter
+from .handler import Handler
+from .processor import Processor
+from .transform import Transform
+from .validator import Validator
 
 __all__ = [
     'Filter',

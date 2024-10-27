@@ -1,10 +1,8 @@
-from senderstats.common.Config import Config
 from senderstats.common.defaults import *
-from senderstats.core.mappers.JSONMapper import JSONMapper
 
 
 class JSONMapperManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.__config = config
         default_field_mappings = {
             'mfrom': DEFAULT_MFROM_FIELD,

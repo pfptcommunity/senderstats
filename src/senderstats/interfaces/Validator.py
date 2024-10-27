@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from typing import Optional, final, Generic
 
-from senderstats.interfaces.Handler import AbstractHandler, TInput
+from senderstats.interfaces.handler import AbstractHandler, TInput
 
 
 # Validator class validates the data and passes it down the chain if valid

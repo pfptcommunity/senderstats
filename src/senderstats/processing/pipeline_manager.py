@@ -1,12 +1,12 @@
-from senderstats.common.Config import Config
-from senderstats.interfaces import Transform, Filter, Processor
-from senderstats.processing.FilterManager import FilterManager
-from senderstats.processing.ProcessorManager import ProcessorManager
-from senderstats.processing.TransformManager import TransformManager
+from senderstats.interfaces import Filter, Processor
+from senderstats.processing.config_manager import ConfigManager
+from senderstats.processing.filter_manager import FilterManager
+from senderstats.processing.processor_manager import ProcessorManager
+from senderstats.processing.transform_manager import TransformManager
 
 
 class PipelineManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.__filter_manager = FilterManager(config)
         self.__transform_manager = TransformManager(config)
         self.__processor_manager = ProcessorManager(config)

@@ -1,10 +1,10 @@
-from core.mappers import CSVMapper
-from senderstats.common.Config import Config
 from senderstats.common.defaults import *
+from senderstats.core.mappers import CSVMapper
+from senderstats.processing.config_manager import ConfigManager
 
 
 class CSVMapperManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.__config = config
         default_field_mappings = {
             'mfrom': DEFAULT_MFROM_FIELD,

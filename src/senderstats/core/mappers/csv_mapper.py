@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
-from data.MessageData import MessageData
-from senderstats.interfaces.FieldMapper import FieldMapper
+from data.message_data import MessageData
+from senderstats.interfaces.field_mapper import FieldMapper
 
 
 class CSVMapper(FieldMapper):

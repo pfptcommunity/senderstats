@@ -1,9 +1,9 @@
-from senderstats.common.Config import Config
 from senderstats.core.processors import *
+from senderstats.processing.config_manager import ConfigManager
 
 
 class ProcessorManager:
-    def __init__(self, config: Config):
+    def __init__(self, config: ConfigManager):
         self.mfrom_processor = MFromProcessor(config.sample_subject, config.expand_recipients)
         self.hfrom_processor = HFromProcessor(config.sample_subject, config.expand_recipients)
         self.msgid_processor = MIDProcessor(config.sample_subject, config.expand_recipients)
