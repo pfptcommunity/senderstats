@@ -22,7 +22,6 @@ class PipelineProcessor:
 
     async def process_data(self):
         async for message_data in self.__data_source.read_data():
-            # print("Processed Row:", vars(normalized_data))
             self.__pipeline.handle(message_data)
 
     def filter_summary(self):
