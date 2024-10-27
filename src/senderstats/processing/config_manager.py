@@ -52,11 +52,12 @@ class ConfigManager:
 
     @staticmethod
     def __prepare_input_files(input_files: List[str]):
-        file_names = []
-        for f in input_files:
-            file_names += glob(f)
-        file_names = set(file_names)
-        return [file for file in file_names if os.path.isfile(file)]
+        if input_files:
+            file_names = []
+            for f in input_files:
+                file_names += glob(f)
+            file_names = set(file_names)
+            return [file for file in file_names if os.path.isfile(file)]
 
     @staticmethod
     def __prepare_exclusions(exclusions: List[str]):

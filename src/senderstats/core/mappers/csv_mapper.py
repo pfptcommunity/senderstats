@@ -29,7 +29,7 @@ class CSVMapper(FieldMapper):
         else:
             raise ValueError(f"Field '{field_name}' not found or not mapped correctly.")
 
-    def map_fields(self, row: List[str]) -> Dict[str, Any]:
+    def map_fields(self, row: List[str]) -> MessageData:
         message_data = MessageData()
         for field in self._index_map.keys():
             value = self.extract_value(row, field)
