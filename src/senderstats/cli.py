@@ -1,10 +1,7 @@
-import asyncio
-
-from senderstats.data.web_socket_data_source import WebSocketDataSource
-from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.cli_args import parse_arguments
 from senderstats.processing.config_manager import ConfigManager
 from senderstats.processing.data_source_manager import DataSourceManager
+from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.processing.pipeline_processor import PipelineProcessor
 from senderstats.reporting.pipeline_processor_report import PipelineProcessorReport
 
@@ -23,7 +20,7 @@ def main():
 
     processor = PipelineProcessor(data_source_manager, pipeline_manager)
 
-    asyncio.run(processor.process_data())
+    processor.process_data()
 
     # Display filtering statistics
     pipeline_manager.get_filter_manager().display_summary()

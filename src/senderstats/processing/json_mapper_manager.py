@@ -3,7 +3,6 @@ from typing import List
 
 from senderstats.core.mappers.json_mapper import JSONMapper
 from senderstats.processing.config_manager import ConfigManager
-from senderstats.common.defaults import *
 
 
 class JSONMapperManager:
@@ -13,7 +12,7 @@ class JSONMapperManager:
             'direction': ["filter", "routeDirection"],
             'mfrom': ["envelope", "from"],
             'hfrom': ["msg", "normalizedHeader", "from"],
-            'rpath': ["envelope", "from"],
+            'rpath': ["msg", "normalizedHeader", "return-path"],
             'rcpts': ["envelope", "rcpts"],
             'msgsz': ["msg", "sizeBytes"],
             'msgid': ["msg", "normalizedHeader", "message-id"],
@@ -23,10 +22,11 @@ class JSONMapperManager:
         }
         decoders = {
             'hfrom': JSONMapperManager.decode_array,
+            'rpath': JSONMapperManager.decode_array,
             'msgid': JSONMapperManager.decode_array,
             'subject': JSONMapperManager.decode_array
         }
-        self.__mapper = JSONMapper(default_field_mappings,decoders)
+        self.__mapper = JSONMapper(default_field_mappings, decoders)
         self.__add_custom_mappings()
         self.__remove_unnecessary_mappings()
 
@@ -90,4 +90,3 @@ class JSONMapperManager:
     @staticmethod
     def decode_array(hfrom_data: List[str]):
         return ";".join(JSONMapperManager.decode_mime_strings(hfrom_data))
-

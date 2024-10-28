@@ -1,12 +1,11 @@
 import json
 import ssl
-import asyncio
 from datetime import datetime, timedelta
+
 import websocket
 
 from senderstats.core.mappers.json_mapper import JSONMapper
 from senderstats.interfaces.data_source import DataSource
-
 
 
 class WebSocketDataSource(DataSource):
@@ -24,11 +23,11 @@ class WebSocketDataSource(DataSource):
         """Helper function to construct the WebSocket URL."""
         base_url = f"wss://logstream.proofpoint.com:443/v1/stream?cid={cluster_id}&type={log_type}"
         current_time = datetime.now()
-        since_time = (current_time - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        since_time = (current_time - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S%z")
         to_time = current_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         return f"{base_url}&sinceTime={since_time}&toTime={to_time}"
 
-    async def read_data(self):
+    def read_data(self):
         """Asynchronously fetch data from WebSocket and yield as MessageData instances."""
         ws = websocket.create_connection(self.__websocket_url, header=self.__header,
                                          sslopt=self.__ssl_options, timeout=self.__timeout)
@@ -44,8 +43,6 @@ class WebSocketDataSource(DataSource):
                     data_count += 1
                     if data_count % 5000 == 0:
                         print(f"Records fetched so far: {data_count}")
-
-                    await asyncio.sleep(0)  # Yield control to the event loop to keep it non-blocking
 
         except Exception as e:
             print(f"ERROR: Failed to fetch data: {e}. Total records fetched: {data_count}")

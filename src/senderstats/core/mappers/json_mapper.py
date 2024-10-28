@@ -1,6 +1,5 @@
 from typing import Dict, List, Callable, Any
 
-from data.message_data import MessageData
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.field_mapper import FieldMapper
 
@@ -27,11 +26,11 @@ class JSONMapper(FieldMapper):
         message_data = MessageData()
         for field, path in self.mappings.items():
             value = self.extract_value(json_data, field)
-            #print(f"Before {field}: {value}")
+            # print(f"Before {field}: {value}")
             if field in self.decoders and value is not None:
                 value = self.decoders[field](value)
             setattr(message_data, field, value)
-            #print(f"After {field}: {value}")
+            # print(f"After {field}: {value}")
         return message_data
 
     def add_mapping(self, field_name: str, json_path: List[str]):

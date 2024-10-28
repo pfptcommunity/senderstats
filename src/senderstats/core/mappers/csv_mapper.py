@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict
 
 from data.message_data import MessageData
 from senderstats.interfaces.field_mapper import FieldMapper
