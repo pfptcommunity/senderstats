@@ -19,7 +19,7 @@ requires-python = ">3.9"
 dependencies = [
     'xlsxwriter',
     'tldextract',
-    'websocket',
+    'websocket-client',
     'regex'
 ]
 
