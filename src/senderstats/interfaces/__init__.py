@@ -10,5 +10,6 @@ __all__ = [
     'Handler',
     'Processor',
     'Transform',
-    'Validator'
+    'Validator',
+    'Reportable'
 ]
