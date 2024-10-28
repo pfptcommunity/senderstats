@@ -1,4 +1,4 @@
-from senderstats.interfaces import Filter, Processor
+from senderstats.interfaces import Filter, Processor, Transform
 from senderstats.processing.config_manager import ConfigManager
 from senderstats.processing.filter_manager import FilterManager
 from senderstats.processing.processor_manager import ProcessorManager
