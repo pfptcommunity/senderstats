@@ -128,12 +128,12 @@ Input / Output arguments (required):
                                                        --token and --cluster-
                                                        id are not specified.
   -o <xlsx>, --output <xlsx>                           Output file
-  --token <token>                                      Authorization token for
-                                                       websocket (must be used
-                                                       with --cluster-id).
   --cluster-id <cluster-id>                            Cluster ID for
                                                        websocket (must be used
                                                        with --token).
+  --token <token>                                      Authorization token for
+                                                       websocket (must be used
+                                                       with --cluster-id).
 
 Field mapping arguments (optional):
   --ip IP                                              CSV field of the IP

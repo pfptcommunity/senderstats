@@ -67,8 +67,10 @@ def parse_arguments():
                                 type=validate_xlsx_file, required=True,
                                 help='Output file')
 
-    required_group.add_argument('--token', metavar='<token>', type=str, help='Authorization token for websocket (must be used with --cluster-id).')
-    required_group.add_argument('--cluster-id', metavar='<cluster-id>' ,type=str, help='Cluster ID for websocket (must be used with --token).')
+    required_group.add_argument('--cluster-id', metavar='<cluster-id>', type=str,
+                                help='Cluster ID for websocket (must be used with --token).')
+    required_group.add_argument('--token', metavar='<token>', type=str,
+                                help='Authorization token for websocket (must be used with --cluster-id).')
 
     field_group.add_argument('--ip', metavar='IP', dest="ip_field", type=str, required=False,
                              help=f'CSV field of the IP address. (default={DEFAULT_IP_FIELD})')
