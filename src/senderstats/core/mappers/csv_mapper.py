@@ -1,6 +1,6 @@
 from typing import List, Dict
 
-from data.message_data import MessageData
+from senderstats.data.message_data import MessageData
 from senderstats.interfaces.field_mapper import FieldMapper
 
 
