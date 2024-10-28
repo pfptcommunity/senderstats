@@ -23,7 +23,7 @@ class WebSocketDataSource(DataSource):
         """Helper function to construct the WebSocket URL."""
         base_url = f"wss://logstream.proofpoint.com:443/v1/stream?cid={cluster_id}&type={log_type}"
         current_time = datetime.now()
-        since_time = (current_time - timedelta(days=5)).strftime("%Y-%m-%dT%H:%M:%S%z")
+        since_time = (current_time - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S%z")
         to_time = current_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         return f"{base_url}&sinceTime={since_time}&toTime={to_time}"
 
