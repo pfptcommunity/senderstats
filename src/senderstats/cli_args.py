@@ -124,7 +124,7 @@ def parse_arguments():
                               help='Will not include the default Proofpoint excluded domains.')
 
     if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
+        parser.print_usage(sys.stderr)
         sys.exit(1)
 
     args = parser.parse_args()
