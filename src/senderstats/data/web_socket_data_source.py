@@ -20,7 +20,6 @@ class WebSocketDataSource(DataSource):
         self.__field_mapper = field_mapper
 
     def _build_websocket_url(self, cluster_id, log_type):
-        """Helper function to construct the WebSocket URL."""
         base_url = f"wss://logstream.proofpoint.com:443/v1/stream?cid={cluster_id}&type={log_type}"
         current_time = datetime.now()
         since_time = (current_time - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -28,7 +27,6 @@ class WebSocketDataSource(DataSource):
         return f"{base_url}&sinceTime={since_time}&toTime={to_time}"
 
     def read_data(self):
-        """Asynchronously fetch data from WebSocket and yield as MessageData instances."""
         ws = websocket.create_connection(self.__websocket_url, header=self.__header,
                                          sslopt=self.__ssl_options, timeout=self.__timeout)
         data_count = 0
