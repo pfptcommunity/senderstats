@@ -67,11 +67,6 @@ def parse_arguments():
                                 type=validate_xlsx_file, required=True,
                                 help='Output file')
 
-    required_group.add_argument('--cluster-id', metavar='<cluster-id>', type=str,
-                                help='Cluster ID for websocket (must be used with --token).')
-    required_group.add_argument('--token', metavar='<token>', type=str,
-                                help='Authorization token for websocket (must be used with --cluster-id).')
-
     field_group.add_argument('--ip', metavar='IP', dest="ip_field", type=str, required=False,
                              help=f'CSV field of the IP address. (default={DEFAULT_IP_FIELD})')
     field_group.add_argument('--mfrom', metavar='MFrom', dest="mfrom_field", type=str, required=False,
@@ -129,17 +124,9 @@ def parse_arguments():
 
     args = parser.parse_args()
 
-    if args.input_files and (args.token or args.cluster_id):
-        parser.error(
-            "Specify either --input for CSV processing, or both --token and --cluster-id for websocket processing, not both.")
-    elif args.token and args.cluster_id:
-        args.source_type = DataSourceType.JSON
-    elif args.input_files:
+    if args.input_files:
         args.source_type = DataSourceType.CSV
         args.token = None
         args.cluster_id = None
-    else:
-        parser.error(
-            "You must provide either --input for CSV processing or both --token and --cluster-id for websocket processing.")
 
     return args
