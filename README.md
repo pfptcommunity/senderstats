@@ -105,8 +105,7 @@ Each exclusion step ensures the accuracy of volume and average message size repo
 ### Usage Options
 
 ```
-usage: senderstats [-h] [--version] [-i <file> [<file> ...]] -o <xlsx>
-                   [--token <token>] [--cluster-id <cluster-id>] [--ip IP]
+usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP]
                    [--mfrom MFrom] [--hfrom HFrom] [--rcpts Rcpts]
                    [--rpath RPath] [--msgid MsgID] [--subject Subject]
                    [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath]
@@ -123,17 +122,9 @@ This tool helps identify the top senders based on smart search outbound
 message exports.
 
 Input / Output arguments (required):
-  -i <file> [<file> ...], --input <file> [<file> ...]  Smart search CSV files
-                                                       to read. Required if
-                                                       --token and --cluster-
-                                                       id are not specified.
+  -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to
+                                                       read.
   -o <xlsx>, --output <xlsx>                           Output file
-  --cluster-id <cluster-id>                            Cluster ID for
-                                                       websocket (must be used
-                                                       with --token).
-  --token <token>                                      Authorization token for
-                                                       websocket (must be used
-                                                       with --cluster-id).
 
 Field mapping arguments (optional):
   --ip IP                                              CSV field of the IP
