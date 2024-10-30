@@ -60,8 +60,8 @@ def parse_arguments():
                        version=f'SenderStats {get_version()}')
 
     required_group.add_argument('-i', '--input', metavar='<file>', dest="input_files",
-                                nargs='+', type=str,
-                                help='Smart search CSV files to read. Required if --token and --cluster-id are not specified.')
+                                nargs='+', type=str, required=True,
+                                help='Smart search files to read.')
 
     required_group.add_argument('-o', '--output', metavar='<xlsx>', dest="output_file",
                                 type=validate_xlsx_file, required=True,
