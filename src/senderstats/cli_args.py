@@ -1,4 +1,5 @@
 import argparse
+import sys
 from importlib.metadata import version, PackageNotFoundError
 
 import regex as re
@@ -127,6 +128,11 @@ def parse_arguments():
     output_group.add_argument('--no-default-exclude-domains', action='store_true', dest="no_default_exclude_domains",
                               help='Will not include the default Proofpoint excluded domains.')
 
+
+    if len(sys.argv) == 1:
+        parser.print_usage(sys.stderr)
+        sys.exit(1)
+        
     args = parser.parse_args()
 
     if args.input_files and (args.token or args.cluster_id):
