@@ -1,5 +1,5 @@
 # Proofpoint Sender Analyzer
-
+[![PyPI Downloads](https://static.pepy.tech/badge/senderstats)](https://pepy.tech/projects/senderstats)  
 This tool helps identify the top senders based on smart search outbound message exports or CSV data.
 
 ### Requirements:
