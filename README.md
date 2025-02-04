@@ -250,9 +250,9 @@ For a more comprehensive report use the following command:
 
 ```
 # Windows
-senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject
+senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --exclude-ips 127.0.0.1
 # Linux
-senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject
+senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --exclude-ips 127.0.0.1
 ```
 
 Expanding recipients counts messages by destination via --expand-recipients:
@@ -262,9 +262,9 @@ addressed to multiple recipients.
 
 ```
 # Windows
-senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --expand-recipients
+senderstats -i C:\path\to\downloaded\files\smart_search_results_cluster_hosted_2024_03_04_*.csv -o C:\path\to\output\file\my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --expand-recipients --exclude-ips 127.0.0.1
 # Linux
-senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --expand-recipients
+senderstats -i /path/to/downloaded/files/smart_search_results_cluster_hosted_2024_03_04_*.csv -o /path/to/output/file/my_cluster_hosted.xlsx --remove-prvs --decode-srs --gen-hfrom --gen-alignment --gen-msgid --sample-subject --expand-recipients --exclude-ips 127.0.0.1
 ```
 
 ### Sample Output
