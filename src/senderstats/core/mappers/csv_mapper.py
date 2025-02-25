@@ -37,6 +37,8 @@ class CSVMapper(FieldMapper):
                 value = int(value) if value.isdigit() else -1
             elif field == 'rcpts':
                 value = value.casefold().strip().split(',')
+            elif field == 'subject':
+                value = value.strip()
             else:
                 value = value.casefold().strip()
             setattr(message_data, field, value)
