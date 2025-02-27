@@ -327,7 +327,7 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 
 ### Sample Details (Hourly Metrics):
 
-![image](https://github.com/user-attachments/assets/66279533-6582-440f-bf5b-d7496d6fc29a)
+![image](https://github.com/user-attachments/assets/cb40e574-4fda-4888-9e95-98df35be3769)
 
 ### Current Class Heirarchy
 
