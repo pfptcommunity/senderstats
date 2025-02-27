@@ -14,6 +14,10 @@ ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
 # Precompiled Regex matches email addresses that can contain display names
 email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
 
+bounce_re = re.compile(EMAIL_BOUNCE_REGEX, re.IGNORECASE)
+
+entropy_hex_pairs_re = re.compile(r'(?=(?:[0-9][a-f]|[a-f][0-9]|[0-9]{2}))', re.IGNORECASE)
+
 
 def parse_email_details(email_str: str):
     """
@@ -158,6 +162,59 @@ def convert_srs(email: str):
     match = srs_re.search(email)
     if match:
         return '{}@{}'.format(match.group(3), match.group(2))
+    return email
+
+
+def normalize_bounces(email: str):
+    """
+    Converts bounce addresses to a normal form removing the tracking data.
+
+    :param email: The bounce modified email address.
+    :return: The original email address or bounce modified email address.
+    """
+    match = bounce_re.search(email)
+    if match:
+        return '{}@{}'.format(match.group(1), match.group(2))
+    return email
+
+
+def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
+    """
+        Determines if an email's local part suggests an automated sender based on entropy and hex pair count.
+
+        Args:
+            email (str): The full email address to analyze (e.g., "user@example.com").
+            entropy_threshold (float): Minimum entropy score to consider the email automated (default: 0.6).
+            hex_pair_threshold (int): Minimum number of hex pairs required to consider the email automated (default: 6).
+
+        Returns:
+            bool: True if the email is likely automated (high entropy and enough hex pairs), False otherwise.
+
+        Note:
+            Assumes `entropy_hex_pairs_re` is a pre-compiled regex (e.g., r'(?=(?:[0-9][a-fA-F]|[a-fA-F][0-9]|[0-9][0-9]))')
+            defined globally to identify overlapping hex-like pairs.
+    """
+    local_part, domain_part = email.split("@")
+
+    total_length = len(local_part)
+
+    # Count character types
+    numbers = sum(c.isdigit() for c in local_part)
+    symbols = sum(c in "-+=_." for c in local_part)
+
+    # Count hex pairs using regex
+    hex_pairs = len([m.start() for m in entropy_hex_pairs_re.finditer(local_part)])
+
+    # Weighted entropy
+    weighted_entropy = (2 * hex_pairs + 1.5 * numbers + 1.5 * symbols) / total_length
+
+    # Conditions
+    is_high_entropy = weighted_entropy >= entropy_threshold
+    has_enough_hex_pairs = hex_pairs >= hex_pair_threshold
+
+    if is_high_entropy and has_enough_hex_pairs:
+        return "#entropy#@" + domain_part
+
     return email
 
 

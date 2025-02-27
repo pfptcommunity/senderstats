@@ -1,5 +1,6 @@
 from xlsxwriter import Workbook
 
+from senderstats.common.defaults import DEFAULT_THRESHOLD
 from senderstats.interfaces.reportable import Reportable
 from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.reporting.format_manager import FormatManager
@@ -7,7 +8,7 @@ from senderstats.reporting.format_manager import FormatManager
 
 class PipelineProcessorReport:
     def __init__(self, output_file: str, pipeline_manager: PipelineManager):
-        self.__threshold = 100
+        self.__threshold = DEFAULT_THRESHOLD
         self.__output_file = output_file
         self.__workbook = Workbook(output_file)
         self.__format_manager = FormatManager(self.__workbook)

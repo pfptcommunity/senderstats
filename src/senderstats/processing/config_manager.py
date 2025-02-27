@@ -38,6 +38,8 @@ class ConfigManager:
         self.no_display_name = args.no_display
         self.remove_prvs = args.remove_prvs
         self.decode_srs = args.decode_srs
+        self.normalize_bounces = args.normalize_bounces
+        self.normalize_entropy = args.normalize_entropy
         self.no_empty_hfrom = args.no_empty_hfrom
         self.sample_subject = args.sample_subject
         self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)

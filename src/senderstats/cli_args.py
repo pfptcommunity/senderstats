@@ -104,10 +104,15 @@ def parse_arguments():
                               help='Remove return path verification strings e.g. prvs=tag=sender@domain.com')
     parser_group.add_argument('--decode-srs', action='store_true', dest="decode_srs",
                               help='Convert sender rewrite scheme, forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com')
+    parser_group.add_argument('--normalize-bounces', action='store_true', dest="normalize_bounces",
+                              help='Convert bounce scheme, bounces<unique_tracking>@domain.com to bounces@domain.com')
+    parser_group.add_argument('--normalize-entropy', action='store_true', dest="normalize_entropy",
+                              help='Convert bounce scheme, <random_tracking_id>@domain.com to #entropy#@domain.com')
     parser_group.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
                               help='If the header From: is empty the envelope sender address is used')
     parser_group.add_argument('--sample-subject', action='store_true', dest="sample_subject",
                               help='Enable probabilistic random sampling of subject lines found during processing')
+
     parser_group.add_argument('--exclude-ips', default=[], metavar='<ip>', dest="exclude_ips",
                               nargs='+', type=is_valid_ip_syntax, help='Exclude ips from processing.')
     parser_group.add_argument('--exclude-domains', default=[], metavar='<domain>', dest="exclude_domains",
