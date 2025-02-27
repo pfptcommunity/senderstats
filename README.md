@@ -311,15 +311,19 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 
 ### Sample Summary Statistics
 
-![image](https://github.com/user-attachments/assets/d30093a1-88de-440e-acc2-06947ccbc559)
+![image](https://github.com/user-attachments/assets/591021f3-2f39-4037-8ca3-7a34fd40ef94)
+
+### Sample Details (Sender by Volume):
+
+![image](https://github.com/user-attachments/assets/20783450-7a0f-4135-9a55-1b303949f1f2)
 
 ### Sample Details (Sender + From by Volume):
 
-![image](https://github.com/pfptcommunity/senderstats/assets/83429267/4fa58247-bf7b-4e9f-ba31-e6173b35da1d)
+![image](https://github.com/user-attachments/assets/d036d46b-812e-4d97-b8ff-e95d9e9e0276)
 
 ### Sample Details (Message ID) Inferencing:
 
-![image](https://github.com/pfptcommunity/senderstats/assets/83429267/c6cb1102-c8b5-49c2-b498-51dfa30ae04a)
+![image](https://github.com/user-attachments/assets/0fb02b12-aae8-43a9-8458-dd658c4f9a89)
 
 ### Sample Details (Hourly Metrics):
 
