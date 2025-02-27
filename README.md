@@ -311,7 +311,7 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 
 ### Sample Summary Statistics
 
-![image](https://github.com/user-attachments/assets/591021f3-2f39-4037-8ca3-7a34fd40ef94)
+![image](https://github.com/user-attachments/assets/b7029cad-8db1-4569-9a09-c4694b19a3f1)
 
 ### Sample Details (Sender by Volume):
 
