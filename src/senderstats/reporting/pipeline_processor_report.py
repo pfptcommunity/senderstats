@@ -43,93 +43,137 @@ class PipelineProcessorReport:
 
         summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
 
+        data_tables = []
+        for proc in self.__pipeline_manager.get_active_processors():
+            if isinstance(proc, Reportable):
+                if proc.create_data_table:
+                    for report_name, data_generator in proc.report(self.__days):
+                        data_tables.append(self.__sanitize_table_name(report_name))
+
+        default_selection = data_tables[0] if data_tables else ''
+        summary.write(14, 0, 'Select Data Source:', self.__format_manager.summary_format)
+        summary.write(14, 1, default_selection, self.__format_manager.field_values_format)
+
+        summary.data_validation(14, 1, 14, 1, {
+            'validate': 'list',
+            'source': data_tables,  # List of table names as strings
+            'input_title': 'Select Table',
+            'input_message': 'Choose a table from the list'
+        })
+
         # Based on daily message volume being over a threshold N
-        summary.write_formula(0, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14'),
+        summary.write_formula(0, 1, self.__get_conditional_size('B15', 'Messages Per Day', 'Total Bytes', 'B14'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(1, 1, self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14'),
+        summary.write_formula(1, 1, self.__get_conditional_count('B15', 'Messages Per Day', 'Messages', 'B14'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(2, 1, self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14'),
+        summary.write_formula(2, 1, self.__get_conditional_average('B15', 'Messages Per Day', 'Total Bytes', 'Messages',
+                                                                   'B14'),
                               self.__format_manager.summary_values_format)
 
         # Based on daily volumes scaled for a 30 day period
-        summary.write_formula(4, 1, self.__get_conditional_size('Envelope Senders', 'D', 'E', 'B14', True),
+        summary.write_formula(4, 1, self.__get_conditional_size('B15', 'Messages Per Day', 'Total Bytes', 'B14', True),
                               self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(5, 1,
-                              self.__get_conditional_count('Envelope Senders', 'D', 'B', 'B14', True),
+                              self.__get_conditional_count('B15', 'Messages Per Day', 'Messages', 'B14', True),
                               self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(6, 1,
-                              self.__get_conditional_average('Envelope Senders', 'D', 'E', 'B', 'B14', True),
+                              self.__get_conditional_average('B15', 'Messages Per Day', 'Total Bytes', 'Messages',
+                                                             'B14', True),
                               self.__format_manager.summary_highlight_values_format)
 
         # These are total volumes for the complete data set, excluding any data that was filtered out.
-        summary.write_formula(8, 1, self.__get_total_size('Envelope Senders', 'E'),
+        summary.write_formula(8, 1, self.__get_total_size('B15', 'Total Bytes'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(9, 1, self.__get_total_count('Envelope Senders', 'B'),
+        summary.write_formula(9, 1, self.__get_total_count('B15', 'Messages'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(10, 1, self.__get_total_average('Envelope Senders', 'E', 'B'),
+        summary.write_formula(10, 1, self.__get_total_average('B15', 'Total Bytes', 'Messages'),
                               self.__format_manager.summary_values_format)
+
         summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__format_manager.summary_values_format)
         summary.autofit()
 
-    def __get_conditional_size(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
+    def __get_conditional_size(self, table_id, col_cond, col_data, threshold_cell, monthly=False):
         days_multiplier = f"/{self.__days}*30" if monthly else ""
-        return f"""=IF(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<1024,
-                        SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}&" B",
-                        IF(AND(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}>=1024,
-                               SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<POWER(1024,2)),
-                           (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/1024),1)&" KB"),
-                           IF(AND(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}>=POWER(1024,2),
-                                  SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}<POWER(1024,3)),
-                               (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/POWER(1024,2)),1)&" MB"),
-                               (ROUND((SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}/POWER(1024,3)),1)&" GB"))))"""
+        return f"""=IF(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}<1024,
+                    SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}&" B",
+                    IF(AND(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}>=1024,
+                           SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}<POWER(1024,2)),
+                       (ROUND((SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}/1024),1)&" KB"),
+                       IF(AND(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}>=POWER(1024,2),
+                              SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}<POWER(1024,3)),
+                           (ROUND((SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}/POWER(1024,2)),1)&" MB"),
+                           (ROUND((SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}/POWER(1024,3)),1)&" GB"))))"""
 
-    def __get_conditional_count(self, sheet_name, col_cond, col_data, threshold_cell, monthly=False):
+    def __get_conditional_count(self, table_id, col_cond, col_data, threshold_cell, monthly=False):
         days_multiplier = f"/{self.__days}*30" if monthly else ""
-        return f"""=ROUNDUP(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier}, 0)"""
+        return f"""=ROUNDUP(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}, 0)"""
 
-    def __get_conditional_average(self, sheet_name, col_cond, col_data, col_messages, threshold_cell, monthly=False):
+    def __get_conditional_average(self, table_id, col_cond, col_data, col_messages, threshold_cell, monthly=False):
         days_multiplier = f"/{self.__days}*30" if monthly else ""
         return f"""ROUNDUP(
-(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_data}:{col_data}){days_multiplier})/
-(SUMIF('{sheet_name}'!{col_cond}:{col_cond},\">=\"&{threshold_cell},'{sheet_name}'!{col_messages}:{col_messages}){days_multiplier})/1024
-,0)&" KB" """
+    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier})/
+    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_messages}]")){days_multiplier})/1024
+    ,0)&" KB" """
 
-    def __get_total_size(self, sheet_name, col_data):
-        return f"""=IF(SUM('{sheet_name}'!{col_data}:{col_data})<1024,
-                        SUM('{sheet_name}'!{col_data}:{col_data})&" B",
-                        IF(AND(SUM('{sheet_name}'!{col_data}:{col_data})>=1024,
-                               SUM('{sheet_name}'!{col_data}:{col_data})<POWER(1024,2)),
-                           (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/1024),1)&" KB"),
-                           IF(AND(SUM('{sheet_name}'!{col_data}:{col_data})>=POWER(1024,2),
-                                  SUM('{sheet_name}'!{col_data}:{col_data})<POWER(1024,3)),
-                               (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/POWER(1024,2)),1)&" MB"),
-                               (ROUND((SUM('{sheet_name}'!{col_data}:{col_data})/POWER(1024,3)),1)&" GB"))))"""
+    def __get_total_size(self, table_id, col_data):
+        return f"""=IF(SUM(INDIRECT({table_id}&"[{col_data}]"))<1024,
+                    SUM(INDIRECT({table_id}&"[{col_data}]"))&" B",
+                    IF(AND(SUM(INDIRECT({table_id}&"[{col_data}]"))>=1024,
+                           SUM(INDIRECT({table_id}&"[{col_data}]"))<POWER(1024,2)),
+                       (ROUND((SUM(INDIRECT({table_id}&"[{col_data}]"))/1024),1)&" KB"),
+                       IF(AND(SUM(INDIRECT({table_id}&"[{col_data}]"))>=POWER(1024,2),
+                              SUM(INDIRECT({table_id}&"[{col_data}]"))<POWER(1024,3)),
+                           (ROUND((SUM(INDIRECT({table_id}&"[{col_data}]"))/POWER(1024,2)),1)&" MB"),
+                           (ROUND((SUM(INDIRECT({table_id}&"[{col_data}]"))/POWER(1024,3)),1)&" GB"))))"""
 
-    def __get_total_count(self, sheet_name, col_data):
-        return f"""=SUM('{sheet_name}'!{col_data}:{col_data})"""
+    def __get_total_count(self, table_id, col_data):
+        return f"""=SUM(INDIRECT({table_id}&"[{col_data}]"))"""
 
-    def __get_total_average(self, sheet_name, col_data, col_messages):
-        return f"""=ROUNDUP((SUM('{sheet_name}'!{col_data}:{col_data})/SUM('{sheet_name}'!{col_messages}:{col_messages}))/1024,0)&" KB" """
+    def __get_total_average(self, table_id, col_data, col_messages):
+        return f"""=ROUNDUP(SUM(INDIRECT({table_id}&"[{col_data}]"))/SUM(INDIRECT({table_id}&"[{col_messages}]"))/1024,0)&" KB" """
+
+    # Sanitize table name
+    def __sanitize_table_name(self, name):
+        invalid_chars = ' +-*[]:/\\&()'
+        for char in invalid_chars:
+            name = name.replace(char, '')
+        if not name[0].isalpha():
+            name = 'T_' + name
+        return name[:255]
 
     def __report(self, processor):
         if isinstance(processor, Reportable):
-            for report_name, data in processor.report(self.__days):
+            for report_name, data_generator in processor.report(self.__days):
                 sheet = self.__workbook.add_worksheet(report_name)
-                for r_index, row in enumerate(data, start=0):
+
+                r_index = 0
+                headers = None
+                for row in data_generator:
                     format = self.__format_manager.data_cell_format
                     if r_index == 0:
                         format = self.__format_manager.header_format
-                    for c_index, value in enumerate(row, start=0):
-                        if isinstance(value, str):
-                            sheet.write_string(r_index, c_index, value, format)
-                        if isinstance(value, int) or isinstance(value, float):
-                            sheet.write_number(r_index, c_index, value, format)
+                        headers = row
+                    sheet.write_row(r_index, 0, row, format)  # Works with tuples
+                    r_index += 1
+
+                if processor.create_data_table:
+                    # Create table
+                    if r_index > 0:
+                        num_rows = r_index
+                        num_cols = len(headers)
+                        sanitized_name = self.__sanitize_table_name(report_name)
+                        sheet.add_table(0, 0, num_rows - 1, num_cols - 1, {
+                            'columns': [{'header': str(col)} for col in headers],
+                            'name': sanitized_name,
+                            'style': 'Table Style Medium 9'
+                        })
+
                 sheet.autofit()
 
     def generate(self):

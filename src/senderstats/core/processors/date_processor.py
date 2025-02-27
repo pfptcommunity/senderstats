@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import DefaultDict, Optional
+from typing import DefaultDict, Optional, Iterator, Tuple
 
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
@@ -35,7 +35,7 @@ class DateProcessor(Processor[MessageData], Reportable):
     def get_hourly_counter(self) -> DefaultDict[str, int]:
         return self.__hourly_counter
 
-    def report(self, context: Optional = None) -> dict:
+    def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
         # Yield the report name and the data generator together
         def get_report_name():
             return "Hourly Metrics"
@@ -46,3 +46,7 @@ class DateProcessor(Processor[MessageData], Reportable):
                 yield [k, v]
 
         yield get_report_name(), get_report_data()
+
+    @property
+    def create_data_table(self) -> bool:
+        return False

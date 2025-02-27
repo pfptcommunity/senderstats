@@ -1,5 +1,5 @@
 from random import random
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterator, Tuple
 
 from senderstats.common.utils import average
 from senderstats.data.message_data import MessageData
@@ -41,7 +41,7 @@ class RPathProcessor(Processor[MessageData], Reportable):
                 if not rpath_data['subjects'] or random() < probability:
                     rpath_data['subjects'].append(data.subject)
 
-    def report(self, context: Optional = None) -> dict:
+    def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
         # Yield the report name and the data generator together
         def get_report_name():
             return "Return Path"
@@ -62,3 +62,7 @@ class RPathProcessor(Processor[MessageData], Reportable):
                 yield row
 
         yield get_report_name(), get_report_data()
+
+    @property
+    def create_data_table(self) -> bool:
+        return True

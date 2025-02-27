@@ -1,5 +1,5 @@
 from random import random
-from typing import TypeVar, Generic, Dict, Optional
+from typing import TypeVar, Generic, Dict, Optional, Iterator, Tuple
 
 from senderstats.common.utils import average
 from senderstats.data.message_data import MessageData
@@ -38,7 +38,7 @@ class HFromProcessor(Processor[MessageData], Reportable, Generic[TMessageData]):
                 if not hfrom_data['subjects'] or random() < probability:
                     hfrom_data['subjects'].append(data.subject)
 
-    def report(self, context: Optional = None) -> dict:
+    def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
         # Yield the report name and the data generator together
         def get_report_name():
             return "Header From"
@@ -59,3 +59,7 @@ class HFromProcessor(Processor[MessageData], Reportable, Generic[TMessageData]):
                 yield row
 
         yield get_report_name(), get_report_data()
+
+    @property
+    def create_data_table(self) -> bool:
+        return True
