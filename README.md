@@ -111,6 +111,7 @@ usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP]
                    [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath]
                    [--gen-alignment] [--gen-msgid] [--expand-recipients]
                    [--no-display-name] [--remove-prvs] [--decode-srs]
+                   [--normalize-bounces] [--normalize-entropy]
                    [--no-empty-hfrom] [--sample-subject]
                    [--exclude-ips <ip> [<ip> ...]]
                    [--exclude-domains <domain> [<domain> ...]]
@@ -195,6 +196,14 @@ Parsing behavior arguments (optional):
                                                        scheme, forwardmailbox+
                                                        srs=hash=tt=domain.com=
                                                        user to user@domain.com
+  --normalize-bounces                                  Convert bounce scheme, 
+                                                       bounces<unique_tracking
+                                                       >@domain.com to
+                                                       bounces@domain.com
+  --normalize-entropy                                  Convert bounce scheme, 
+                                                       <random_tracking_id>@do
+                                                       main.com to
+                                                       #entropy#@domain.com
   --no-empty-hfrom                                     If the header From: is
                                                        empty the envelope
                                                        sender address is used
