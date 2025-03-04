@@ -194,7 +194,10 @@ def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_thres
             Assumes `entropy_hex_pairs_re` is a pre-compiled regex (e.g., r'(?=(?:[0-9][a-fA-F]|[a-fA-F][0-9]|[0-9][0-9]))')
             defined globally to identify overlapping hex-like pairs.
     """
-    local_part, domain_part = email.split("@")
+    try:
+        local_part, domain_part = email.split("@")
+    except ValueError:
+        return email
 
     total_length = len(local_part)
 
