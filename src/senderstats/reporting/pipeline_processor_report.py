@@ -159,21 +159,26 @@ class PipelineProcessorReport:
                     format = self.__format_manager.data_cell_format
                     if r_index == 0:
                         format = self.__format_manager.header_format
-                        headers = row
-                    sheet.write_row(r_index, 0, row, format)  # Works with tuples
+                        headers = row  # Capture headers from the first row
+                    # Write each cell based on its type
+                    for c_index, value in enumerate(row):
+                        if isinstance(value, (int, float)):
+                            sheet.write_number(r_index, c_index, value, format)
+                        else:
+                            # Treat all non-numbers as strings (including None, str, etc.)
+                            sheet.write_string(r_index, c_index, str(value), format)
                     r_index += 1
 
-                if processor.create_data_table:
+                if processor.create_data_table and r_index > 0:
                     # Create table
-                    if r_index > 0:
-                        num_rows = r_index
-                        num_cols = len(headers)
-                        sanitized_name = self.__sanitize_table_name(report_name)
-                        sheet.add_table(0, 0, num_rows - 1, num_cols - 1, {
-                            'columns': [{'header': str(col)} for col in headers],
-                            'name': sanitized_name,
-                            'style': 'Table Style Medium 9'
-                        })
+                    num_rows = r_index
+                    num_cols = len(headers)
+                    sanitized_name = self.__sanitize_table_name(report_name)
+                    sheet.add_table(0, 0, num_rows - 1, num_cols - 1, {
+                        'columns': [{'header': str(col)} for col in headers],
+                        'name': sanitized_name,
+                        'style': 'Table Style Medium 9'
+                    })
 
                 sheet.autofit()
 
