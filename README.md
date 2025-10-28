@@ -102,6 +102,14 @@ emails.
 
 Each exclusion step ensures the accuracy of volume and average message size reporting by filtering out unnecessary data.
 
+### Exclude / Restrict Domain Behavior
+
+Since restrict / exclude behavior conceptually mean "in domain" subdomains are coalesced. Specifying "api.example.com", "test.example.com", and "example.com" will only result in "example.com" as all of subdomains will be matched. 
+
+If there is a need for **exact domain matching**, this can be addressed in a future version. Most use cases provided so far have been limited to organizations seeking to **limit** or **exclude** data associated with domains they own. 
+
+While the idea of supporting free-form **regex or pattern matching** has been considered, it is currently avoided to prevent unintended consequences. This may be revisited in a future release with appropriate safeguards.
+
 ### Usage Options
 
 ```
