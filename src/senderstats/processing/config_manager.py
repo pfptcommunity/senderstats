@@ -44,11 +44,12 @@ class ConfigManager:
         self.sample_subject = args.sample_subject
         self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)
         if args.no_default_exclude_domains:
-            self.exclude_domains = ConfigManager.__prepare_exclusions(args.exclude_domains)
+            self.exclude_domains = ConfigManager.__consolidate_domains(args.exclude_domains)
         else:
-            self.exclude_domains = ConfigManager.__prepare_exclusions(DEFAULT_DOMAIN_EXCLUSIONS + args.exclude_domains)
-        self.restrict_domains = ConfigManager.__prepare_exclusions(args.restrict_domains)
+            self.exclude_domains = ConfigManager.__consolidate_domains(DEFAULT_DOMAIN_EXCLUSIONS + args.exclude_domains)
+        self.restrict_domains = ConfigManager.__consolidate_domains(args.restrict_domains)
         self.exclude_senders = ConfigManager.__prepare_exclusions(args.exclude_senders)
+        self.exclude_dup_msgids = args.exclude_dup_msgids
         self.date_format = args.date_format
         self.no_default_exclude_domains = args.no_default_exclude_domains
 
@@ -64,6 +65,21 @@ class ConfigManager:
     @staticmethod
     def __prepare_exclusions(exclusions: List[str]):
         return sorted(list({item.casefold() for item in exclusions}))
+
+    @staticmethod
+    def __consolidate_domains(domains: List[str]) -> List[str]:
+        normalized = sorted(
+            {d.strip().casefold() for d in domains if d and d.strip()},
+            key=lambda x: (x.count('.'), x)
+        )
+
+        unique_domains: List[str] = []
+        for domain in normalized:
+            if not any(domain == parent or domain.endswith("." + parent) for parent in unique_domains):
+                unique_domains.append(domain)
+
+        unique_domains.sort()
+        return unique_domains
 
     def display_filter_criteria(self):
         if self.source_type == DataSourceType.CSV:

@@ -27,6 +27,9 @@ class PipelineManager:
         if config.restrict_domains:
             pipeline.set_next(self.__filter_manager.restrict_senders_filter)
 
+        if config.exclude_dup_msgids:
+            pipeline.set_next(self.__filter_manager.exclude_duplicate_message_id_filter)
+
         pipeline.set_next(self.__transform_manager.date_transform)
         pipeline.set_next(self.__processor_manager.mfrom_processor)
 

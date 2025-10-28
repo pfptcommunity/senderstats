@@ -116,11 +116,13 @@ def parse_arguments():
     parser_group.add_argument('--exclude-ips', default=[], metavar='<ip>', dest="exclude_ips",
                               nargs='+', type=is_valid_ip_syntax, help='Exclude ips from processing.')
     parser_group.add_argument('--exclude-domains', default=[], metavar='<domain>', dest="exclude_domains",
-                              nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing.')
+                              nargs='+', type=is_valid_domain_syntax, help='Exclude domains from processing. (Subdomains are coalesced)')
     parser_group.add_argument('--restrict-domains', default=[], metavar='<domain>', dest="restrict_domains",
-                              nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing.')
+                              nargs='+', type=is_valid_domain_syntax, help='Constrain domains for processing. (Subdomains are coalesced)')
     parser_group.add_argument('--exclude-senders', default=[], metavar='<sender>', dest="exclude_senders",
                               nargs='+', type=is_valid_email_syntax, help='Exclude senders from processing.')
+    parser_group.add_argument('--exclude-dup-msgids', action='store_true', dest="exclude_dup_msgids",
+                              help='Exclude messages where message id is a duplicate.')
     parser_group.add_argument('--date-format', metavar='DateFmt', dest="date_format", type=str, required=False,
                               help=f'Date format used to parse the timestamps. (default={DEFAULT_DATE_FORMAT.replace("%", "%%")})',
                               default=DEFAULT_DATE_FORMAT)

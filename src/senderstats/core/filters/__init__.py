@@ -4,6 +4,7 @@ from .exclude_invalid_size_filter import ExcludeInvalidSizeFilter
 from .exclude_ip_filter import ExcludeIPFilter
 from .exclude_sender_filter import ExcludeSenderFilter
 from .restrict_domain_filter import RestrictDomainFilter
+from .exclude_duplicate_mid_filter import ExcludeDuplicateMessageIdFilter
 
 __all__ = [
     'ExcludeDomainFilter',
@@ -11,5 +12,6 @@ __all__ = [
     'ExcludeInvalidSizeFilter',
     'ExcludeIPFilter',
     'ExcludeSenderFilter',
-    'RestrictDomainFilter'
+    'RestrictDomainFilter',
+    'ExcludeDuplicateMessageIdFilter'
 ]

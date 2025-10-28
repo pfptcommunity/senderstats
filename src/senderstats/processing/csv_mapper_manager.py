@@ -51,7 +51,7 @@ class CSVMapperManager:
             self.__mapper.delete_mapping('rpath')
         if not self.__config.sample_subject:
             self.__mapper.delete_mapping('subject')
-        if not self.__config.gen_msgid:
+        if not (self.__config.gen_msgid or self.__config.exclude_dup_msgids):
             self.__mapper.delete_mapping('msgid')
         if not self.__config.expand_recipients:
             self.__mapper.delete_mapping('rcpts')

@@ -10,6 +10,7 @@ class FilterManager:
         self.exclude_ip_filter = ExcludeIPFilter(config.exclude_ips)
         self.exclude_senders_filter = ExcludeSenderFilter(config.exclude_senders)
         self.restrict_senders_filter = RestrictDomainFilter(config.restrict_domains)
+        self.exclude_duplicate_message_id_filter = ExcludeDuplicateMessageIdFilter()
 
     def display_summary(self):
         print()
@@ -19,3 +20,4 @@ class FilterManager:
         print("Messages excluded by domain:", self.exclude_domain_filter.get_excluded_count())
         print("Messages excluded by sender:", self.exclude_senders_filter.get_excluded_count())
         print("Messages excluded by constraint:", self.restrict_senders_filter.get_excluded_count())
+        print("Messages excluded by duplicate message id:", self.exclude_duplicate_message_id_filter.get_excluded_count())

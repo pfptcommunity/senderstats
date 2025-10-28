@@ -214,9 +214,9 @@ Parsing behavior arguments (optional):
   --exclude-ips <ip> [<ip> ...]                        Exclude ips from
                                                        processing.
   --exclude-domains <domain> [<domain> ...]            Exclude domains from
-                                                       processing.
+                                                       processing. (Subdomains are coalesced)
   --restrict-domains <domain> [<domain> ...]           Constrain domains for
-                                                       processing.
+                                                       processing. (Subdomains are coalesced)
   --exclude-senders <sender> [<sender> ...]            Exclude senders from
                                                        processing.
   --date-format DateFmt                                Date format used to
