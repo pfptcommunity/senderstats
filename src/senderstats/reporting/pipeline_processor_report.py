@@ -26,23 +26,23 @@ class PipelineProcessorReport:
 
         summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__format_manager.summary_format)
         summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__format_manager.summary_format)
-        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)",
-                      self.__format_manager.summary_format)
+        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__format_manager.summary_format)
+        summary.write(3, 0, f"Estimated App Volume Percentage ({self.__days} days)", self.__format_manager.summary_format)
 
-        summary.write(4, 0, "Estimated Monthly App Data", self.__format_manager.summary_highlight_format)
-        summary.write(5, 0, "Estimated Monthly App Messages", self.__format_manager.summary_highlight_format)
-        summary.write(6, 0, "Estimated Monthly App Message Size", self.__format_manager.summary_highlight_format)
+        summary.write(5, 0, "Estimated Monthly App Data", self.__format_manager.summary_highlight_format)
+        summary.write(6, 0, "Estimated Monthly App Messages", self.__format_manager.summary_highlight_format)
+        summary.write(7, 0, "Estimated Monthly App Message Size", self.__format_manager.summary_highlight_format)
 
-        summary.write(8, 0, "Total Data", self.__format_manager.summary_format)
-        summary.write(9, 0, "Total Messages", self.__format_manager.summary_format)
-        summary.write(10, 0, "Total Average Message Size", self.__format_manager.summary_format)
-        summary.write(11, 0, "Total Peak Hourly Volume", self.__format_manager.summary_format)
+        summary.write(9, 0, "Total Data", self.__format_manager.summary_format)
+        summary.write(10, 0, "Total Messages", self.__format_manager.summary_format)
+        summary.write(11, 0, "Total Average Message Size", self.__format_manager.summary_format)
+        summary.write(12, 0, "Total Peak Hourly Volume", self.__format_manager.summary_format)
 
-        summary.write(13, 0, 'App Email Threshold (Number must be >= 0):', self.__format_manager.summary_format)
-        summary.write_number(13, 1, self.__threshold, self.__format_manager.field_values_format)
+        summary.write(14, 0, 'App Email Threshold (Number must be >= 0):', self.__format_manager.summary_format)
+        summary.write_number(14, 1, self.__threshold, self.__format_manager.field_values_format)
         summary.set_column(1, 1, 25)
 
-        summary.data_validation(13, 1, 13, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
+        summary.data_validation(14, 1, 13, 1, {'validate': 'integer', 'criteria': '>=', 'value': 0})
 
         data_tables = []
         for proc in self.__pipeline_manager.get_active_processors():
@@ -52,10 +52,10 @@ class PipelineProcessorReport:
                         data_tables.append(self.__sanitize_table_name(report_name))
 
         default_selection = data_tables[0] if data_tables else ''
-        summary.write(14, 0, 'Select Data Source:', self.__format_manager.summary_format)
-        summary.write(14, 1, default_selection, self.__format_manager.field_values_format)
+        summary.write(15, 0, 'Select Data Source:', self.__format_manager.summary_format)
+        summary.write(15, 1, default_selection, self.__format_manager.field_values_format)
 
-        summary.data_validation(14, 1, 14, 1, {
+        summary.data_validation(15, 1, 14, 1, {
             'validate': 'list',
             'source': data_tables,  # List of table names as strings
             'input_title': 'Select Table',
@@ -63,40 +63,62 @@ class PipelineProcessorReport:
         })
 
         # Based on daily message volume being over a threshold N
-        summary.write_formula(0, 1, self.__get_conditional_size('B15', 'Messages Per Day', 'Total Bytes', 'B14'),
+        summary.write_formula(0, 1,
+                              self.__get_conditional_size('B16', 'Messages Per Day', 'Total Bytes', 'B15'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(1, 1, self.__get_conditional_count('B15', 'Messages Per Day', 'Messages', 'B14'),
+        summary.write_formula(1, 1,
+                              self.__get_conditional_count('B16', 'Messages Per Day', 'Messages', 'B15'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(2, 1, self.__get_conditional_average('B15', 'Messages Per Day', 'Total Bytes', 'Messages',
-                                                                   'B14'),
+        # summary.write_formula(2, 1,
+        #                       self.__get_conditional_average('B16', 'Messages Per Day', 'Size',  'B15'),
+        #                       self.__format_manager.summary_values_format)
+
+        summary.write_formula(2, 1,
+                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages','B15'),
+                              self.__format_manager.summary_values_format)
+
+
+        summary.write_formula(3, 1,
+                              self.__get_conditional_percentage_of_total('B16', 'Messages Per Day', 'Messages',  'B15'),
                               self.__format_manager.summary_values_format)
 
         # Based on daily volumes scaled for a 30 day period
-        summary.write_formula(4, 1, self.__get_conditional_size('B15', 'Messages Per Day', 'Total Bytes', 'B14', True),
-                              self.__format_manager.summary_highlight_values_format)
-
         summary.write_formula(5, 1,
-                              self.__get_conditional_count('B15', 'Messages Per Day', 'Messages', 'B14', True),
+                              self.__get_conditional_size('B16', 'Messages Per Day', 'Total Bytes', 'B15', True),
                               self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(6, 1,
-                              self.__get_conditional_average('B15', 'Messages Per Day', 'Total Bytes', 'Messages',
-                                                             'B14', True),
+                              self.__get_conditional_count('B16', 'Messages Per Day', 'Messages', 'B15', True),
                               self.__format_manager.summary_highlight_values_format)
 
+        summary.write_formula(7, 1,
+                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages', 'B15'),
+                              self.__format_manager.summary_highlight_values_format)
+
+        # summary.write_formula(7, 1,
+        #                       self.__get_conditional_average('B16', 'Messages Per Day', 'Size',  'B15'),
+        #                       self.__format_manager.summary_highlight_values_format)
+
         # These are total volumes for the complete data set, excluding any data that was filtered out.
-        summary.write_formula(8, 1, self.__get_total_size('B15', 'Total Bytes'),
+        summary.write_formula(9, 1,
+                              self.__get_total_size('B16', 'Total Bytes'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(9, 1, self.__get_total_count('B15', 'Messages'),
+        summary.write_formula(10, 1,
+                              self.__get_total_count('B16', 'Messages'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(10, 1, self.__get_total_average('B15', 'Total Bytes', 'Messages'),
+        # summary.write_formula(11, 1,
+        #                       self.__get_total_average('B16', 'Size'),
+        #                       self.__format_manager.summary_values_format)
+
+        summary.write_formula(11, 1,
+                              self.__get_total_average('B16', 'Total Bytes', 'Messages'),
                               self.__format_manager.summary_values_format)
 
-        summary.write_formula(11, 1, "=MAX('Hourly Metrics'!B:B)", self.__format_manager.summary_values_format)
+        summary.write_formula(12, 1, "=MAX('Hourly Metrics'!B:B)", self.__format_manager.summary_values_format)
         summary.autofit()
 
     def __get_conditional_size(self, table_id, col_cond, col_data, threshold_cell, monthly=False):
@@ -115,12 +137,17 @@ class PipelineProcessorReport:
         days_multiplier = f"/{self.__days}*30" if monthly else ""
         return f"""=ROUNDUP(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier}, 0)"""
 
-    def __get_conditional_average(self, table_id, col_cond, col_data, col_messages, threshold_cell, monthly=False):
-        days_multiplier = f"/{self.__days}*30" if monthly else ""
+    # def __get_conditional_average(self, table_id, col_cond, col_data, threshold_cell):
+    #     return f"""=ROUNDUP(AVERAGEIFS( INDIRECT({table_id}&"[{col_data}]"),INDIRECT({table_id}&"[{col_cond}]"), ">=" & ${threshold_cell}) / 1024,0) & " KB" """
+
+    def __get_conditional_average(self, table_id, col_cond, col_data, col_messages, threshold_cell):
         return f"""ROUNDUP(
-    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")){days_multiplier})/
-    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_messages}]")){days_multiplier})/1024
+    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_data}]")))/
+    (SUMIF(INDIRECT({table_id}&"[{col_cond}]"),\">=\"&{threshold_cell},INDIRECT({table_id}&"[{col_messages}]")))/1024
     ,0)&" KB" """
+
+    def __get_conditional_percentage_of_total(self, table_id, col_cond, col_data, threshold_cell):
+        return f"""=ROUNDUP(SUMIF(INDIRECT({table_id}&"[{col_cond}]"),">="&{threshold_cell},INDIRECT({table_id}&"[{col_data}]"))/SUM(INDIRECT({table_id}&"[{col_data}]"))*100,1) & "%" """
 
     def __get_total_size(self, table_id, col_data):
         return f"""=IF(SUM(INDIRECT({table_id}&"[{col_data}]"))<1024,
@@ -135,6 +162,9 @@ class PipelineProcessorReport:
 
     def __get_total_count(self, table_id, col_data):
         return f"""=SUM(INDIRECT({table_id}&"[{col_data}]"))"""
+
+    #def __get_total_average(self, table_id, col_data):
+    #    return f"""=ROUNDUP(AVERAGE(INDIRECT({table_id} & "[{col_data}]")) / 1024,0) & " KB" """
 
     def __get_total_average(self, table_id, col_data, col_messages):
         return f"""=ROUNDUP(SUM(INDIRECT({table_id}&"[{col_data}]"))/SUM(INDIRECT({table_id}&"[{col_messages}]"))/1024,0)&" KB" """
@@ -189,3 +219,4 @@ class PipelineProcessorReport:
 
         for proc in self.__pipeline_manager.get_active_processors():
             self.__report(proc)
+
