@@ -1,6 +1,7 @@
 import os
 import pickle
 
+import re2  # Superfast, not good for back tracking
 import regex as re # Used for ID Matching
 
 # -------------------------------
@@ -144,10 +145,10 @@ class SubjectNormalizer:
         self.enable_names = enable_names and (name_automaton is not None)
 
         # Compile regexes once per instance (cheap; typically you have 1 instance).
-        self.combined_date_re = re.compile(COMBINED_DATE_REGEX)
+        self.combined_date_re = re2.compile(COMBINED_DATE_REGEX)
         self.identifier_re = re.compile(IDENTIFIER_REGEX)
         self.email_address_re = re.compile(EMAIL_REGEX)
-        self.month_only_re = re.compile(r"(?i)\b" + MONTH_NAME_REGEX + r"\b")
+        self.month_only_re = re2.compile(r"(?i)\b" + MONTH_NAME_REGEX + r"\b")
 
     # ---- internal helpers ----
 
@@ -211,7 +212,8 @@ class SubjectNormalizer:
         return "".join(result)
 
     def _replace_dates(self, s: str) -> str:
-        """.
+        """
+        One-pass date/datetime/month replacement using RE2.
 
         Classification:
           - contains clock time or am/pm  => {t}

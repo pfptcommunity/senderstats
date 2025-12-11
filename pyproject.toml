@@ -19,7 +19,8 @@ requires-python = ">3.9"
 dependencies = [
     'xlsxwriter',
     'tldextract',
-    'regex'
+    'regex',
+    'google-re2'
 ]
 
 [project.optional-dependencies]
