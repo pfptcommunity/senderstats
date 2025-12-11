@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import regex as re
 from tkinterdnd2 import DND_FILES, TkinterDnD
 
+from senderstats.cli_args import get_version
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
 from senderstats.data.data_source_type import DataSourceType
@@ -63,7 +64,7 @@ class QueueOutput(io.TextIOBase):
 class SenderStatsGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("SenderStats")
+        self.root.title(f"SenderStats v{get_version()}")
         self.root.geometry("1024x768")
         self.root.minsize(1024, 768)
         self.root.columnconfigure(0, weight=1)
