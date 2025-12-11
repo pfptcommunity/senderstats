@@ -1,7 +1,7 @@
 import io
 import queue
 import threading
-from contextlib import redirect_stdout
+from contextlib import redirect_stdout, redirect_stderr
 from types import SimpleNamespace
 
 import regex as re
@@ -61,18 +61,14 @@ def validate_xlsx_file(file_path):
 class QueueOutput(io.TextIOBase):
     def __init__(self, q):
         self.q = q
-        self.buffer = ''
 
     def write(self, text):
-        self.buffer += text
-        while '\n' in self.buffer:
-            line, self.buffer = self.buffer.split('\n', 1)
-            self.q.put(("output", line + '\n'))
+        if text:
+            self.q.put(("output", text))
+        return len(text)
 
     def flush(self):
-        if self.buffer:
-            self.q.put(("output", self.buffer))
-            self.buffer = ''
+        pass
 
 
 class SenderStatsGUI:
@@ -86,9 +82,9 @@ class SenderStatsGUI:
         #  - row 0: notebook (tabs)
         #  - row 1: log/status
         #  - row 2: run button
-        self.root.rowconfigure(0, weight=3)
-        self.root.rowconfigure(1, weight=2)
-        self.root.rowconfigure(2, weight=0)
+        self.root.rowconfigure(0, weight=3)  # notebook
+        self.root.rowconfigure(1, weight=2)  # log
+        self.root.rowconfigure(2, weight=0)  # run button (natural size)
 
         # TK variables with defaults
         self.input_files = []
@@ -143,16 +139,43 @@ class SenderStatsGUI:
         self.output_text = scrolledtext.ScrolledText(log_frame, height=12, state='disabled')
         self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
 
-        # Optional: Clear Log button
+        log_frame = ttk.LabelFrame(root, text="Log / Status")
+        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+        log_frame.columnconfigure(0, weight=1)
+        log_frame.rowconfigure(0, weight=1)
+
+        self.output_text = scrolledtext.ScrolledText(log_frame, state='disabled')
+        self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
+
         clear_log_button = ttk.Button(log_frame, text="Clear Log", command=self.clear_log)
         clear_log_button.grid(row=1, column=0, pady=(0, 5), padx=(0, 10), sticky='e')
 
-        # Run button
-        self.run_button = ttk.Button(root, text="Run SenderStats", command=self.run_tool)
-        self.run_button.grid(row=2, column=0, sticky='ew', padx=10, pady=(0, 10))
+    def __start_queue_watcher(self):
+        """Background thread that blocks on the queue and forwards messages into Tk via .after()."""
+        def watcher():
+            while True:
+                msg, arg = self.result_queue.get()  # blocks without freezing GUI
+                # Always handle messages in the Tkinter thread
+                self.root.after(0, self.__handle_queue_message, msg, arg)
 
-        # Set initial focus to input listbox once everything is created
-        self.root.after(0, lambda: self.input_listbox.focus_set())
+        t = threading.Thread(target=watcher, daemon=True)
+        t.start()
+
+    def __handle_queue_message(self, msg, arg):
+        """Handle a single message from the worker thread."""
+        if msg == "output":
+            self.output_text.config(state='normal')
+            self.output_text.insert(tk.END, arg)
+            self.output_text.config(state='disabled')
+            self.output_text.see(tk.END)
+
+        elif msg == "success":
+            self.run_button.config(state='normal', text="Run SenderStats")
+
+        elif msg == "error":
+            messagebox.showerror("Unexpected Error", arg)
+            self.run_button.config(state='normal', text="Run SenderStats")
 
     def clear_log(self):
         self.output_text.config(state='normal')
@@ -184,7 +207,7 @@ class SenderStatsGUI:
         input_frame.rowconfigure(0, weight=1)
 
         # Listbox
-        self.input_listbox = tk.Listbox(input_frame, height=30, width=50, selectmode='extended')
+        self.input_listbox = tk.Listbox(input_frame, height=20, width=50, selectmode='extended')
         self.input_listbox.drop_target_register(DND_FILES)
         self.input_listbox.dnd_bind('<<Drop>>', self.drop_files)
         self.input_listbox.grid(
@@ -464,26 +487,6 @@ class SenderStatsGUI:
             del self.exclude_senders[selected[0]]
             self.exclude_senders_listbox.delete(selected)
 
-    def check_queue(self, q):
-        while True:
-            try:
-                msg, arg = q.get_nowait()
-                if msg == "success":
-                    self.run_button.config(state='normal', text="Run SenderStats")
-                    return  # Stop checking after success
-                elif msg == "error":
-                    messagebox.showerror("Unexpected Error", arg)
-                    self.run_button.config(state='normal', text="Run SenderStats")
-                    return  # Stop checking after error
-                elif msg == "output":
-                    self.output_text.config(state='normal')
-                    self.output_text.insert(tk.END, arg)
-                    self.output_text.config(state='disabled')
-                    self.output_text.see(tk.END)
-            except queue.Empty:
-                break
-        self.root.after(100, self.check_queue, q)
-
     def run_tool(self):
         try:
             # Validate required
@@ -538,12 +541,12 @@ class SenderStatsGUI:
             args.no_default_exclude_domains = self.no_default_exclude_domains.get()
             args.no_default_exclude_ips = self.no_default_exclude_ips.get()
 
-            result_queue = queue.Queue()
-
             def process():
+                q_output = QueueOutput(self.result_queue)
+
                 try:
-                    q_output = QueueOutput(result_queue)
-                    with redirect_stdout(q_output):
+                    # Everything printed here goes into the queue
+                    with redirect_stdout(q_output), redirect_stderr(q_output):
                         config = ConfigManager(args)
                         config.display_filter_criteria()
 
@@ -557,14 +560,17 @@ class SenderStatsGUI:
                         report.generate()
                         report.close()
 
+                    # optional: flush (no-op in your QueueOutput, but harmless)
                     q_output.flush()
-                    result_queue.put(("success", None))
-                except Exception as e:
-                    q_output.flush()
-                    result_queue.put(("error", str(e)))
+                    self.result_queue.put(("success", None))
 
-            threading.Thread(target=process).start()
-            self.check_queue(result_queue)
+                except Exception as e:
+                    try:
+                        q_output.flush()
+                    finally:
+                        self.result_queue.put(("error", str(e)))
+
+            threading.Thread(target=process, daemon=True).start()
 
         except ValueError as e:
             messagebox.showerror("Validation Error", str(e))
