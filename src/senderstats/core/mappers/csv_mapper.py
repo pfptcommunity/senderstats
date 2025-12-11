@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Callable
 
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.field_mapper import FieldMapper
@@ -8,6 +8,13 @@ class CSVMapper(FieldMapper):
     def __init__(self, default_mappings: Dict[str, str]):
         self.__mappings = default_mappings
         self._index_map = {}
+        self.__transformations = {
+            'rpath': lambda value: str(value).casefold().strip(),
+            'mfrom': lambda value: str(value).casefold().strip(),
+            'msgsz': lambda value: int(value) if str(value).isdigit() else -1,
+            'rcpts': lambda value: str(value).casefold().strip().split(','),
+            'subject': lambda value: str(value).strip(),
+        }
 
     def reindex(self, headers: List[str]):
         error = False
@@ -33,15 +40,8 @@ class CSVMapper(FieldMapper):
         message_data = MessageData()
         for field in self._index_map.keys():
             value = self.extract_value(row, field)
-            if field == 'msgsz':
-                value = int(value) if value.isdigit() else -1
-            elif field == 'rcpts':
-                value = value.casefold().strip().split(',')
-            elif field == 'subject':
-                value = value.strip()
-            else:
-                value = value.casefold().strip()
-            setattr(message_data, field, value)
+            transform = self.__transformations.get(field, lambda v: str(v).casefold().strip())
+            setattr(message_data, field, transform(value))
         return message_data
 
     def add_mapping(self, field_name: str, csv_field_name: str):
@@ -61,6 +61,21 @@ class CSVMapper(FieldMapper):
             csv_row[index] = field_value
         else:
             raise ValueError(f"Field '{field_name}' not found or not mapped correctly.")
+
+    def get_header_map(self) -> Dict[str, str]:
+        return self.__mappings
+
+    def get_pandas_rename_map(self) -> Dict[str, str]:
+        return {value: key for key, value in self.__mappings.items()}
+
+    def get_pandas_transformations(self) -> Dict[str, Callable]:
+        return self.__transformations.copy()
+
+    def get_relevant_keys(self) -> List[str]:
+        return list(self.__mappings.keys())
+
+    def get_used_columns(self) -> List[str]:
+        return list(self.__mappings.values())
 
     def __repr__(self):
         return f"CSVMapper(mappings={self.__mappings}, index_map={self._index_map})"
