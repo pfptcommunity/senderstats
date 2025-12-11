@@ -148,11 +148,20 @@ class SenderStatsGUI:
         self.output_text = scrolledtext.ScrolledText(log_frame, state='disabled')
         self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
 
-        clear_log_button = ttk.Button(log_frame, text="Clear Log", command=self.clear_log)
-        clear_log_button.grid(row=1, column=0, pady=(0, 5), padx=(0, 10), sticky='e')
+        # Clear Log button
+        self.clear_log_button = ttk.Button(log_frame, text="Clear Log", command=self.clear_log)
+        self.clear_log_button.grid(row=1, column=0, pady=(0, 5), padx=(0, 10), sticky='e')
+
+        # Run button
+        self.run_button = ttk.Button(root, text="Run SenderStats", command=self.run_tool)
+        self.run_button.grid(row=2, column=0, sticky='ew', padx=10, pady=(0, 10))
+
+        # Set initial focus to input listbox once everything is created
+        self.root.after(0, lambda: self.input_listbox.focus_set())
+        self.result_queue = queue.Queue()
+        self.__start_queue_watcher()
 
     def __start_queue_watcher(self):
-        """Background thread that blocks on the queue and forwards messages into Tk via .after()."""
         def watcher():
             while True:
                 msg, arg = self.result_queue.get()  # blocks without freezing GUI
@@ -163,7 +172,6 @@ class SenderStatsGUI:
         t.start()
 
     def __handle_queue_message(self, msg, arg):
-        """Handle a single message from the worker thread."""
         if msg == "output":
             self.output_text.config(state='normal')
             self.output_text.insert(tk.END, arg)
@@ -186,9 +194,12 @@ class SenderStatsGUI:
         if event.data:
             files = self.root.tk.splitlist(event.data)
             for f in files:
-                if f not in self.input_files:
-                    self.input_files.append(f)
-                    self.input_listbox.insert(tk.END, f)
+                if f.lower().endswith(".csv"):
+                    if f not in self.input_files:
+                        self.input_files.append(f)
+                        self.input_listbox.insert(tk.END, f)
+                else:
+                    messagebox.showerror("Invalid File", f"Only CSV files are allowed:\n{f}")
 
     def create_input_output_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -393,9 +404,14 @@ class SenderStatsGUI:
         ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
     def browse_input(self):
-        files = filedialog.askopenfilenames(title="Select Input Files")
+        files = filedialog.askopenfilenames(
+            title="Select Input Files",
+            filetypes=[("CSV files", "*.csv")],  # ⬅ only CSV allowed
+        )
         if files:
-            self.input_files.extend(files)
+            for f in files:
+                if f.lower().endswith(".csv"):
+                    self.input_files.append(f)
             self.update_input_listbox()
 
     def update_input_listbox(self):
