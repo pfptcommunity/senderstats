@@ -42,11 +42,17 @@ class ConfigManager:
         self.normalize_entropy = args.normalize_entropy
         self.no_empty_hfrom = args.no_empty_hfrom
         self.sample_subject = args.sample_subject
-        self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)
+
+        if args.no_default_exclude_ips:
+            self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)
+        else:
+            self.exclude_ips = ConfigManager.__prepare_exclusions(['127.0.0.1'] + args.exclude_ips)
+
         if args.no_default_exclude_domains:
             self.exclude_domains = ConfigManager.__consolidate_domains(args.exclude_domains)
         else:
             self.exclude_domains = ConfigManager.__consolidate_domains(DEFAULT_DOMAIN_EXCLUSIONS + args.exclude_domains)
+
         self.restrict_domains = ConfigManager.__consolidate_domains(args.restrict_domains)
         self.exclude_senders = ConfigManager.__prepare_exclusions(args.exclude_senders)
         self.exclude_dup_msgids = args.exclude_dup_msgids
