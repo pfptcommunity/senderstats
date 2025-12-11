@@ -560,3 +560,6 @@ def main():
     root = TkinterDnD.Tk()
     app = SenderStatsGUI(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
