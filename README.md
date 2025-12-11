@@ -6,51 +6,126 @@ This tool helps identify the top senders based on smart search outbound message 
 
 * Python 3.9+
 
-### Installing the Package
+### Installation
 
-You can install the tool using the following command directly from Github.
+SenderStats provides both a **command-line interface (CLI)** and a **graphical user interface (GUI)**.
+You may install either or both depending on your use case.
 
-```
-pip install git+https://github.com/pfptcommunity/senderstats.git
-```
+---
 
-or can install the tool using pip.
+### ⚠️ Recommended: Use `pipx` (especially on Ubuntu 24.04+)
 
-```
-# When testing on Ubuntu 24.04 the following will not work:
-pip install senderstats
-```
+Ubuntu 24.04 and other PEP-668–restricted systems prevent system-wide `pip install` by default.
 
-If you see an error similar to the following:
+To avoid errors such as:
 
 ```
 error: externally-managed-environment
-
-× This environment is externally managed
-╰─> To install Python packages system-wide, try apt install
-    python3-xyz, where xyz is the package you are trying to
-    install.
-
-    If you wish to install a non-Debian-packaged Python package,
-    create a virtual environment using python3 -m venv path/to/venv.
-    Then use path/to/venv/bin/python and path/to/venv/bin/pip. Make
-    sure you have python3-full installed.
-
-    If you wish to install a non-Debian packaged Python application,
-    it may be easiest to use pipx install xyz, which will manage a
-    virtual environment for you. Make sure you have pipx installed.
-
-    See /usr/share/doc/python3.12/README.venv for more information.
-
-note: If you believe this is a mistake, please contact your Python installation or OS distribution provider. You can override this, at the risk of breaking your Python installation or OS, by passing --break-system-packages.
-hint: See PEP 668 for the detailed specification.
 ```
 
-You should use install pipx or you can configure your own virtual environment and use the command referenced above.
+it is strongly recommended to install SenderStats using **pipx**, which automatically creates an isolated virtual environment:
+
+```bash
+pipx install senderstats
+pipx install senderstats[gui]   # for GUI support
+```
+
+---
+
+### CLI Installation
+
+### From PyPI (preferred)
 
 ```
 pipx install senderstats
 ```
+
+### From GitHub (main branch)
+
+```
+pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats"
+```
+
+### Run the CLI
+
+```
+senderstats --help
+```
+
+---
+
+### GUI Installation
+
+The GUI version requires optional dependencies (`tkinterdnd2`) and a system package (`python3-tk` on Linux).
+
+### 1. Install system dependency (Linux only)
+
+Ubuntu / Debian:
+
+```bash
+sudo apt install python3-tk
+```
+
+Fedora:
+
+```bash
+sudo dnf install python3-tkinter
+```
+
+Arch:
+
+```bash
+sudo pacman -S tk
+```
+
+### 2. Install the SenderStats GUI
+
+#### From PyPI
+
+```
+pipx install "senderstats[gui]"
+```
+
+#### From GitHub (main branch)
+
+```
+pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats[gui]"
+```
+
+### Launch the GUI
+
+```
+senderstats-gui
+```
+
+---
+
+### Using a Virtual Environment Instead of pipx (advanced option)
+
+If you prefer manual `venv` management:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install senderstats
+pip install "senderstats[gui]"
+```
+
+---
+
+### Quick Commands Summary
+
+| Task                 | Command                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------ |
+| Install CLI (PyPI)   | `pipx install senderstats`                                                                 |
+| Install GUI (PyPI)   | `pipx install "senderstats[gui]"`                                                          |
+| Install CLI (GitHub) | `pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats"`      |
+| Install GUI (GitHub) | `pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats[gui]"` |
+| Run CLI              | `senderstats ...`                                                                          |
+| Run GUI              | `senderstats-gui`                                                                          |
+| Run package module   | `python3 -m senderstats`                                                                   |
+
+---
 
 ### Use Cases
 
@@ -336,10 +411,3 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ### Sample Details (Hourly Metrics):
 
 ![image](https://github.com/user-attachments/assets/cb40e574-4fda-4888-9e95-98df35be3769)
-
-### Current Class Heirarchy
-
-![senderstats2](https://github.com/user-attachments/assets/b540fd45-838f-4f25-b083-b1516718dbe7)
-
-
-
