@@ -47,6 +47,7 @@ class PipelineManager:
             pipeline.set_next(self.__processor_manager.align_processor)
 
         pipeline.set_next(self.__processor_manager.date_processor)
+        pipeline.set_next(self.__processor_manager.duck_db_processor)
 
         self.__pipeline = pipeline
 
