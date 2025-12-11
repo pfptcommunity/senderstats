@@ -129,6 +129,8 @@ def parse_arguments():
 
     output_group.add_argument('--no-default-exclude-domains', action='store_true', dest="no_default_exclude_domains",
                               help='Will not include the default Proofpoint excluded domains.')
+    output_group.add_argument('--no-default-exclude-ips', action='store_true', dest="no_default_exclude_ips",
+                              help='Will not include the default localhost ip exclusion.')
 
     if len(sys.argv) == 1:
         parser.print_usage(sys.stderr)

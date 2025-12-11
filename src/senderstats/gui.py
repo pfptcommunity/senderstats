@@ -1,12 +1,13 @@
+import io
+import queue
+import threading
 import tkinter as tk
-from tkinterdnd2 import DND_FILES, TkinterDnD
+from contextlib import redirect_stdout
 from tkinter import filedialog, ttk, messagebox, scrolledtext
 from types import SimpleNamespace
+
 import regex as re
-import threading
-import queue
-from contextlib import redirect_stdout
-import io
+from tkinterdnd2 import DND_FILES, TkinterDnD
 
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
@@ -17,25 +18,30 @@ from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.processing.pipeline_processor import PipelineProcessor
 from senderstats.reporting.pipeline_processor_report import PipelineProcessorReport
 
+
 def is_valid_domain_syntax(domain_name: str):
     if not re.match(VALID_DOMAIN_REGEX, domain_name, re.IGNORECASE):
         raise ValueError(f"Invalid domain name syntax: {domain_name}")
     return domain_name
+
 
 def is_valid_ip_syntax(ip: str):
     if not re.match(IPV46_REGEX, ip, re.IGNORECASE):
         raise ValueError(f"Invalid ip address syntax: {ip}")
     return ip
 
+
 def is_valid_email_syntax(email: str):
     if not re.match(EMAIL_ADDRESS_REGEX, email, re.IGNORECASE):
         raise ValueError(f"Invalid email address syntax: {email}")
     return email
 
+
 def validate_xlsx_file(file_path):
     if not file_path.lower().endswith('.xlsx'):
         raise ValueError("File must have a .xlsx extension.")
     return file_path
+
 
 class QueueOutput(io.TextIOBase):
     def __init__(self, q):
@@ -53,14 +59,21 @@ class QueueOutput(io.TextIOBase):
             self.q.put(("output", self.buffer))
             self.buffer = ''
 
+
 class SenderStatsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("SenderStats")
-        self.root.geometry("800x600")
+        self.root.geometry("1024x768")
+        self.root.minsize(1024, 768)
         self.root.columnconfigure(0, weight=1)
-        self.root.rowconfigure(0, weight=1)
-        self.root.rowconfigure(1, weight=1)
+        # Give the main areas reasonable proportions:
+        #  - row 0: notebook (tabs)
+        #  - row 1: log/status
+        #  - row 2: run button
+        self.root.rowconfigure(0, weight=3)
+        self.root.rowconfigure(1, weight=2)
+        self.root.rowconfigure(2, weight=0)
 
         # TK variables with defaults
         self.input_files = []
@@ -92,7 +105,8 @@ class SenderStatsGUI:
         self.exclude_senders = []
         self.exclude_dup_msgids = tk.BooleanVar()
         self.date_format = tk.StringVar(value=DEFAULT_DATE_FORMAT)
-        self.no_default_exclude_domains = tk.BooleanVar(value=False)
+        self.no_default_exclude_domains = tk.BooleanVar()
+        self.no_default_exclude_ips = tk.BooleanVar()
 
         # Notebook for tabs
         self.notebook = ttk.Notebook(root)
@@ -104,17 +118,31 @@ class SenderStatsGUI:
         self.create_parsing_tab()
         self.create_extended_tab()
 
+        # Log / Status frame
         log_frame = ttk.LabelFrame(root, text="Log / Status")
-        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
         log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
+        # log_frame.rowconfigure(0, weight=1)
 
-        self.output_text = scrolledtext.ScrolledText(log_frame, height=20, state='disabled')
-        self.output_text.grid(row=0, column=0, padx=(10,5), pady=10, sticky='nsew')
+        self.output_text = scrolledtext.ScrolledText(log_frame, height=12, state='disabled')
+        self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
 
-        self.run_button = tk.Button(root, text="Run SenderStats", command=self.run_tool)
-        self.run_button.grid(row=2, column=0, sticky='ew')
+        # Optional: Clear Log button
+        clear_log_button = ttk.Button(log_frame, text="Clear Log", command=self.clear_log)
+        clear_log_button.grid(row=1, column=0, pady=(0, 5), padx=(0, 10), sticky='e')
+
+        # Run button
+        self.run_button = ttk.Button(root, text="Run SenderStats", command=self.run_tool)
+        self.run_button.grid(row=2, column=0, sticky='ew', padx=10, pady=(0, 10))
+
+        # Set initial focus to input listbox once everything is created
+        self.root.after(0, lambda: self.input_listbox.focus_set())
+
+    def clear_log(self):
+        self.output_text.config(state='normal')
+        self.output_text.delete(1.0, tk.END)
+        self.output_text.config(state='disabled')
 
     def drop_files(self, event):
         if event.data:
@@ -144,17 +172,28 @@ class SenderStatsGUI:
         self.input_listbox = tk.Listbox(input_frame, height=30, width=50, selectmode='extended')
         self.input_listbox.drop_target_register(DND_FILES)
         self.input_listbox.dnd_bind('<<Drop>>', self.drop_files)
-        self.input_listbox.grid(row=0, column=0, padx=10, pady=(10,0), sticky="nsew")
+        self.input_listbox.grid(
+            row=0, column=0,
+            padx=10,
+            pady=(10, 4),  # top padding, small gap to buttons
+            sticky="nsew"
+        )
 
         # Button row
         button_frame = ttk.Frame(input_frame)
-        button_frame.grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        button_frame.grid(
+            row=1, column=0,
+            padx=10,
+            pady=(2, 10),  # small gap above, bottom padding
+            sticky="ew"
+        )
+        input_frame.columnconfigure(0, weight=1)
 
-        browse_input = tk.Button(button_frame, text="Browse", command=self.browse_input)
-        browse_input.pack(side="left", padx=(0,10))
+        browse_input = ttk.Button(button_frame, text="Browse", command=self.browse_input)
+        browse_input.pack(side="left", padx=(0, 10))
 
-        remove_input = tk.Button(button_frame, text="Remove Selected", command=self.remove_selected_input)
-        remove_input.pack(side="left", padx=(0,10))
+        remove_input = ttk.Button(button_frame, text="Remove Selected", command=self.remove_selected_input)
+        remove_input.pack(side="left", padx=(0, 10))
 
         # ============================
         # Output Frame
@@ -168,8 +207,8 @@ class SenderStatsGUI:
             row=0, column=0, padx=10, pady=10, sticky="ew"
         )
 
-        browse_output = tk.Button(output_frame, text="Browse", command=self.browse_output)
-        browse_output.grid(row=0, column=1, padx=(0,10))
+        browse_output = ttk.Button(output_frame, text="Browse", command=self.browse_output)
+        browse_output.grid(row=0, column=1, padx=(0, 10), pady=10, sticky='w')
 
     def create_field_mapping_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -186,12 +225,15 @@ class SenderStatsGUI:
             ("MsgID Field:", self.msgid_field),
             ("Subject Field:", self.subject_field),
             ("MsgSz Field:", self.msgsz_field),
-            ("Date Field:", self.date_field)
+            ("Date Field:", self.date_field),
+            ("Date Format:", self.date_format),  # ⬅️ moved here
         ]
 
         for i, (label, var) in enumerate(fields):
             tk.Label(tab, text=label).grid(row=i, column=0, sticky=tk.W, padx=5, pady=5)
-            tk.Entry(tab, textvariable=var, width=50).grid(row=i, column=1, padx=5, pady=5, sticky='ew')
+            tk.Entry(tab, textvariable=var, width=50).grid(
+                row=i, column=1, padx=5, pady=5, sticky='ew'
+            )
 
     def create_reporting_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -217,9 +259,10 @@ class SenderStatsGUI:
             ("Remove PRVS", self.remove_prvs),
             ("Decode SRS", self.decode_srs),
             ("Normalize Bounces", self.normalize_bounces),
-            #("Normalize Entropy", self.normalize_entropy),
+            # ("Normalize Entropy", self.normalize_entropy),
             ("No Empty HFrom", self.no_empty_hfrom),
-            ("Sample Subject", self.sample_subject)
+            ("Sample Subject", self.sample_subject),
+            ("Exclude Duplicate MsgIDs", self.exclude_dup_msgids)
         ]
 
         for i, (label, var) in enumerate(checkboxes):
@@ -229,57 +272,87 @@ class SenderStatsGUI:
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text="Extended")
 
-        tab.columnconfigure(1, weight=1)
+        tab.columnconfigure(0, weight=1)
+
+        # ============================
+        # IP / Domain Filters
+        # ============================
+        filters_frame = ttk.LabelFrame(tab, text="IP / Domain Filters")
+        filters_frame.grid(row=0, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        filters_frame.columnconfigure(1, weight=1)
 
         # Exclude IPs
-        tk.Label(tab, text="Exclude IPs:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.exclude_ips_entry = tk.Entry(tab, width=30)
+        tk.Label(filters_frame, text="Exclude IPs:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.exclude_ips_entry = tk.Entry(filters_frame, width=30)
         self.exclude_ips_entry.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
-        add_ip = tk.Button(tab, text="Add", command=self.add_exclude_ip)
+        add_ip = ttk.Button(filters_frame, text="Add", command=self.add_exclude_ip)
         add_ip.grid(row=0, column=2, padx=5, pady=5)
-        self.exclude_ips_listbox = tk.Listbox(tab, height=3, width=50)
+        self.exclude_ips_listbox = tk.Listbox(filters_frame, height=3, width=50)
         self.exclude_ips_listbox.grid(row=1, column=1, padx=5, pady=5, sticky='nsew')
-        remove_ip = tk.Button(tab, text="Remove Selected", command=self.remove_selected_exclude_ip)
+        remove_ip = ttk.Button(filters_frame, text="Remove Selected", command=self.remove_selected_exclude_ip)
         remove_ip.grid(row=1, column=2, padx=5, pady=5)
 
         # Exclude Domains
-        tk.Label(tab, text="Exclude Domains:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
-        self.exclude_domains_entry = tk.Entry(tab, width=30)
+        tk.Label(filters_frame, text="Exclude Domains:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        self.exclude_domains_entry = tk.Entry(filters_frame, width=30)
         self.exclude_domains_entry.grid(row=2, column=1, padx=5, pady=5, sticky='ew')
-        add_domain = tk.Button(tab, text="Add", command=self.add_exclude_domain)
+        add_domain = ttk.Button(filters_frame, text="Add", command=self.add_exclude_domain)
         add_domain.grid(row=2, column=2, padx=5, pady=5)
-        self.exclude_domains_listbox = tk.Listbox(tab, height=3, width=50)
+        self.exclude_domains_listbox = tk.Listbox(filters_frame, height=3, width=50)
         self.exclude_domains_listbox.grid(row=3, column=1, padx=5, pady=5, sticky='nsew')
-        remove_domain = tk.Button(tab, text="Remove Selected", command=self.remove_selected_exclude_domain)
+        remove_domain = ttk.Button(filters_frame, text="Remove Selected", command=self.remove_selected_exclude_domain)
         remove_domain.grid(row=3, column=2, padx=5, pady=5)
 
         # Restrict Domains
-        tk.Label(tab, text="Restrict Domains:").grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
-        self.restrict_domains_entry = tk.Entry(tab, width=30)
+        tk.Label(filters_frame, text="Restrict Domains:").grid(row=4, column=0, sticky=tk.W, padx=5, pady=5)
+        self.restrict_domains_entry = tk.Entry(filters_frame, width=30)
         self.restrict_domains_entry.grid(row=4, column=1, padx=5, pady=5, sticky='ew')
-        add_restrict = tk.Button(tab, text="Add", command=self.add_restrict_domain)
+        add_restrict = ttk.Button(filters_frame, text="Add", command=self.add_restrict_domain)
         add_restrict.grid(row=4, column=2, padx=5, pady=5)
-        self.restrict_domains_listbox = tk.Listbox(tab, height=3, width=50)
+        self.restrict_domains_listbox = tk.Listbox(filters_frame, height=3, width=50)
         self.restrict_domains_listbox.grid(row=5, column=1, padx=5, pady=5, sticky='nsew')
-        remove_restrict = tk.Button(tab, text="Remove Selected", command=self.remove_selected_restrict_domain)
+        remove_restrict = ttk.Button(filters_frame, text="Remove Selected",
+                                     command=self.remove_selected_restrict_domain)
         remove_restrict.grid(row=5, column=2, padx=5, pady=5)
 
-        # Exclude Senders
-        tk.Label(tab, text="Exclude Senders:").grid(row=6, column=0, sticky=tk.W, padx=5, pady=5)
-        self.exclude_senders_entry = tk.Entry(tab, width=30)
-        self.exclude_senders_entry.grid(row=6, column=1, padx=5, pady=5, sticky='ew')
-        add_sender = tk.Button(tab, text="Add", command=self.add_exclude_sender)
-        add_sender.grid(row=6, column=2, padx=5, pady=5)
-        self.exclude_senders_listbox = tk.Listbox(tab, height=3, width=50)
-        self.exclude_senders_listbox.grid(row=7, column=1, padx=5, pady=5, sticky='nsew')
-        remove_sender = tk.Button(tab, text="Remove Selected", command=self.remove_selected_exclude_sender)
-        remove_sender.grid(row=7, column=2, padx=5, pady=5)
+        # ============================
+        # Sender Filters
+        # ============================
+        senders_frame = ttk.LabelFrame(tab, text="Sender Filters")
+        senders_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        senders_frame.columnconfigure(1, weight=1)
 
-        # Other options
-        tk.Checkbutton(tab, text="Exclude Duplicate MsgIDs", variable=self.exclude_dup_msgids).grid(row=8, column=0, sticky=tk.W, padx=5, pady=5)
-        tk.Label(tab, text="Date Format:").grid(row=9, column=0, sticky=tk.W, padx=5, pady=5)
-        tk.Entry(tab, textvariable=self.date_format, width=50).grid(row=9, column=1, padx=5, pady=5, sticky='ew')
-        tk.Checkbutton(tab, text="No Default Exclude Domains", variable=self.no_default_exclude_domains).grid(row=10, column=0, sticky=tk.W, padx=5, pady=5)
+        tk.Label(senders_frame, text="Exclude Senders:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.exclude_senders_entry = tk.Entry(senders_frame, width=30)
+        self.exclude_senders_entry.grid(row=0, column=1, padx=5, pady=5, sticky='ew')
+        add_sender = ttk.Button(senders_frame, text="Add", command=self.add_exclude_sender)
+        add_sender.grid(row=0, column=2, padx=5, pady=5)
+        self.exclude_senders_listbox = tk.Listbox(senders_frame, height=3, width=50)
+        self.exclude_senders_listbox.grid(row=1, column=1, padx=5, pady=5, sticky='nsew')
+        remove_sender = ttk.Button(senders_frame, text="Remove Selected", command=self.remove_selected_exclude_sender)
+        remove_sender.grid(row=1, column=2, padx=5, pady=5)
+
+        # ============================
+        # Advanced Options
+        # ============================
+        options_frame = ttk.LabelFrame(tab, text="Advanced Options")
+        options_frame.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+
+        # Two columns for side-by-side layout
+        options_frame.columnconfigure(0, weight=1)
+        options_frame.columnconfigure(1, weight=1)
+
+        ttk.Checkbutton(
+            options_frame,
+            text="No Default Exclude Domains",
+            variable=self.no_default_exclude_domains
+        ).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+
+        ttk.Checkbutton(
+            options_frame,
+            text="No Default Exclude IPs",
+            variable=self.no_default_exclude_ips
+        ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
     def browse_input(self):
         files = filedialog.askopenfilenames(title="Select Input Files")
@@ -300,7 +373,11 @@ class SenderStatsGUI:
                 self.input_listbox.delete(i)
 
     def browse_output(self):
-        file = filedialog.asksaveasfilename(title="Save Output File", defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
+        file = filedialog.asksaveasfilename(
+            title="Save Output File",
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx")]
+        )
         if file:
             self.output_file.set(file)
 
@@ -377,11 +454,11 @@ class SenderStatsGUI:
             try:
                 msg, arg = q.get_nowait()
                 if msg == "success":
-                    self.run_button.config(state='normal')
+                    self.run_button.config(state='normal', text="Run SenderStats")
                     return  # Stop checking after success
                 elif msg == "error":
                     messagebox.showerror("Unexpected Error", arg)
-                    self.run_button.config(state='normal')
+                    self.run_button.config(state='normal', text="Run SenderStats")
                     return  # Stop checking after error
                 elif msg == "output":
                     self.output_text.config(state='normal')
@@ -402,7 +479,7 @@ class SenderStatsGUI:
                 raise ValueError("Output file is required.")
             validate_xlsx_file(output)
 
-            self.run_button.config(state='disabled')
+            self.run_button.config(state='disabled', text="Running...")
 
             # Clear output text
             self.output_text.config(state='normal')
@@ -444,6 +521,7 @@ class SenderStatsGUI:
             args.exclude_dup_msgids = self.exclude_dup_msgids.get()
             args.date_format = self.date_format.get() or DEFAULT_DATE_FORMAT
             args.no_default_exclude_domains = self.no_default_exclude_domains.get()
+            args.no_default_exclude_ips = self.no_default_exclude_ips.get()
 
             result_queue = queue.Queue()
 
@@ -475,8 +553,10 @@ class SenderStatsGUI:
 
         except ValueError as e:
             messagebox.showerror("Validation Error", str(e))
+            self.run_button.config(state='normal', text="Run SenderStats")
 
-if __name__ == "__main__":
+
+def main():
     root = TkinterDnD.Tk()
     app = SenderStatsGUI(root)
     root.mainloop()
