@@ -188,135 +188,76 @@ While the idea of supporting free-form **regex or pattern matching** has been co
 ### Usage Options
 
 ```
-usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP]
-                   [--mfrom MFrom] [--hfrom HFrom] [--rcpts Rcpts]
-                   [--rpath RPath] [--msgid MsgID] [--subject Subject]
-                   [--size MsgSz] [--date Date] [--gen-hfrom] [--gen-rpath]
-                   [--gen-alignment] [--gen-msgid] [--expand-recipients]
-                   [--no-display-name] [--remove-prvs] [--decode-srs]
-                   [--normalize-bounces] [--normalize-entropy]
-                   [--no-empty-hfrom] [--sample-subject]
-                   [--exclude-ips <ip> [<ip> ...]]
-                   [--exclude-domains <domain> [<domain> ...]]
-                   [--restrict-domains <domain> [<domain> ...]]
-                   [--exclude-senders <sender> [<sender> ...]]
-                   [--date-format DateFmt] [--no-default-exclude-domains]
+usage: senderstats [-h] [--version] -i <file> [<file> ...] -o <xlsx> [--ip IP] [--mfrom MFrom] [--hfrom HFrom]
+                   [--rcpts Rcpts] [--rpath RPath] [--msgid MsgID] [--subject Subject] [--size MsgSz] [--date Date]
+                   [--gen-hfrom] [--gen-rpath] [--gen-alignment] [--gen-msgid] [--expand-recipients]
+                   [--no-display-name] [--remove-prvs] [--decode-srs] [--normalize-bounces] [--normalize-entropy]
+                   [--no-empty-hfrom] [--sample-subject] [--exclude-ips <ip> [<ip> ...]]
+                   [--exclude-domains <domain> [<domain> ...]] [--restrict-domains <domain> [<domain> ...]]
+                   [--exclude-senders <sender> [<sender> ...]] [--exclude-dup-msgids] [--date-format DateFmt]
+                   [--no-default-exclude-domains] [--no-default-exclude-ips]
 
-This tool helps identify the top senders based on smart search outbound
-message exports.
+This tool helps identify the top senders based on smart search outbound message exports.
 
 Input / Output arguments (required):
-  -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to
-                                                       read.
+  -i <file> [<file> ...], --input <file> [<file> ...]  Smart search files to read.
   -o <xlsx>, --output <xlsx>                           Output file
 
 Field mapping arguments (optional):
-  --ip IP                                              CSV field of the IP
-                                                       address. (default=Sende
-                                                       r_IP_Address)
-  --mfrom MFrom                                        CSV field of the
-                                                       envelope sender
-                                                       address.
-                                                       (default=Sender)
-  --hfrom HFrom                                        CSV field of the header
-                                                       From: address.
-                                                       (default=Header_From)
-  --rcpts Rcpts                                        CSV field of the header
-                                                       recipient addresses.
+  --ip IP                                              CSV field of the IP address. (default=Sender_IP_Address)
+  --mfrom MFrom                                        CSV field of the envelope sender address. (default=Sender)
+  --hfrom HFrom                                        CSV field of the header From: address. (default=Header_From)
+  --rcpts Rcpts                                        CSV field of the header recipient addresses.
                                                        (default=Recipients)
-  --rpath RPath                                        CSV field of the
-                                                       Return-Path: address.
-                                                       (default=Header_Return-
+  --rpath RPath                                        CSV field of the Return-Path: address. (default=Header_Return-
                                                        Path)
-  --msgid MsgID                                        CSV field of the
-                                                       message ID.
-                                                       (default=Message_ID)
-  --subject Subject                                    CSV field of the
-                                                       Subject, only used if
-                                                       --sample-subject is
-                                                       specified.
-                                                       (default=Subject)
-  --size MsgSz                                         CSV field of message
-                                                       size.
-                                                       (default=Message_Size)
-  --date Date                                          CSV field of message
-                                                       date/time.
-                                                       (default=Date)
+  --msgid MsgID                                        CSV field of the message ID. (default=Message_ID)
+  --subject Subject                                    CSV field of the Subject, only used if --sample-subject is
+                                                       specified. (default=Subject)
+  --size MsgSz                                         CSV field of message size. (default=Message_Size)
+  --date Date                                          CSV field of message date/time. (default=Date)
 
 Reporting control arguments (optional):
-  --gen-hfrom                                          Generate report showing
-                                                       the header From: data
-                                                       for messages being
-                                                       sent.
-  --gen-rpath                                          Generate report showing
-                                                       return path for
-                                                       messages being sent.
-  --gen-alignment                                      Generate report showing
-                                                       envelope sender and
-                                                       header From: alignment
-  --gen-msgid                                          Generate report showing
-                                                       parsed Message ID.
-                                                       Helps determine the
+  --gen-hfrom                                          Generate report showing the header From: data for messages
+                                                       being sent.
+  --gen-rpath                                          Generate report showing return path for messages being sent.
+  --gen-alignment                                      Generate report showing envelope sender and header From:
+                                                       alignment
+  --gen-msgid                                          Generate report showing parsed Message ID. Helps determine the
                                                        sending system
 
 Parsing behavior arguments (optional):
-  --expand-recipients                                  Expand recipients
-                                                       counts messages by
-                                                       destination. E.g. 1
-                                                       message going to 3
-                                                       people, is 3 messages
-                                                       sent.
-  --no-display-name                                    Remove display and use
-                                                       address only. Converts
-                                                       'Display Name
-                                                       <user@domain.com>' to
-                                                       'user@domain.com'
-  --remove-prvs                                        Remove return path
-                                                       verification strings
-                                                       e.g. prvs=tag=sender@do
-                                                       main.com
-  --decode-srs                                         Convert sender rewrite
-                                                       scheme, forwardmailbox+
-                                                       srs=hash=tt=domain.com=
-                                                       user to user@domain.com
-  --normalize-bounces                                  Convert bounce scheme, 
-                                                       bounces<unique_tracking
-                                                       >@domain.com to
+  --expand-recipients                                  Expand recipients counts messages by destination. E.g. 1
+                                                       message going to 3 people, is 3 messages sent.
+  --no-display-name                                    Remove display and use address only. Converts 'Display Name
+                                                       <user@domain.com>' to 'user@domain.com'
+  --remove-prvs                                        Remove return path verification strings e.g.
+                                                       prvs=tag=sender@domain.com
+  --decode-srs                                         Convert sender rewrite scheme,
+                                                       forwardmailbox+srs=hash=tt=domain.com=user to user@domain.com
+  --normalize-bounces                                  Convert bounce scheme, bounces<unique_tracking>@domain.com to
                                                        bounces@domain.com
-  --normalize-entropy                                  Convert bounce scheme, 
-                                                       <random_tracking_id>@do
-                                                       main.com to
+  --normalize-entropy                                  Convert bounce scheme, <random_tracking_id>@domain.com to
                                                        #entropy#@domain.com
-  --no-empty-hfrom                                     If the header From: is
-                                                       empty the envelope
-                                                       sender address is used
-  --sample-subject                                     Enable probabilistic
-                                                       random sampling of
-                                                       subject lines found
+  --no-empty-hfrom                                     If the header From: is empty the envelope sender address is
+                                                       used
+  --sample-subject                                     Enable probabilistic random sampling of subject lines found
                                                        during processing
-  --exclude-ips <ip> [<ip> ...]                        Exclude ips from
-                                                       processing.
-  --exclude-domains <domain> [<domain> ...]            Exclude domains from
-                                                       processing. (Subdomains are coalesced)
-  --restrict-domains <domain> [<domain> ...]           Constrain domains for
-                                                       processing. (Subdomains are coalesced)
-  --exclude-senders <sender> [<sender> ...]            Exclude senders from
-                                                       processing.
-  --date-format DateFmt                                Date format used to
-                                                       parse the timestamps. (
-                                                       default=%Y-%m-%dT%H:%M:
-                                                       %S.%f%z)
+  --exclude-ips <ip> [<ip> ...]                        Exclude ips from processing.
+  --exclude-domains <domain> [<domain> ...]            Exclude domains from processing. (Subdomains are coalesced)
+  --restrict-domains <domain> [<domain> ...]           Constrain domains for processing. (Subdomains are coalesced)
+  --exclude-senders <sender> [<sender> ...]            Exclude senders from processing.
+  --exclude-dup-msgids                                 Exclude messages where message id is a duplicate.
+  --date-format DateFmt                                Date format used to parse the timestamps.
+                                                       (default=%Y-%m-%dT%H:%M:%S.%f%z)
 
 Extended processing controls (optional):
-  --no-default-exclude-domains                         Will not include the
-                                                       default Proofpoint
-                                                       excluded domains.
+  --no-default-exclude-domains                         Will not include the default Proofpoint excluded domains.
+  --no-default-exclude-ips                             Will not include the default localhost ip exclusion.
 
 Usage:
-  -h, --help                                           Show this help message
-                                                       and exit
-  --version                                            Show the program's
-                                                       version and exit
+  -h, --help                                           Show this help message and exit
+  --version                                            Show the program's version and exit
 ```
 
 ### Using the Tool with Proofpoint Smart Search
