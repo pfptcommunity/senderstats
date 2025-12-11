@@ -411,3 +411,6 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ### Sample Details (Hourly Metrics):
 
 ![image](https://github.com/user-attachments/assets/cb40e574-4fda-4888-9e95-98df35be3769)
+
+### GUI Example
+<img width="1244" height="953" alt="image" src="https://github.com/user-attachments/assets/9d9b20e7-98dc-409d-85df-4221c4f06a00" />
