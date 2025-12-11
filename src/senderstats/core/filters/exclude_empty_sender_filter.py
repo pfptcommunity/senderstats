@@ -1,16 +1,22 @@
-from senderstats.data.message_data import MessageData
+import pandas
+
 from senderstats.interfaces.filter import Filter
 
 
-class ExcludeEmptySenderFilter(Filter[MessageData]):
+class ExcludeEmptySenderFilter(Filter[pandas.DataFrame]):
     def __init__(self):
         super().__init__()
         self.__excluded_count = 0
 
-    def filter(self, data: MessageData) -> bool:
-        if not data.mfrom:
-            self.__excluded_count += 1
+    def filter(self, data: pandas.DataFrame) -> bool:
+        if data.empty:
             return False
+
+        before_count = len(data)
+        # Remove and count all removed envelope senders
+        data.dropna(subset=['mfrom'], inplace=True)
+        removed = before_count - len(data)
+        self.__excluded_count += removed
         return True
 
     def get_excluded_count(self) -> int:
