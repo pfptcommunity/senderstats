@@ -20,7 +20,8 @@ dependencies = [
     'xlsxwriter',
     'tldextract',
     'regex',
-    'google-re2'
+    'google-re2',
+    'pyahocorasick'
 ]
 
 [project.optional-dependencies]
