@@ -10,3 +10,4 @@ class ProcessorManager:
         self.rpath_processor = RPathProcessor(config.sample_subject, config.expand_recipients)
         self.align_processor = AlignmentProcessor(config.sample_subject, config.expand_recipients)
         self.date_processor = DateProcessor(config.expand_recipients)
+        self.duck_db_processor = DuckDBProcessor(r'c:\temp\duckdb')
