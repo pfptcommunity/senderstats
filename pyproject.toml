@@ -20,8 +20,12 @@ dependencies = [
     'xlsxwriter',
     'tldextract',
     'regex',
-    'google-re2',
-    'tkinterdnd2'
+    'google-re2'
+]
+
+[project.optional-dependencies]
+gui = [
+    "tkinterdnd2",
 ]
 
 [project.urls]

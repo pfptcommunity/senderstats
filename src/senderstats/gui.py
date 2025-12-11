@@ -1,13 +1,27 @@
 import io
 import queue
 import threading
-import tkinter as tk
 from contextlib import redirect_stdout
-from tkinter import filedialog, ttk, messagebox, scrolledtext
 from types import SimpleNamespace
 
 import regex as re
-from tkinterdnd2 import DND_FILES, TkinterDnD
+
+# Tk / TkinterDnD imports guarded so GUI fails gracefully if not available
+try:
+    import tkinter as tk
+    from tkinter import filedialog, ttk, messagebox, scrolledtext
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError as e:
+    raise SystemExit(
+        "GUI mode requires Tkinter and tkinterdnd2.\n\n"
+        "Install GUI dependencies with:\n"
+        "  pip install senderstats[gui]\n\n"
+        "And install system Tk support (Linux examples):\n"
+        "  Debian/Ubuntu: sudo apt install python3-tk\n"
+        "  Fedora:        sudo dnf install python3-tkinter\n"
+        "  Arch:          sudo pacman -S tk\n"
+    ) from e
+
 
 from senderstats.cli_args import get_version
 from senderstats.common.defaults import *
