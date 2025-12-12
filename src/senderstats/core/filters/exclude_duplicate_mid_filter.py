@@ -1,17 +1,19 @@
-import pandas
+from typing import Optional
+
+import pandas as pd
 
 from senderstats.interfaces.filter import Filter
 
 
-class ExcludeDuplicateMessageIdFilter(Filter[pandas.DataFrame]):
+class ExcludeDuplicateMessageIdFilter(Filter[pd.DataFrame]):
     def __init__(self):
         super().__init__()
         self.__seen_msgids = set()
         self.__excluded_count = 0
 
-    def filter(self, data: pandas.DataFrame) -> bool:
+    def filter(self, data: pd.DataFrame) -> Optional[pd.DataFrame]:
         if data.empty:
-            return False
+            return None
 
         before_count = len(data)
         already_seen_mask = data['msgid'].isin(self.__seen_msgids)
@@ -21,7 +23,7 @@ class ExcludeDuplicateMessageIdFilter(Filter[pandas.DataFrame]):
         data.drop(index=data.index[to_remove], inplace=True)
         removed = int(to_remove.sum())
         self.__excluded_count += removed
-        return True
+        return data
 
     def get_excluded_count(self) -> int:
         return self.__excluded_count

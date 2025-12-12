@@ -1,24 +1,25 @@
-from senderstats.common.utils import parse_email_details, convert_srs, remove_prvs
-from senderstats.data.message_data import MessageData
+import pandas
+
+from senderstats.common.utils import extract_email_address_col, convert_srs_col, remove_prvs_col
 from senderstats.interfaces.transform import Transform
 
 
-class RPathTransform(Transform[MessageData, MessageData]):
+class RPathTransform(Transform[pandas.DataFrame, pandas.DataFrame]):
     def __init__(self, decode_srs: bool = False, remove_prvs: bool = False):
         super().__init__()
         self.__decode_srs = decode_srs
         self.__remove_prvs = remove_prvs
 
-    def transform(self, data: MessageData) -> MessageData:
-        # If sender is not empty, we will extract parts of the email
-        rpath_parts = parse_email_details(data.rpath)
-        rpath = rpath_parts['email_address']
+    def transform(self, data: pandas.DataFrame) -> pandas.DataFrame:
+        col = data["rpath"].astype("string")
+
+        col = extract_email_address_col(col)
 
         if self.__decode_srs:
-            rpath = convert_srs(rpath)
+            col = convert_srs_col(col)
 
         if self.__remove_prvs:
-            rpath = remove_prvs(rpath)
+            col = remove_prvs_col(col)
 
-        data.rpath = rpath
+        data['rpath'] = col
         return data

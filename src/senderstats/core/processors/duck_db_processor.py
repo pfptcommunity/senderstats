@@ -1,8 +1,11 @@
-from typing import Dict, Any, Optional
-import duckdb
 from datetime import datetime
-from senderstats.interfaces.processor import Processor
+from typing import Dict, Any, Optional
+
+import duckdb
+
 from senderstats.data.message_data import MessageData
+from senderstats.interfaces.processor import Processor
+
 
 class DuckDBProcessor(Processor[MessageData]):
     def __init__(self, db_file: str, chunk_size: int = 100000):
@@ -73,4 +76,3 @@ class DuckDBProcessor(Processor[MessageData]):
         self._flush()
         self.con.close()
         print(f"Finalized DuckDB insert: {self._insert_count} records processed.")  # Debug
-

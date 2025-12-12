@@ -1,10 +1,15 @@
-from senderstats.common.utils import parse_email_details, convert_srs, remove_prvs, normalize_bounces, \
-    normalize_entropy
-from senderstats.data.message_data import MessageData
+import pandas
+
+from senderstats.common.utils import convert_srs_col, extract_email_address_col, remove_prvs_col, normalize_bounces_col, \
+    normalize_entropy_col
 from senderstats.interfaces.transform import Transform
 
 
-class MFromTransform(Transform[MessageData, MessageData]):
+def normalize_entropy_col(col):
+    pass
+
+
+class MFromTransform(Transform[pandas.DataFrame, pandas.DataFrame]):
     def __init__(self, decode_srs: bool = False, remove_prvs: bool = False, normalize_bounces: bool = False,
                  normalize_entropy: bool = False):
         super().__init__()
@@ -13,22 +18,22 @@ class MFromTransform(Transform[MessageData, MessageData]):
         self.__normalize_bounces = normalize_bounces
         self.__normalize_entropy = normalize_entropy
 
-    def transform(self, data: MessageData) -> MessageData:
-        # If sender is not empty, we will extract parts of the email
-        mfrom_parts = parse_email_details(data.mfrom)
-        mfrom = mfrom_parts['email_address']
+    def transform(self, data: pandas.DataFrame) -> pandas.DataFrame:
+        col = data["mfrom"].astype("string")
+        col = extract_email_address_col(col)
 
         if self.__decode_srs:
-            mfrom = convert_srs(mfrom)
+            col = convert_srs_col(col)
 
         if self.__remove_prvs:
-            mfrom = remove_prvs(mfrom)
+            col = remove_prvs_col(col)
 
         if self.__normalize_bounces:
-            mfrom = normalize_bounces(mfrom)
+            col = normalize_bounces_col(col)
 
         if self.__normalize_entropy:
-            mfrom = normalize_entropy(mfrom)
+            col = normalize_entropy_col(col)
 
-        data.mfrom = mfrom
+        data["mfrom"] = col
+
         return data

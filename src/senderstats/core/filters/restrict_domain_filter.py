@@ -1,13 +1,13 @@
-from typing import List
+from typing import List, Optional
 
-import pandas
+import pandas as pd
 import regex as re
 
 from senderstats.common.utils import compile_domains_pattern
 from senderstats.interfaces.filter import Filter
 
 
-class RestrictDomainFilter(Filter[pandas.DataFrame]):
+class RestrictDomainFilter(Filter[pd.DataFrame]):
     __restricted_domains: re.Pattern
 
     def __init__(self, restricted_domains: List[str]):
@@ -15,7 +15,7 @@ class RestrictDomainFilter(Filter[pandas.DataFrame]):
         self.__restricted_domains = compile_domains_pattern(restricted_domains)
         self.__excluded_count = 0
 
-    def filter(self, data: pandas.DataFrame) -> bool:
+    def filter(self, data: pd.DataFrame) -> Optional[pd.DataFrame]:
         if data.empty:
             return False
 
@@ -34,7 +34,7 @@ class RestrictDomainFilter(Filter[pandas.DataFrame]):
         for col in data.columns:
             data[col] = data_filtered_copy[col]
 
-        return True
+        return data
 
     def get_excluded_count(self) -> int:
         return self.__excluded_count

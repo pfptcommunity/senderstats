@@ -20,4 +20,5 @@ class FilterManager:
         print("Messages excluded by domain:", self.exclude_domain_filter.get_excluded_count())
         print("Messages excluded by sender:", self.exclude_senders_filter.get_excluded_count())
         print("Messages excluded by constraint:", self.restrict_senders_filter.get_excluded_count())
-        print("Messages excluded by duplicate message id:", self.exclude_duplicate_message_id_filter.get_excluded_count())
+        print("Messages excluded by duplicate message id:",
+              self.exclude_duplicate_message_id_filter.get_excluded_count())

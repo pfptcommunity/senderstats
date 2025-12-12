@@ -1,4 +1,7 @@
-import regex as re
+import re
+import re2
+
+import pandas as pd
 
 from senderstats.common.regex_patterns import *
 
@@ -17,6 +20,74 @@ email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
 bounce_re = re.compile(EMAIL_BOUNCE_REGEX, re.IGNORECASE)
 
 entropy_hex_pairs_re = re.compile(r'(?=(?:[0-9][a-f]|[a-f][0-9]|[0-9]{2}))', re.IGNORECASE)
+
+
+def safe_str(value, default=""):
+    """
+    Trimmed string or default for missing/empty values.
+    """
+    if value is None or pd.isna(value):
+        return default
+
+    s = str(value).strip()
+    return s if s else default
+
+
+def safe_lower(value, default=""):
+    """
+    Lowercased (casefolded) string or default.
+    """
+    if value is None or pd.isna(value):
+        return default
+
+    s = str(value).strip()
+
+    if not s:
+        return default
+
+    return s.casefold()
+
+
+def safe_int(value, default=pd.NA):
+    """
+    Safely convert to int, or return default on failure.
+    """
+    if value is None or pd.isna(value):
+        return default
+
+    try:
+        return int(str(value).strip())
+    except Exception:
+        return default
+
+
+def safe_pos_int(value, default=pd.NA, allow_zero=True):
+    """
+    Safely convert to a strictly positive integer (or zero if allow_zero=True).
+    Returns `default` for invalid or out-of-range values.
+    """
+    if value is None or pd.isna(value):
+        return default
+
+    try:
+        n = int(str(value).strip())
+    except Exception:
+        return default
+
+    if allow_zero:
+        return n if n >= 0 else default
+    else:
+        return n if n > 0 else default
+
+
+def safe_list(value, default=None):
+    """
+    Comma-separated string -> list of cleaned, lowercased items.
+    """
+    s = safe_lower(value, None)
+    if not s:
+        return default if default is not None else []
+    return [part.strip() for part in s.split(",") if part.strip()]
 
 
 def parse_email_details(email_str: str):
@@ -94,7 +165,7 @@ def build_or_regex_string(strings: list):
     :param strings: A list of strings to include in the regex pattern.
     :return: A regex pattern string.
     """
-    return r"({})".format('|'.join(strings))
+    return r"(?:{})".format('|'.join(strings))
 
 
 def average(numbers: list) -> float:
@@ -178,6 +249,113 @@ def normalize_bounces(email: str):
     return email
 
 
+def convert_srs_col(s: pd.Series) -> pd.Series:
+    """
+    Vectorized SRS converter: SRS-encoded → local@domain.
+    Does NOT modify the original Series; returns a new Series.
+    """
+    s_str = s.astype("string")
+
+    extracted = s_str.str.extract(srs_re)
+    # col 0 -> group(1) (unused prefix)
+    # col 1 -> group(2) domain
+    # col 2 -> group(3) local
+    has_match = extracted[1].notna() & extracted[2].notna()
+
+    if not has_match.any():
+        return s_str
+
+    new_vals = extracted[2] + "@" + extracted[1]
+
+    # where() returns a NEW Series: original where no match, new_vals where match
+    s_new = s_str.where(~has_match, new_vals)
+
+    return s_new
+
+
+def remove_prvs_col(s: pd.Series) -> pd.Series:
+    """
+    Remove PRVS/msprvs tags from addresses.
+    """
+    return s.astype("string").str.replace(prvs_re, "", regex=True)
+
+
+def normalize_bounces_col(s: pd.Series) -> pd.Series:
+    """
+    Pattern: (bounces?)[+-][^@]+@(.*)
+    Turns:   'bounce+xyz@foo.com' → 'bounce@foo.com'
+    """
+    s = s.astype("string")
+    extracted = s.str.extract(bounce_re)
+
+    # col 0 -> 'bounce' / 'bounces'
+    # col 1 -> domain
+    has_match = extracted[0].notna()
+
+    if has_match.any():
+        new_vals = extracted[0] + "@" + extracted[1]
+        s = s.where(~has_match, new_vals)
+
+    return s
+
+
+def extract_email_address_col(s: pd.Series) -> pd.Series:
+    """
+    Vectorized equivalent of parse_email_details(), but only returns the bare email.
+    """
+    s = s.astype("string")
+    parsed = s.str.extract(email_re)  # col0 = display_name, col1 = email_address
+    email_address = parsed[1].fillna(s)
+    return email_address
+
+
+def normalize_entropy_col(
+        s: pd.Series,
+        entropy_threshold: float = 0.6,
+        hex_pair_threshold: int = 6,
+) -> pd.Series:
+    """
+    High-entropy local parts → '#entropy#@domain'
+    """
+    s_str = s.astype("string")
+
+    parts = s_str.str.split("@", n=1, expand=True)
+    local = parts[0]
+    domain = parts[1]
+
+    # Only consider rows with a real domain
+    valid_mask = domain.notna() & (domain != "")
+    if not valid_mask.any():
+        return s_str
+
+    # Compute metrics on the whole Series (alignment is by index)
+    total_length = local.str.len()
+    numbers = local.str.count(r"\d")
+    symbols = local.str.count(r"[-+=_.]")
+    hex_pairs = local.str.count(entropy_hex_pairs_re)
+
+    # Weighted entropy (same as scalar function)
+    weighted_entropy = (2 * hex_pairs + 1.5 * numbers + 1.5 * symbols) / total_length
+
+    is_high_entropy = weighted_entropy >= entropy_threshold
+    has_enough_hex_pairs = hex_pairs >= hex_pair_threshold
+    nonzero_length = total_length > 0
+
+    # Final mask: valid email + high entropy + enough hex pairs + non-zero length
+    mask_entropy = valid_mask & is_high_entropy & has_enough_hex_pairs & nonzero_length
+
+    if not mask_entropy.any():
+        return s_str
+
+    # Build replacement values for all rows (only used where mask_entropy is True)
+    new_vals = "#entropy#@" + domain
+
+    # where() returns a NEW Series: original where False, new_vals where True
+    s_new = s_str.where(~mask_entropy, new_vals)
+
+    return s_new
+
+
 def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
     """
         Determines if an email's local part suggests an automated sender based on entropy and hex pair count.
@@ -232,7 +410,7 @@ def compile_domains_pattern(domains: list) -> re.Pattern:
     escaped_domains = [escape_regex_specials(domain.casefold()) for domain in domains]
 
     # Build the regex string to match these domains and subdomains
-    regex_string = r'(\.|@)' + build_or_regex_string(escaped_domains)
+    regex_string = r'(?:[@.])' + build_or_regex_string(escaped_domains)
 
     # Compile the regex string into a regex object
     pattern = re.compile(regex_string, flags=re.IGNORECASE)
