@@ -1,5 +1,8 @@
 from typing import List, Dict, Callable
 
+import pandas as pd
+
+from senderstats.common.utils import safe_lower, safe_list, safe_str, safe_pos_int
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.field_mapper import FieldMapper
 
@@ -9,11 +12,11 @@ class CSVMapper(FieldMapper):
         self.__mappings = default_mappings
         self._index_map = {}
         self.__transformations = {
-            'rpath': lambda value: str(value).casefold().strip(),
-            'mfrom': lambda value: str(value).casefold().strip(),
-            'msgsz': lambda value: int(value) if str(value).isdigit() else -1,
-            'rcpts': lambda value: str(value).casefold().strip().split(','),
-            'subject': lambda value: str(value).strip(),
+            'mfrom': lambda v: safe_lower(v, pd.NA),
+            'msgsz': lambda v: safe_pos_int(v),
+            'rcpts': lambda v: safe_list(v),
+            'rpath': lambda v: safe_lower(v),
+            'subject': lambda v: safe_str(v)
         }
 
     def reindex(self, headers: List[str]):
