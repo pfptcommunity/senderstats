@@ -12,10 +12,9 @@ class ExcludeInvalidSizeFilter(Filter[pandas.DataFrame]):
         if data.empty:
             return False
 
-        before_count = len(data)
-        data = data[data['msgsz'] < 0]
-        removed = before_count - len(data)
-        self.__excluded_count += removed
+        before = len(data)
+        result = data.dropna(subset=['msgsz'])
+        self.__excluded_count += (before - len(result))
         return True
 
     def get_excluded_count(self) -> int:
