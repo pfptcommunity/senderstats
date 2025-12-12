@@ -1,12 +1,14 @@
 import io
+import json
+import os
 import queue
 import threading
 from contextlib import redirect_stdout, redirect_stderr
+from datetime import datetime
 from types import SimpleNamespace
 
 import regex as re
 
-# Tk / TkinterDnD imports guarded so GUI fails gracefully if not available
 try:
     import tkinter as tk
     from tkinter import filedialog, ttk, messagebox, scrolledtext
@@ -78,6 +80,10 @@ class SenderStatsGUI:
         self.root.geometry("1024x768")
         self.root.minsize(1024, 768)
         self.root.columnconfigure(0, weight=1)
+        home_dir = os.path.expanduser("~")
+        self.config_dir = os.path.join(home_dir, ".senderstats")
+        self.config_file = os.path.join(self.config_dir, "settings.json")
+        os.makedirs(self.config_dir, exist_ok=True)
         # Give the main areas reasonable proportions:
         #  - row 0: notebook (tabs)
         #  - row 1: log/status
@@ -103,13 +109,13 @@ class SenderStatsGUI:
         self.gen_alignment = tk.BooleanVar()
         self.gen_msgid = tk.BooleanVar()
         self.expand_recipients = tk.BooleanVar()
-        self.no_display = tk.BooleanVar()
-        self.remove_prvs = tk.BooleanVar()
-        self.decode_srs = tk.BooleanVar()
-        self.normalize_bounces = tk.BooleanVar()
+        self.no_display = tk.BooleanVar(value=True)
+        self.remove_prvs = tk.BooleanVar(value=True)
+        self.decode_srs = tk.BooleanVar(value=True)
+        self.normalize_bounces = tk.BooleanVar(value=True)
         self.normalize_entropy = tk.BooleanVar()
         self.no_empty_hfrom = tk.BooleanVar()
-        self.sample_subject = tk.BooleanVar()
+        self.sample_subject = tk.BooleanVar(value=True)
         self.exclude_ips = []
         self.exclude_domains = []
         self.restrict_domains = []
@@ -119,6 +125,9 @@ class SenderStatsGUI:
         self.no_default_exclude_domains = tk.BooleanVar()
         self.no_default_exclude_ips = tk.BooleanVar()
 
+        # Output file was set manually
+        self.output_file_set_manually = False
+
         # Notebook for tabs
         self.notebook = ttk.Notebook(root)
         self.notebook.grid(row=0, column=0, sticky='nsew')
@@ -127,25 +136,16 @@ class SenderStatsGUI:
         self.create_field_mapping_tab()
         self.create_reporting_tab()
         self.create_parsing_tab()
-        self.create_extended_tab()
+        self.create_filters_tab()
 
         # Log / Status frame
         log_frame = ttk.LabelFrame(root, text="Log / Status")
         log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
 
         log_frame.columnconfigure(0, weight=1)
-        # log_frame.rowconfigure(0, weight=1)
-
-        self.output_text = scrolledtext.ScrolledText(log_frame, height=12, state='disabled')
-        self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
-
-        log_frame = ttk.LabelFrame(root, text="Log / Status")
-        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-
-        log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
 
-        self.output_text = scrolledtext.ScrolledText(log_frame, state='disabled')
+        self.output_text = scrolledtext.ScrolledText(log_frame, height=8, state='disabled')
         self.output_text.grid(row=0, column=0, padx=(10, 5), pady=10, sticky='nsew')
 
         # Clear Log button
@@ -160,6 +160,8 @@ class SenderStatsGUI:
         self.root.after(0, lambda: self.input_listbox.focus_set())
         self.result_queue = queue.Queue()
         self.__start_queue_watcher()
+        self.load_settings()
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def __start_queue_watcher(self):
         def watcher():
@@ -198,6 +200,7 @@ class SenderStatsGUI:
                     if f not in self.input_files:
                         self.input_files.append(f)
                         self.input_listbox.insert(tk.END, f)
+                    self.suggest_output_file()
                 else:
                     messagebox.showerror("Invalid File", f"Only CSV files are allowed:\n{f}")
 
@@ -252,7 +255,7 @@ class SenderStatsGUI:
 
         output_frame.columnconfigure(0, weight=1)
 
-        tk.Entry(output_frame, textvariable=self.output_file, width=50).grid(
+        tk.Entry(output_frame, state='readonly', textvariable=self.output_file, width=50).grid(
             row=0, column=0, padx=10, pady=10, sticky="ew"
         )
 
@@ -317,17 +320,39 @@ class SenderStatsGUI:
         for i, (label, var) in enumerate(checkboxes):
             tk.Checkbutton(tab, text=label, variable=var).grid(row=i, column=0, sticky=tk.W, padx=5, pady=5)
 
-    def create_extended_tab(self):
+    def create_filters_tab(self):
         tab = ttk.Frame(self.notebook)
-        self.notebook.add(tab, text="Extended")
+        self.notebook.add(tab, text="Input Filters")
 
         tab.columnconfigure(0, weight=1)
+
+        # ============================
+        # Advanced Options
+        # ============================
+        options_frame = ttk.LabelFrame(tab, text="Advanced Options")
+        options_frame.grid(row=0, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+
+        # Two columns for side-by-side layout
+        options_frame.columnconfigure(0, weight=1)
+        options_frame.columnconfigure(1, weight=1)
+
+        ttk.Checkbutton(
+            options_frame,
+            text="Don't use default excluded domains",
+            variable=self.no_default_exclude_domains
+        ).grid(row=0, column=0, sticky="w", padx=5, pady=5)
+
+        ttk.Checkbutton(
+            options_frame,
+            text="Don't use default excluded IPs",
+            variable=self.no_default_exclude_ips
+        ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
 
         # ============================
         # IP / Domain Filters
         # ============================
         filters_frame = ttk.LabelFrame(tab, text="IP / Domain Filters")
-        filters_frame.grid(row=0, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        filters_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         filters_frame.columnconfigure(1, weight=1)
 
         # Exclude IPs
@@ -368,7 +393,7 @@ class SenderStatsGUI:
         # Sender Filters
         # ============================
         senders_frame = ttk.LabelFrame(tab, text="Sender Filters")
-        senders_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        senders_frame.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
         senders_frame.columnconfigure(1, weight=1)
 
         tk.Label(senders_frame, text="Exclude Senders:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
@@ -381,28 +406,6 @@ class SenderStatsGUI:
         remove_sender = ttk.Button(senders_frame, text="Remove Selected", command=self.remove_selected_exclude_sender)
         remove_sender.grid(row=1, column=2, padx=5, pady=5)
 
-        # ============================
-        # Advanced Options
-        # ============================
-        options_frame = ttk.LabelFrame(tab, text="Advanced Options")
-        options_frame.grid(row=2, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
-
-        # Two columns for side-by-side layout
-        options_frame.columnconfigure(0, weight=1)
-        options_frame.columnconfigure(1, weight=1)
-
-        ttk.Checkbutton(
-            options_frame,
-            text="No Default Exclude Domains",
-            variable=self.no_default_exclude_domains
-        ).grid(row=0, column=0, sticky="w", padx=5, pady=5)
-
-        ttk.Checkbutton(
-            options_frame,
-            text="No Default Exclude IPs",
-            variable=self.no_default_exclude_ips
-        ).grid(row=0, column=1, sticky="w", padx=5, pady=5)
-
     def browse_input(self):
         files = filedialog.askopenfilenames(
             title="Select Input Files",
@@ -413,6 +416,7 @@ class SenderStatsGUI:
                 if f.lower().endswith(".csv"):
                     self.input_files.append(f)
             self.update_input_listbox()
+            self.suggest_output_file()
 
     def update_input_listbox(self):
         self.input_listbox.delete(0, tk.END)
@@ -426,14 +430,54 @@ class SenderStatsGUI:
                 del self.input_files[i]
                 self.input_listbox.delete(i)
 
+            if not self.input_files and not self.output_file_set_manually:
+                self.output_file.set('')
+
     def browse_output(self):
+        current_output = self.output_file.get()
+        suggested_dir = os.path.expanduser("~")  # Ultimate fallback
+        suggested_name = "SenderStats_Output.xlsx"
+
+        # Prioritize current output dir if set and exists
+        if current_output and os.path.exists(os.path.dirname(current_output)):
+            suggested_dir = os.path.dirname(current_output)
+            suggested_name = os.path.basename(current_output)
+        elif self.input_files:
+            first_input = self.input_files[0]
+            suggested_dir = os.path.dirname(first_input)
+            base_name = os.path.splitext(os.path.basename(first_input))[0]
+            suggested_name = f"{base_name}_SenderStats.xlsx"
+
         file = filedialog.asksaveasfilename(
             title="Save Output File",
             defaultextension=".xlsx",
-            filetypes=[("Excel files", "*.xlsx")]
+            filetypes=[("Excel files", "*.xlsx")],
+            initialdir=suggested_dir,
+            initialfile=suggested_name
         )
         if file:
             self.output_file.set(file)
+            self.output_file_set_manually = True
+
+    def suggest_output_file(self):
+        if self.output_file_set_manually:  # Skip if user set manually
+            return
+        if not self.input_files:  # Nothing to suggest from
+            return
+
+        first_input = self.input_files[0]
+        input_dir = os.path.dirname(first_input)
+        base_name = os.path.splitext(os.path.basename(first_input))[0]
+        suggested_name = f"{base_name}_SenderStats.xlsx"
+        suggested_path = os.path.join(input_dir, suggested_name)
+
+        # Append timestamp for uniqueness
+        if os.path.exists(suggested_path):
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            suggested_name = f"{base_name}_SenderStats_{timestamp}.xlsx"
+            suggested_path = os.path.join(input_dir, suggested_name)
+
+        self.output_file.set(suggested_path)
 
     def add_exclude_ip(self):
         ip = self.exclude_ips_entry.get().strip()
@@ -592,6 +636,98 @@ class SenderStatsGUI:
             messagebox.showerror("Validation Error", str(e))
             self.run_button.config(state='normal', text="Run SenderStats")
 
+    def load_settings(self):
+        if os.path.exists(self.config_file):
+            try:
+                with open(self.config_file, 'r') as f:
+                    settings = json.load(f)
+                # StringVars
+                self.ip_field.set(settings.get('ip_field', DEFAULT_IP_FIELD))
+                self.mfrom_field.set(settings.get('mfrom_field', DEFAULT_MFROM_FIELD))
+                self.hfrom_field.set(settings.get('hfrom_field', DEFAULT_HFROM_FIELD))
+                self.rcpts_field.set(settings.get('rcpts_field', DEFAULT_RCPTS_FIELD))
+                self.rpath_field.set(settings.get('rpath_field', DEFAULT_RPATH_FIELD))
+                self.msgid_field.set(settings.get('msgid_field', DEFAULT_MSGID_FIELD))
+                self.subject_field.set(settings.get('subject_field', DEFAULT_SUBJECT_FIELD))
+                self.msgsz_field.set(settings.get('msgsz_field', DEFAULT_MSGSZ_FIELD))
+                self.date_field.set(settings.get('date_field', DEFAULT_DATE_FIELD))
+                self.date_format.set(settings.get('date_format', DEFAULT_DATE_FORMAT))
+                # BooleanVars
+                self.gen_hfrom.set(settings.get('gen_hfrom', False))
+                self.gen_rpath.set(settings.get('gen_rpath', False))
+                self.gen_alignment.set(settings.get('gen_alignment', False))
+                self.gen_msgid.set(settings.get('gen_msgid', False))
+                self.expand_recipients.set(settings.get('expand_recipients', False))
+                self.no_display.set(settings.get('no_display', False))
+                self.remove_prvs.set(settings.get('remove_prvs', False))
+                self.decode_srs.set(settings.get('decode_srs', False))
+                self.normalize_bounces.set(settings.get('normalize_bounces', False))
+                self.normalize_entropy.set(settings.get('normalize_entropy', False))
+                self.no_empty_hfrom.set(settings.get('no_empty_hfrom', False))
+                self.sample_subject.set(settings.get('sample_subject', False))
+                self.exclude_dup_msgids.set(settings.get('exclude_dup_msgids', False))
+                self.no_default_exclude_domains.set(settings.get('no_default_exclude_domains', False))
+                self.no_default_exclude_ips.set(settings.get('no_default_exclude_ips', False))
+                # Lists (repopulate internal lists and listboxes)
+                self.exclude_ips = settings.get('exclude_ips', [])
+                for ip in self.exclude_ips:
+                    self.exclude_ips_listbox.insert(tk.END, ip)
+                self.exclude_domains = settings.get('exclude_domains', [])
+                for domain in self.exclude_domains:
+                    self.exclude_domains_listbox.insert(tk.END, domain)
+                self.restrict_domains = settings.get('restrict_domains', [])
+                for domain in self.restrict_domains:
+                    self.restrict_domains_listbox.insert(tk.END, domain)
+                self.exclude_senders = settings.get('exclude_senders', [])
+                for sender in self.exclude_senders:
+                    self.exclude_senders_listbox.insert(tk.END, sender)
+            except (json.JSONDecodeError, IOError):
+                pass  # Use defaults on error
+
+    def save_settings(self):
+        settings = {
+            # StringVars
+            'ip_field': self.ip_field.get(),
+            'mfrom_field': self.mfrom_field.get(),
+            'hfrom_field': self.hfrom_field.get(),
+            'rcpts_field': self.rcpts_field.get(),
+            'rpath_field': self.rpath_field.get(),
+            'msgid_field': self.msgid_field.get(),
+            'subject_field': self.subject_field.get(),
+            'msgsz_field': self.msgsz_field.get(),
+            'date_field': self.date_field.get(),
+            'date_format': self.date_format.get(),
+            # BooleanVars
+            'gen_hfrom': self.gen_hfrom.get(),
+            'gen_rpath': self.gen_rpath.get(),
+            'gen_alignment': self.gen_alignment.get(),
+            'gen_msgid': self.gen_msgid.get(),
+            'expand_recipient': self.expand_recipients.get(),
+            'no_display': self.no_display.get(),
+            'remove_prvs': self.remove_prvs.get(),
+            'decode_srs': self.decode_srs.get(),
+            'normalize_bounces': self.normalize_bounces.get(),
+            'normalize_entropy': self.normalize_entropy.get(),
+            'no_empty_hfrom': self.no_empty_hfrom.get(),
+            'sample_subject': self.sample_subject.get(),
+            'exclude_dup_msgids': self.exclude_dup_msgids.get(),
+            'no_default_exclude_domains': self.no_default_exclude_domains.get(),
+            'no_default_exclude_ips': self.no_default_exclude_ips.get(),
+            # Lists
+            'exclude_ips': self.exclude_ips,
+            'exclude_domains': self.exclude_domains,
+            'restrict_domains': self.restrict_domains,
+            'exclude_senders': self.exclude_senders,
+        }
+        try:
+            with open(self.config_file, 'w') as f:
+                json.dump(settings, f, indent=4)
+        except IOError:
+            pass
+
+    def on_closing(self):
+        self.save_settings()
+        self.root.destroy()
 
 def main():
     root = TkinterDnD.Tk()
