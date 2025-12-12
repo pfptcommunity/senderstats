@@ -1,3 +1,5 @@
+import pandas as pd
+pd.options.mode.copy_on_write = True
 from senderstats.cli_args import parse_arguments
 from senderstats.processing.config_manager import ConfigManager
 from senderstats.processing.data_source_manager import DataSourceManager

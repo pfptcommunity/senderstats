@@ -22,6 +22,8 @@ except ImportError as e:
         "  Arch:          sudo pacman -S tk\n"
     ) from e
 
+import pandas as pd
+pd.options.mode.copy_on_write = True
 from senderstats.cli_args import get_version
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
