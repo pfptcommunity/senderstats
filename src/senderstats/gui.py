@@ -77,8 +77,8 @@ class SenderStatsGUI:
     def __init__(self, root):
         self.root = root
         self.root.title(f"SenderStats v{get_version()}")
-        self.root.geometry("1024x768")
-        self.root.minsize(1024, 768)
+        self.root.geometry("1024x800")
+        self.root.minsize(1024, 800)
         self.root.columnconfigure(0, weight=1)
         home_dir = os.path.expanduser("~")
         self.config_dir = os.path.join(home_dir, ".senderstats")
