@@ -2,7 +2,7 @@ import os
 import pickle
 
 import re2  # Superfast, not good for back tracking
-import regex as re # Used for ID Matching
+import regex as re  # Used for ID Matching
 
 # -------------------------------
 # Pattern definitions

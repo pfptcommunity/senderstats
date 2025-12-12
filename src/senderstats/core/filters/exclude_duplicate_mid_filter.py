@@ -1,4 +1,3 @@
-from typing import List
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.filter import Filter
 

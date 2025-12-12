@@ -24,7 +24,6 @@ except ImportError as e:
         "  Arch:          sudo pacman -S tk\n"
     ) from e
 
-
 from senderstats.cli_args import get_version
 from senderstats.common.defaults import *
 from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
@@ -729,10 +728,12 @@ class SenderStatsGUI:
         self.save_settings()
         self.root.destroy()
 
+
 def main():
     root = TkinterDnD.Tk()
     app = SenderStatsGUI(root)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

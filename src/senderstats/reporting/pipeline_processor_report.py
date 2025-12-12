@@ -26,8 +26,10 @@ class PipelineProcessorReport:
 
         summary.write(0, 0, f"Estimated App Data ({self.__days} days)", self.__format_manager.summary_format)
         summary.write(1, 0, f"Estimated App Messages ({self.__days} days)", self.__format_manager.summary_format)
-        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)", self.__format_manager.summary_format)
-        summary.write(3, 0, f"Estimated App Volume Percentage ({self.__days} days)", self.__format_manager.summary_format)
+        summary.write(2, 0, f"Estimated App Average Message Size ({self.__days} days)",
+                      self.__format_manager.summary_format)
+        summary.write(3, 0, f"Estimated App Volume Percentage ({self.__days} days)",
+                      self.__format_manager.summary_format)
 
         summary.write(5, 0, "Estimated Monthly App Data", self.__format_manager.summary_highlight_format)
         summary.write(6, 0, "Estimated Monthly App Messages", self.__format_manager.summary_highlight_format)
@@ -76,12 +78,12 @@ class PipelineProcessorReport:
         #                       self.__format_manager.summary_values_format)
 
         summary.write_formula(2, 1,
-                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages','B15'),
+                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages',
+                                                             'B15'),
                               self.__format_manager.summary_values_format)
 
-
         summary.write_formula(3, 1,
-                              self.__get_conditional_percentage_of_total('B16', 'Messages Per Day', 'Messages',  'B15'),
+                              self.__get_conditional_percentage_of_total('B16', 'Messages Per Day', 'Messages', 'B15'),
                               self.__format_manager.summary_values_format)
 
         # Based on daily volumes scaled for a 30 day period
@@ -94,7 +96,8 @@ class PipelineProcessorReport:
                               self.__format_manager.summary_highlight_values_format)
 
         summary.write_formula(7, 1,
-                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages', 'B15'),
+                              self.__get_conditional_average('B16', 'Messages Per Day', 'Total Bytes', 'Messages',
+                                                             'B15'),
                               self.__format_manager.summary_highlight_values_format)
 
         # summary.write_formula(7, 1,
@@ -163,7 +166,7 @@ class PipelineProcessorReport:
     def __get_total_count(self, table_id, col_data):
         return f"""=SUM(INDIRECT({table_id}&"[{col_data}]"))"""
 
-    #def __get_total_average(self, table_id, col_data):
+    # def __get_total_average(self, table_id, col_data):
     #    return f"""=ROUNDUP(AVERAGE(INDIRECT({table_id} & "[{col_data}]")) / 1024,0) & " KB" """
 
     def __get_total_average(self, table_id, col_data, col_messages):
@@ -219,4 +222,3 @@ class PipelineProcessorReport:
 
         for proc in self.__pipeline_manager.get_active_processors():
             self.__report(proc)
-

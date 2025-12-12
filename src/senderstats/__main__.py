@@ -1,4 +1,5 @@
 import sys
+
 from senderstats.cli import main as cli_main
 from senderstats.gui import main as gui_main
 
