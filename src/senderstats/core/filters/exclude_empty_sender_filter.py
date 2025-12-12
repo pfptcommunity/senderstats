@@ -1,14 +1,14 @@
-import pandas
+import pandas as pd
 
 from senderstats.interfaces.filter import Filter
 
 
-class ExcludeEmptySenderFilter(Filter[pandas.DataFrame]):
+class ExcludeEmptySenderFilter(Filter[pd.DataFrame]):
     def __init__(self):
         super().__init__()
         self.__excluded_count = 0
 
-    def filter(self, data: pandas.DataFrame) -> bool:
+    def filter(self, data: pd.DataFrame) -> bool:
         if data.empty:
             return False
 
