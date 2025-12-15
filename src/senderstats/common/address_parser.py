@@ -1,126 +1,54 @@
 from typing import Dict, Tuple, Iterable, List
+import re
 
-import regex as re
+PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
 
-_EMAIL_PATTERN = (
-    r"^[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]+@"
-    r"(?:\[[0-9A-Fa-f:.]+\]|[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*)$"
-)
+email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
 
-_EMAIL_RE = re.compile(_EMAIL_PATTERN)
-
-_EMAIL_STRIP_CHARS = " \t\r\n,;<>\"'()"
-
-
-def _find_angle_pair_outside_quotes(s: str) -> Tuple[int, int]:
-    in_quotes = False
-    escape = False
-    lt = -1
-    gt = -1
-
-    for i, ch in enumerate(s):
-        if escape:
-            escape = False
-            continue
-        if ch == "\\":
-            escape = True
-            continue
-        if ch == '"':
-            in_quotes = not in_quotes
-            continue
-        if not in_quotes:
-            if ch == "<":
-                lt = i
-                gt = -1
-            elif ch == ">" and lt != -1:
-                gt = i
-
-    return lt, gt
-
-
-def _unescape_quoted_display(name: str) -> str:
-    out = []
-    i = 0
-    n = len(name)
-    while i < n:
-        if name[i] == "\\" and i + 1 < n and name[i + 1] in ('\\', '"'):
-            out.append(name[i + 1])
-            i += 2
-        else:
-            out.append(name[i])
-            i += 1
-    return "".join(out)
-
-
-def _fallback_parse_last_at_token(s: str) -> Tuple[str, str]:
-    at = s.rfind("@")
-    if at == -1:
-        return s, ""
-    j = at - 1
-    while j >= 0 and not s[j].isspace():
-        j -= 1
-    if j >= 0:
-        return s[:j].strip(), s[j + 1:].strip()
-    return "", s
+def parse_email_details_tuple(email_str: str) -> Tuple[str, str, str]:
+    m = email_re.match(email_str or "")
+    if not m:
+        return "", "", ""
+    display_name = m.group(1) or ""
+    email_address = m.group(2) or ""
+    _, _, domain = email_address.partition("@")
+    return display_name, email_address, domain
 
 
 def parse_email_details(email_str: str) -> Dict[str, str]:
-    original = email_str
-    s = (email_str or "").strip()
-
-    data = {"display_name": "", "email_address": "", "odata": original}
-    if not s:
-        return data
-
-    display = ""
-    email = ""
-
-    lt, gt = _find_angle_pair_outside_quotes(s)
-    if lt != -1 and gt != -1 and lt < gt:
-        disp1 = s[:lt].strip()
-        em1 = s[lt + 1:gt].strip().strip(_EMAIL_STRIP_CHARS)
-        if _EMAIL_RE.fullmatch(em1):
-            display, email = disp1, em1
-        else:
-            display, email = _fallback_parse_last_at_token(s)
-    else:
-        display, email = _fallback_parse_last_at_token(s)
-
-    email = (email or "").strip().strip(_EMAIL_STRIP_CHARS)
-    if email and not _EMAIL_RE.fullmatch(email):
-        email = ""
-
-    display = (display or "").strip().rstrip(",").strip()
-    if len(display) >= 2 and display[0] == '"' and display[-1] == '"':
-        display = _unescape_quoted_display(display[1:-1]).strip()
-
-    data["display_name"] = display
-    data["email_address"] = email
-    return data
-
-
-def parse_email_details_tuple(s: str) -> Tuple[str, str]:
-    d = parse_email_details(s)  # your fast function
-    return d["display_name"], d["email_address"]
-
-
-def parse_email_details_parallel(
-        emails: Iterable[str],
-) -> Tuple[List[str], List[str]]:
     """
-    Batch parse for speed. Returns 2 parallel lists:
-      display_name[], email_address[]
+    Parses email details from a given email string.
+
+    This function uses a regular expression to extract the display name and email address
+    from a provided email string. If the email string matches the expected format, it extracts
+    the display name (if present), the email address, and the domain part of the email address.
+    If the email string does not match the expected format, it returns empty strings for these components.
+
+    Parameters:
+    :param email_str: The email string to parse. Expected to potentially include a display name
+      and an email address in a standard format (e.g., "John Doe <john.doe@example.com>").
+
+    :return: A dictionary containing the parsed display name, email address, and domain, as well as
+      the original email string. The keys in the returned dictionary are "display_name", "email_address",
     """
+    display_name, email_address, domain = parse_email_details_tuple(email_str)
+    return {
+        "display_name": display_name,
+        "email_address": email_address,
+        "domain": domain,
+        "odata": email_str,
+    }
+
+def parse_email_details_parallel(emails: Iterable[str]) -> Tuple[List[str], List[str]]:
     display_names: List[str] = []
     email_addresses: List[str] = []
 
-    # local bindings reduce attribute/global lookups in hot loops
-    parse_one = parse_email_details_tuple
+    core = parse_email_details_tuple
     dn_append = display_names.append
     ea_append = email_addresses.append
 
     for s in emails:
-        dn, ea = parse_one(s)
+        dn, ea, _ = core(s)
         dn_append(dn)
         ea_append(ea)
 
