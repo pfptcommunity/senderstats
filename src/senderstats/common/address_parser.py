@@ -1,12 +1,23 @@
 from typing import Dict, Tuple, Iterable, List
 import re
 
-PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
+_PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
 
-email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
+_EMAIL_RE = re.compile(_PARSE_EMAIL_REGEX, re.IGNORECASE)
 
 def parse_email_details_tuple(email_str: str) -> Tuple[str, str, str]:
-    m = email_re.match(email_str or "")
+    """
+    Parses an email string into its core components.
+
+    Attempts to extract a display name, full email address, and domain
+    from the provided string using a compiled regular expression.
+    If parsing fails, empty strings are returned for all fields.
+
+    :param email_str: An email string that may include an optional display name
+                      and angle-bracketed email address.
+    :return: A tuple of (display_name, email_address, domain).
+    """
+    m = _EMAIL_RE.match(email_str or "")
     if not m:
         return "", "", ""
     display_name = m.group(1) or ""
@@ -19,17 +30,13 @@ def parse_email_details(email_str: str) -> Dict[str, str]:
     """
     Parses email details from a given email string.
 
-    This function uses a regular expression to extract the display name and email address
-    from a provided email string. If the email string matches the expected format, it extracts
-    the display name (if present), the email address, and the domain part of the email address.
-    If the email string does not match the expected format, it returns empty strings for these components.
+    This function extracts the display name, email address, and domain
+    from an input string and returns them in a dictionary along with
+    the original input value.
 
-    Parameters:
-    :param email_str: The email string to parse. Expected to potentially include a display name
-      and an email address in a standard format (e.g., "John Doe <john.doe@example.com>").
-
-    :return: A dictionary containing the parsed display name, email address, and domain, as well as
-      the original email string. The keys in the returned dictionary are "display_name", "email_address",
+    :param email_str: The email string to parse. This may include a display name
+                      and an email address in a standard format.
+    :return: A dictionary with keys: display_name, email_address, domain, and odata.
     """
     display_name, email_address, domain = parse_email_details_tuple(email_str)
     return {
@@ -39,7 +46,18 @@ def parse_email_details(email_str: str) -> Dict[str, str]:
         "odata": email_str,
     }
 
+
 def parse_email_details_parallel(emails: Iterable[str]) -> Tuple[List[str], List[str]]:
+    """
+    Parses multiple email strings in sequence and collects results in parallel lists.
+
+    For each input string, the display name and email address are extracted
+    and appended to separate lists, preserving input order.
+
+    :param emails: An iterable of email strings to parse.
+    :return: A tuple containing two lists:
+             (list_of_display_names, list_of_email_addresses).
+    """
     display_names: List[str] = []
     email_addresses: List[str] = []
 
