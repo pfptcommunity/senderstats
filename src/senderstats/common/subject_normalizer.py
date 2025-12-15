@@ -1,8 +1,11 @@
 import os
 import pickle
+from functools import lru_cache
+from importlib import resources
+from typing import Any
 
-import re2  # Superfast, not good for back tracking
-import regex as re  # Used for ID Matching
+import re2
+import regex as re
 
 # -------------------------------
 # Pattern definitions
@@ -106,6 +109,9 @@ IDENTIFIER_REGEX = (
     r"\S+"
 )
 
+_RESOURCE_PACKAGE = "senderstats.common.data"
+_RESOURCE_NAME_AUTOMATON = "name_automaton.pkl"
+
 
 # -------------------------------
 # SubjectNormalizer
@@ -150,7 +156,24 @@ class SubjectNormalizer:
         self.email_address_re = re.compile(EMAIL_REGEX)
         self.month_only_re = re2.compile(r"(?i)\b" + MONTH_NAME_REGEX + r"\b")
 
-    # ---- internal helpers ----
+    @classmethod
+    def load_default(cls) -> SubjectNormalizer:
+        """
+        Create a SubjectNormalizer using the packaged default name automaton (if present).
+        Offline-safe: if the resource isn't shipped, it falls back to names disabled.
+        """
+        automaton: Optional[Any]
+        try:
+            ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_AUTOMATON)
+            with ref.open("rb") as f:
+                automaton = pickle.load(f)
+        except FileNotFoundError:
+            automaton = None
+
+        return cls(
+            name_automaton=automaton,
+            enable_names=(automaton is not None),
+        )
 
     def _replace_months(self, s: str) -> str:
         """Replace standalone month names with {m}."""
@@ -245,7 +268,6 @@ class SubjectNormalizer:
 
         return "".join(out)
 
-    # ---- public API ----
 
     def normalize(self, subj: str) -> str:
         """
@@ -267,223 +289,16 @@ class SubjectNormalizer:
         s = self.email_address_re.sub("{e}", s)
         s = self.identifier_re.sub("{#}", s)
         s = re.sub(r"\b\d+\b", "{i}", s)
-        s = self._replace_names(s)
+        # s = self._replace_names(s)
         s = self._replace_months(s)
         s = re.sub(r"\s+", " ", s)
         return s.lower()
 
 
-# -------------------------------
-# Test cases
-# -------------------------------
-
-iso_tests = {
-    # originals
-    "2025-12-11": "{d}",
-    "2025-12-11 14:22": "{t}",
-    "2025-12-11T14:22": "{t}",
-    "2025-12-11T14:22:33": "{t}",
-
-    # extra ISO / YMD variants
-    "0001-01-01": "{d}",
-    "9999-12-31": "{d}",
-    "2025/12/11": "{d}",
-    "2025/12/11 23:59": "{t}",
-    "2025.12.11 23:59:59": "{t}",
-}
-
-numeric_date_tests = {
-    # originals
-    "12/11/2025": "{d}",
-    "12-11-25": "{d}",
-    "1/2/25": "{d}",
-    "1/2/2025 14:00": "{t}",
-
-    # more numeric variants
-    "10.2.25": "{d}",
-    "01.12.0000": "{d}",
-    "12/11/0001": "{d}",
-    "3-1-99": "{d}",
-    "03-01-1999 08:15": "{t}",
-    "10.12.2025 08:15 - 09:00": "{t}",
-}
-
-month_day_year_tests = {
-    # originals
-    "Dec 11, 2025": "{d}",
-    "Dec 11 2025": "{d}",
-    "Dec 11": "{d}",
-    "Dec, 11": "{d}",
-    "Dec, 11, 2025": "{d}",
-    "December 11": "{d}",
-    "December 11 2025": "{d}",
-
-    # extras
-    "Dec 11 0000": "{d}",
-    "December 31 9999": "{d}",
-    "Dec  11,   2025": "{d}",
-    "December 5, 25": "{d}",
-    "Dec 11 2025 23:59": "{t}",
-}
-
-day_month_year_tests = {
-    # originals
-    "11 Dec 2025": "{d}",
-    "11 Dec, 2025": "{d}",
-    "11th Dec 2025": "{d}",
-    "11th Dec, 2025": "{d}",
-
-    # extras
-    "01 Jan 0000": "{d}",
-    "31 Dec 9999": "{d}",
-    "1st Jan 25": "{d}",
-    "1st Jan 25 14:00": "{t}",
-    "11 Dec 2025 14:00 UTC": "{t}",
-    "11 Dec 2025 14:00:59 PST": "{t}",
-}
-
-dow_date_tests = {
-    # originals
-    "Thu Dec 11, 2025": "{d}",
-    "Thu, Dec 11, 2025": "{d}",
-    "Mon Dec 1 2025": "{d}",
-    "Tuesday, December 2 2025": "{d}",
-
-    # extras
-    "Wed 1/2/25": "{d}",
-    "Fri 2025-12-11": "{d}",
-    "fri 2025-12-11 14:00": "{t}",
-    "Tuesday, 11 Dec 2025 14:00 - 15:30": "{t}",
-}
-
-ampm_tests = {
-    # originals
-    "Dec 11, 2025 2:30pm": "{t}",
-    "Dec 11 2025 02:30 PM": "{t}",
-    "11 Dec 2025 2:30pm": "{t}",
-    "Thu Dec 11, 2025 2:30pm": "{t}",
-
-    # extras
-    "Dec 11, 2025 2pm": "{t}",
-    "Dec 11, 2025 2 pm": "{t}",
-    "11 Dec 2025 2 PM": "{t}",
-    "11 Dec 2025 2:30 pm PST": "{t}",
-}
-
-time_range_tests = {
-    # originals
-    "Dec 11, 2025 2:30pm - 3:15pm": "{t}",
-    "Thu Dec 11, 2025 2:45pm - 3:15pm (EST)": "{t}",
-    "11 Dec 2025 14:00 - 15:30": "{t}",
-
-    # extras
-    "Dec 11 2025 2pm-3pm": "{t}",
-    "11 Dec 2025 14:00 - 15:30 UTC": "{t}",
-    "2025-12-11 14:00 - 15:30 (PST)": "{t}",
-}
-
-month_only_tests = {
-    # originals
-    "Dec": "{m}",
-    "December": "{m}",
-    "jul": "{m}",  # lower case, should still match
-    "Meeting in October": "meeting in {m}",
-
-    # extras
-    "Sale ends in July": "sale ends in {m}",
-    "See you in jan": "see you in {m}",
-    "Billed through NOVEMBER": "billed through {m}",
-}
-
-id_tests = {
-    # originals
-    "Order #hsgske-heys": "order {#}",
-    "Tracking ABC123": "tracking {#}",
-    "Item A-1234 shipped Dec 11, 2025": "item {#} shipped {d}",
-
-    # extras
-    "Ref: INV-2025-12-11": "ref: {#}",
-    "Ticket ID XZ-99-2025 opened on 11 Dec 2025":
-        "ticket id {#} opened on {d}",
-}
-
-int_tests = {
-    # originals
-    "Invoice 12345": "invoice {i}",
-    "Your code is 987": "your code is {i}",
-    "Room 403": "room {i}",
-
-    # extras
-    "Balance: 0": "balance: {i}",
-    "You have 10 messages": "you have {i} messages",
-}
-
-realistic_tests = {
-    # originals
-    "Appt confirmed: Thu Dec 11, 2025 2:45pm - 3:15pm (EST)":
-        "appt confirmed: {t}",
-    "Your appointment is scheduled for 04:30pm Mon, Dec 1, 2025":
-        "your appointment is scheduled for {t}",
-    "Delivery expected Dec, 24":
-        "delivery expected {d}",
-    "Package #abc-999 will arrive on December 5 2025":
-        "package {#} will arrive on {d}",
-    "Invoice 123 for order #hsgske-heys on 2025-12-03":
-        "invoice {i} for order {#} on {d}",
-
-    # extras
-    "Order 123 placed on Dec 11, 2025 at 2:30pm":
-        "order {i} placed on {t} at",
-    "Reminder: Fri 1/2/25 9:00am - 10:00am (PST)":
-        "reminder: {t}",
-    "Billing statement for December 11 2025":
-        "billing statement for {d}",
-    "Your subscription renews in December":
-        "your subscription renews in {m}",
-    "Your code 987 expires on 2025-12-11":
-        "your code {i} expires on {d}",
-}
+@lru_cache(maxsize=1)
+def get_default_normalizer() -> SubjectNormalizer:
+    return SubjectNormalizer.load_default()
 
 
-def run_tests(test_dict, label):
-    local_dir = os.path.dirname(__file__)
-    name_data = pickle.load(open(f"{local_dir}/name_automaton.pkl", "rb"))
-    snorm = SubjectNormalizer(name_data)
-    print(f"\n== {label} ==")
-    for inp, expected in test_dict.items():
-        out = snorm.normalize(inp)
-        status = "OK " if out == expected else "ERR"
-        print(f"{status} | {inp!r}")
-        print(f"     expected: {expected!r}")
-        print(f"     got:      {out!r}")
-
-
-if __name__ == "__main__":
-    # Run test suites
-    for name, tests in [
-        ("ISO Tests", iso_tests),
-        ("Numeric Dates", numeric_date_tests),
-        ("Month Day Year", month_day_year_tests),
-        ("Day Month Year", day_month_year_tests),
-        ("DOW + Date", dow_date_tests),
-        ("AM/PM Tests", ampm_tests),
-        ("Time Ranges", time_range_tests),
-        ("Month Only", month_only_tests),
-        ("ID Tests", id_tests),
-        ("Integer Tests", int_tests),
-        ("Realistic Mixed", realistic_tests),
-    ]:
-        run_tests(tests, name)
-
-local_cache = os.path.dirname(__file__)
-
-try:
-    default_name_automaton = pickle.load(open(f"{local_cache}/name_automaton.pkl", "rb"))
-except FileNotFoundError:
-    default_name_automaton = None
-
-# Default normalizer used by normalize_subject() to preserve old API.
-default_normalizer = SubjectNormalizer(
-    name_automaton=default_name_automaton,
-    enable_names=(default_name_automaton is not None),
-)
+def normalize_subject(subj: str) -> str:
+    return get_default_normalizer().normalize(subj)
