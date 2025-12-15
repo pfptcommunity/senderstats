@@ -1,4 +1,5 @@
-import os
+from __future__ import annotations
+
 import pickle
 from functools import lru_cache
 from importlib import resources
@@ -267,7 +268,6 @@ class SubjectNormalizer:
             out.append(s[i:])
 
         return "".join(out)
-
 
     def normalize(self, subj: str) -> str:
         """
