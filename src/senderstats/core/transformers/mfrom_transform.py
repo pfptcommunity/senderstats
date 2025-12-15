@@ -1,5 +1,5 @@
-from senderstats.common.utils import parse_email_details, convert_srs, remove_prvs, normalize_bounces, \
-    normalize_entropy
+from senderstats.common.address_parser import parse_email_details
+from senderstats.common.address_tools import convert_srs, remove_prvs, normalize_bounces, normalize_entropy
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.transform import Transform
 
