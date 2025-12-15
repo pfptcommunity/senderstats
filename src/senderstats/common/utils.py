@@ -1,60 +1,13 @@
+import re2
 import regex as re
 
 from senderstats.common.regex_patterns import *
 
-# Precompiled Regex for bounce attack prevention (PRVS) there prvs and msprvs1 (not much info on msprvs)
-prvs_re = re.compile(PRVS_REGEX, re.IGNORECASE)
-
-# Precompiled Regex for Sender Rewrite Scheme (SRS)
-srs_re = re.compile(SRS_REGEX, re.IGNORECASE)
-
 # Precompiled Regex matches IPv4 and IPv6 addresses
-ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
+ip_re = re2.compile(IPV46_REGEX)
 
-# Precompiled Regex matches email addresses that can contain display names
-email_re = re.compile(PARSE_EMAIL_REGEX, re.IGNORECASE)
-
-bounce_re = re.compile(EMAIL_BOUNCE_REGEX, re.IGNORECASE)
-
-entropy_hex_pairs_re = re.compile(r'(?=(?:[0-9][a-f]|[a-f][0-9]|[0-9]{2}))', re.IGNORECASE)
-
-
-def parse_email_details(email_str: str):
-    """
-    Parses email details from a given email string.
-
-    This function uses a regular expression to extract the display name and email address
-    from a provided email string. If the email string matches the expected format, it extracts
-    the display name (if present), the email address, and the domain part of the email address.
-    If the email string does not match the expected format, it returns empty strings for these components.
-
-    Parameters:
-    :param email_str: The email string to parse. Expected to potentially include a display name
-      and an email address in a standard format (e.g., "John Doe <john.doe@example.com>").
-
-    :return: A dictionary containing the parsed display name, email address, and domain, as well as
-      the original email string. The keys in the returned dictionary are "display_name", "email_address",
-    """
-    # Attempt to match the email string against the predefined regex pattern
-    match = email_re.match(email_str)
-
-    # If the pattern matches, extract the display name and email address
-    if match:
-        display_name = match.group(1) or ''  # Extracted display name or empty string if not present
-        email_address = match.group(2)  # Extracted email address
-        # Extract the domain part from the email address if '@' is present, otherwise return empty string
-        domain = email_address.split('@')[1] if '@' in email_address else ''
-    else:
-        # If the pattern does not match, initialize display name, email address, and domain as empty strings
-        display_name, email_address, domain = '', '', ''
-
-    # Return a dictionary containing the parsed components and the original email string
-    return {
-        "display_name": display_name,
-        "email_address": email_address,
-        "domain": domain,
-        "odata": email_str
-    }
+ooto_re = re2.compile(
+    r'(?i)(out[-\s]+of([-\s]+the)?[-\s]+office|auto(?:matic)?[-\s]*reply|autoreply|encrypted[-\s]message)')
 
 
 def escape_regex_specials(literal_str: str):
@@ -142,85 +95,6 @@ def print_summary(title: str, data, detail: bool = False):
             print(f"{title}: Data type not supported")
 
 
-def remove_prvs(email: str):
-    """
-    Removes PRVS tags from an email address for bounce attack prevention.
-
-    :param email: The email address to clean.
-    :return: The email address without PRVS tags.
-    """
-    return prvs_re.sub('', email)
-
-
-def convert_srs(email: str):
-    """
-    Converts an email address from SRS back to its original form.
-
-    :param email: The SRS modified email address.
-    :return: The original email address before SRS modification.
-    """
-    match = srs_re.search(email)
-    if match:
-        return '{}@{}'.format(match.group(3), match.group(2))
-    return email
-
-
-def normalize_bounces(email: str):
-    """
-    Converts bounce addresses to a normal form removing the tracking data.
-
-    :param email: The bounce modified email address.
-    :return: The original email address or bounce modified email address.
-    """
-    match = bounce_re.search(email)
-    if match:
-        return '{}@{}'.format(match.group(1), match.group(2))
-    return email
-
-
-def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
-    """
-        Determines if an email's local part suggests an automated sender based on entropy and hex pair count.
-
-        Args:
-            email (str): The full email address to analyze (e.g., "user@example.com").
-            entropy_threshold (float): Minimum entropy score to consider the email automated (default: 0.6).
-            hex_pair_threshold (int): Minimum number of hex pairs required to consider the email automated (default: 6).
-
-        Returns:
-            bool: True if the email is likely automated (high entropy and enough hex pairs), False otherwise.
-
-        Note:
-            Assumes `entropy_hex_pairs_re` is a pre-compiled regex (e.g., r'(?=(?:[0-9][a-fA-F]|[a-fA-F][0-9]|[0-9][0-9]))')
-            defined globally to identify overlapping hex-like pairs.
-    """
-    try:
-        local_part, domain_part = email.split("@")
-    except ValueError:
-        return email
-
-    total_length = len(local_part)
-
-    # Count character types
-    numbers = sum(c.isdigit() for c in local_part)
-    symbols = sum(c in "-+=_." for c in local_part)
-
-    # Count hex pairs using regex
-    hex_pairs = len([m.start() for m in entropy_hex_pairs_re.finditer(local_part)])
-
-    # Weighted entropy
-    weighted_entropy = (2 * hex_pairs + 1.5 * numbers + 1.5 * symbols) / total_length
-
-    # Conditions
-    is_high_entropy = weighted_entropy >= entropy_threshold
-    has_enough_hex_pairs = hex_pairs >= hex_pair_threshold
-
-    if is_high_entropy and has_enough_hex_pairs:
-        return "#entropy#@" + domain_part
-
-    return email
-
-
 def compile_domains_pattern(domains: list) -> re.Pattern:
     """
     Compiles a regex pattern for matching given domains and subdomains, with special characters escaped.
@@ -252,3 +126,22 @@ def print_list_with_title(title: str, items: list):
         for item in items:
             print(item)
         print()
+
+
+def prepare_string_for_excel(text, max_length=32767):
+    # Remove invalid XML control characters
+    sanitized = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F]', '', text)
+
+    sanitized = sanitized[:max_length]
+    if len(sanitized) == max_length:
+        # Problem \n is CR LF when stored by XML writer. This inserts 2 characters for ever \n exceeding the max length
+        # Causing excel to warn the XLSX is malformed and ultimately truncates the data.
+        count = sanitized.count('\n')
+        if count > 1:
+            sanitized = sanitized[:max_length - count]
+
+    return sanitized
+
+
+def is_ooo_or_autoreply(subject: str) -> bool:
+    return bool(ooto_re.search(subject))
