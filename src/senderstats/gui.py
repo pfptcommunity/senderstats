@@ -138,8 +138,8 @@ class SenderStatsGUI:
         self.create_filters_tab()
 
         # Log / Status frame
-        log_frame = ttk.LabelFrame(root, text="Log / Status")
-        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
+        log_frame = ttk.LabelFrame(root, text="Log / Status", height=8)
+        log_frame.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
