@@ -43,7 +43,7 @@ pipx install senderstats
 ### From GitHub (main branch)
 
 ```
-pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats"
+pipx install "git+https://github.com/pfptcommunity/senderstats.git"  
 ```
 
 ### Run the CLI
@@ -89,7 +89,7 @@ pipx install "senderstats[gui]"
 #### From GitHub (main branch)
 
 ```
-pipx install "git+https://github.com/pfptcommunity/senderstats.git#egg=senderstats[gui]"
+pipx install "senderstats[gui]@git+https://github.com/pfptcommunity/senderstats.git"
 ```
 
 ### Launch the GUI
