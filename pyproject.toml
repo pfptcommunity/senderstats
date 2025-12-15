@@ -9,6 +9,9 @@ local_scheme = "node-and-date"
 [tools.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"senderstats.common.data" = ["*.pkl"]
+
 [project]
 name = "senderstats"
 dynamic = ["version"]
