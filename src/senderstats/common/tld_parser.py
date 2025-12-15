@@ -14,6 +14,7 @@ _PSL_URL = "https://publicsuffix.org/list/public_suffix_list.dat"
 _RESOURCE_PACKAGE = "senderstats.common.data"
 _RESOURCE_PSL = "default_psl.pkl"
 
+
 class TLDParser:
     """
     Public Suffix List (PSL) trie manager + splitter.
