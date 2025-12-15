@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-import pandas as pd
+#import pandas as pd
 
 from senderstats.common.tld_parser import TLDParser
 
@@ -54,78 +54,78 @@ class MIDParser:
         self.tld = tld
         self.cfg = config or MIDParserConfig()
 
-    def parse_series(self, s: pd.Series) -> pd.DataFrame:
-        """
-        Parse a pandas Series of Message-ID values.
-
-        Returns a new DataFrame aligned to s.index.
-        """
-        # Ensure string dtype without copying more than needed
-        s = s.astype("string")
-
-        # Prefilter to avoid regex cost on obvious non-candidates
-        prefilter = s.str.contains("@", na=False) & (s.str.len() < self.cfg.max_len)
-
-        m = s.where(prefilter).str.extract(self._msg_id_rfc_re)
-        rhs = m["rhs"]  # Series aligned to index
-
-        out = pd.DataFrame(index=s.index)
-        out["mid_rfc"] = rhs.notna()
-
-        # Build mid_host ONCE (canonical RHS token for grouping/search)
-        mid_host = rhs.astype("string").str.strip().str.rstrip(".")
-        if self.cfg.lowercase:
-            mid_host = mid_host.str.lower()
-
-        # Unbox domain-literals: [127.0.0.1] / [IPv6:...]
-        is_lit = mid_host.notna() & mid_host.str.startswith("[") & mid_host.str.endswith("]")
-        mid_host = mid_host.where(~is_lit, mid_host.str.slice(1, -1))
-        mid_host = mid_host.where(~mid_host.str.startswith("ipv6:", na=False), mid_host.str.slice(5))
-
-        out["mid_host"] = mid_host
-
-        # Fast IP-ish detection (vectorized + gated)
-        has_dot = mid_host.str.contains(".", regex=False, na=False)
-        has_colon = mid_host.str.contains(":", regex=False, na=False)
-
-        is_ipv4 = has_dot & mid_host.str.match(self._ipv4_re)
-        is_ipv6 = has_colon & mid_host.str.match(self._ipv6_re)
-        is_ip = is_ipv4 | is_ipv6
-
-        # PSL split ONLY for dotted NON-IP hostnames
-        mask_psl = mid_host.notna() & has_dot & ~is_ip
-
-        # Use TLDParser batch splitter for speed
-        hosts = mid_host.loc[mask_psl].tolist()
-        hl, sd, reg, _suf = self.tld.split_host_extended_parallel(hosts)
-
-        out.loc[mask_psl, "mid_host_label"] = hl
-        out.loc[mask_psl, "mid_subdomain"] = sd
-        out.loc[mask_psl, "mid_domain"] = reg
-
-        # Single-label hosts (non-IP, no dot): treat as host_label + domain = itself
-        mask_single = mid_host.notna() & ~has_dot & ~is_ip
-        out.loc[mask_single, "mid_host_label"] = out.loc[mask_single, "mid_host"]
-        out.loc[mask_single, "mid_subdomain"] = ""
-        out.loc[mask_single, "mid_domain"] = out.loc[mask_single, "mid_host"]
-
-        # IPs: host_label = full IP, domain = full IP
-        out.loc[is_ip, "mid_host_label"] = out.loc[is_ip, "mid_host"]
-        out.loc[is_ip, "mid_subdomain"] = ""
-        out.loc[is_ip, "mid_domain"] = out.loc[is_ip, "mid_host"]
-
-        return out
-
-    def parse_df(self, df: pd.DataFrame, col: str = "Message_ID") -> pd.DataFrame:
-        """
-        Parse Message-IDs from df[col]. Returns a new trimmed DataFrame.
-
-        If cfg.keep_message_id is True, includes the original Message_ID column.
-        """
-        parsed = self.parse_series(df[col])
-        if self.cfg.keep_message_id:
-            parsed.insert(0, "Message_ID", df[col].astype("string"))
-        return parsed
+    # def parse_series(self, s: pd.Series) -> pd.DataFrame:
+    #     """
+    #     Parse a pandas Series of Message-ID values.
+    #
+    #     Returns a new DataFrame aligned to s.index.
+    #     """
+    #     # Ensure string dtype without copying more than needed
+    #     s = s.astype("string")
+    #
+    #     # Prefilter to avoid regex cost on obvious non-candidates
+    #     prefilter = s.str.contains("@", na=False) & (s.str.len() < self.cfg.max_len)
+    #
+    #     m = s.where(prefilter).str.extract(self._msg_id_rfc_re)
+    #     rhs = m["rhs"]  # Series aligned to index
+    #
+    #     out = pd.DataFrame(index=s.index)
+    #     out["mid_rfc"] = rhs.notna()
+    #
+    #     # Build mid_host ONCE (canonical RHS token for grouping/search)
+    #     mid_host = rhs.astype("string").str.strip().str.rstrip(".")
+    #     if self.cfg.lowercase:
+    #         mid_host = mid_host.str.lower()
+    #
+    #     # Unbox domain-literals: [127.0.0.1] / [IPv6:...]
+    #     is_lit = mid_host.notna() & mid_host.str.startswith("[") & mid_host.str.endswith("]")
+    #     mid_host = mid_host.where(~is_lit, mid_host.str.slice(1, -1))
+    #     mid_host = mid_host.where(~mid_host.str.startswith("ipv6:", na=False), mid_host.str.slice(5))
+    #
+    #     out["mid_host"] = mid_host
+    #
+    #     # Fast IP-ish detection (vectorized + gated)
+    #     has_dot = mid_host.str.contains(".", regex=False, na=False)
+    #     has_colon = mid_host.str.contains(":", regex=False, na=False)
+    #
+    #     is_ipv4 = has_dot & mid_host.str.match(self._ipv4_re)
+    #     is_ipv6 = has_colon & mid_host.str.match(self._ipv6_re)
+    #     is_ip = is_ipv4 | is_ipv6
+    #
+    #     # PSL split ONLY for dotted NON-IP hostnames
+    #     mask_psl = mid_host.notna() & has_dot & ~is_ip
+    #
+    #     # Use TLDParser batch splitter for speed
+    #     hosts = mid_host.loc[mask_psl].tolist()
+    #     hl, sd, reg, _suf = self.tld.split_host_extended_parallel(hosts)
+    #
+    #     out.loc[mask_psl, "mid_host_label"] = hl
+    #     out.loc[mask_psl, "mid_subdomain"] = sd
+    #     out.loc[mask_psl, "mid_domain"] = reg
+    #
+    #     # Single-label hosts (non-IP, no dot): treat as host_label + domain = itself
+    #     mask_single = mid_host.notna() & ~has_dot & ~is_ip
+    #     out.loc[mask_single, "mid_host_label"] = out.loc[mask_single, "mid_host"]
+    #     out.loc[mask_single, "mid_subdomain"] = ""
+    #     out.loc[mask_single, "mid_domain"] = out.loc[mask_single, "mid_host"]
+    #
+    #     # IPs: host_label = full IP, domain = full IP
+    #     out.loc[is_ip, "mid_host_label"] = out.loc[is_ip, "mid_host"]
+    #     out.loc[is_ip, "mid_subdomain"] = ""
+    #     out.loc[is_ip, "mid_domain"] = out.loc[is_ip, "mid_host"]
+    #
+    #     return out
+    #
+    # def parse_df(self, df: pd.DataFrame, col: str = "Message_ID") -> pd.DataFrame:
+    #     """
+    #     Parse Message-IDs from df[col]. Returns a new trimmed DataFrame.
+    #
+    #     If cfg.keep_message_id is True, includes the original Message_ID column.
+    #     """
+    #     parsed = self.parse_series(df[col])
+    #     if self.cfg.keep_message_id:
+    #         parsed.insert(0, "Message_ID", df[col].astype("string"))
+    #     return parsed
 
     def parse(self, mid: Optional[str]) -> Dict[str, Any]:
         """
