@@ -6,11 +6,12 @@ build-backend = "setuptools.build_meta"
 version_scheme = "post-release"
 local_scheme = "node-and-date"
 
-[tools.setuptools.packages.find]
+[tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
 "senderstats.common.data" = ["*.pkl"]
+"senderstats.images" = ["*.png", "*.ico"]
 
 [project]
 name = "senderstats"

@@ -2,9 +2,11 @@ import io
 import json
 import os
 import queue
+import sys
 import threading
 from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
+from importlib import resources
 from types import SimpleNamespace
 
 import regex as re
@@ -58,6 +60,22 @@ def validate_xlsx_file(file_path):
         raise ValueError("File must have a .xlsx extension.")
     return file_path
 
+def set_app_icon(root: tk.Tk):
+    try:
+        with resources.path("senderstats.images", "senderstats.png") as p:
+            icon = tk.PhotoImage(file=str(p))
+            root.iconphoto(True, icon)
+            root._icon_ref = icon
+    except Exception:
+        pass
+
+    # Windows-specific ICO
+    if sys.platform.startswith("win"):
+        try:
+            with resources.path("senderstats.images", "senderstats.ico") as p:
+                root.iconbitmap(str(p))
+        except Exception:
+            pass
 
 class QueueOutput(io.TextIOBase):
     def __init__(self, q):
@@ -74,6 +92,7 @@ class QueueOutput(io.TextIOBase):
 
 class SenderStatsGUI:
     def __init__(self, root):
+        set_app_icon(root)
         self.root = root
         self.root.title(f"SenderStats v{get_version()}")
         self.root.geometry("1024x800")
