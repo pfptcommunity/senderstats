@@ -1,6 +1,7 @@
 from xlsxwriter import Workbook
 
 from senderstats.common.defaults import DEFAULT_THRESHOLD
+from senderstats.common.utils import prepare_string_for_excel
 from senderstats.interfaces.reportable import Reportable
 from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.reporting.format_manager import FormatManager
@@ -198,8 +199,7 @@ class PipelineProcessorReport:
                         if isinstance(value, (int, float)):
                             sheet.write_number(r_index, c_index, value, format)
                         else:
-                            # Treat all non-numbers as strings (including None, str, etc.)
-                            sheet.write_string(r_index, c_index, str(value), format)
+                            sheet.write_string(r_index, c_index, prepare_string_for_excel(value), format)
                     r_index += 1
 
                 if processor.create_data_table and r_index > 0:
