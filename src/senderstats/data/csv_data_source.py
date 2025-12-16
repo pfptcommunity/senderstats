@@ -1,4 +1,5 @@
 import csv
+import time
 from typing import List
 
 from senderstats.core.mappers.csv_mapper import CSVMapper
@@ -16,12 +17,16 @@ class CSVDataSource(DataSource):
             print(f"Processing: {input_file} ({f_current} of {f_total})")
             try:
                 with open(input_file, mode="r", encoding="utf-8-sig") as file:
+                    start_time = time.perf_counter()
                     reader = csv.reader(file)
                     headers = next(reader)
                     self.__field_mapper.reindex(headers)
                     for row in reader:
                         normalized_row = self.__field_mapper.map_fields(row)
                         yield normalized_row
+                    end_time = time.perf_counter()
+                    elapsed_time = end_time - start_time
+                    print(f"File processed in {elapsed_time:.4f} seconds")
 
             except Exception as e:
                 print(f"Error reading file {input_file}: {e}")
