@@ -15,23 +15,22 @@ def remove_prvs(email: str) -> str:
         return email
 
     at = email.find("@")
-    if at == -1:
+    if at < 0:
+        return email
+
+    # fast gate: avoid slicing in the common case
+    if not (email.startswith("prvs") or email.startswith("msprvs")):
         return email
 
     local = email[:at]
-    rest = email[at:]
+    first = local.find("=")
+    if first < 0:
+        return email
+    second = local.find("=", first + 1)
+    if second < 0:
+        return email
 
-    if local.startswith("prvs") or local.startswith("msprvs"):
-        # must contain two '=': prefix=hash=original
-        first = local.find("=")
-        if first == -1:
-            return email
-        second = local.find("=", first + 1)
-        if second == -1:
-            return email
-        return local[second + 1:] + rest
-
-    return email
+    return local[second + 1:] + email[at:]
 
 
 def convert_srs(email: str) -> str:
@@ -41,40 +40,41 @@ def convert_srs(email: str) -> str:
     :param email: The SRS modified email address.
     :return: The original email address before SRS modification.
     """
+
     if not email:
         return email
 
     at = email.find("@")
-    if at == -1:
+    if at < 0:
         return email
 
-    local = email[:at]
-
-    # allow optional base+ prefix
-    p = local.find("srs")
-    if p == -1:
+    p = email.find("srs")
+    if p < 0 or p >= at:
         return email
 
-    # require srs at start or right after '+'
-    if p != 0 and local[p - 1] != "+":
+    if p != 0 and email[p - 1] != "+":
         return email
 
-    # find first '=' after 'srs..'
-    eq = local.find("=", p)
-    if eq == -1:
+    eq0 = email.find("=", p)
+    if eq0 < 0 or eq0 >= at:
         return email
 
-    # Need at least: token1=token2=orig_domain=orig_local
-    parts = local[eq + 1:].split("=")
-    if len(parts) < 4:
+    eq1 = email.find("=", eq0 + 1)
+    if eq1 < 0 or eq1 >= at:
+        return email
+    eq2 = email.find("=", eq1 + 1)
+    if eq2 < 0 or eq2 >= at:
+        return email
+    eq3 = email.find("=", eq2 + 1)
+    if eq3 < 0 or eq3 >= at:
         return email
 
-    orig_domain = parts[2]
-    orig_local = parts[3]
+    orig_domain = email[eq2 + 1: eq3]
+    orig_local = email[eq3 + 1: at]
     if not orig_domain or not orig_local:
         return email
 
-    return f"{orig_local}@{orig_domain}"
+    return orig_local + "@" + orig_domain
 
 
 def normalize_bounces(email: str) -> str:
@@ -84,6 +84,7 @@ def normalize_bounces(email: str) -> str:
     :param email: The bounce modified email address.
     :return: The original email address or bounce modified email address.
     """
+
     if not email:
         return email
 
@@ -91,24 +92,22 @@ def normalize_bounces(email: str) -> str:
     if at <= 0:
         return email
 
-    local = email[:at]
-    domain = email[at:]
-
-    # Must start with 'bounce' or 'bounces'
-    if local.startswith("bounces"):
-        base = "bounces"
+    if email.startswith("bounces"):
         i = 7
-    elif local.startswith("bounce"):
-        base = "bounce"
+        base = "bounces"
+    elif email.startswith("bounce"):
         i = 6
+        base = "bounce"
     else:
         return email
 
-    # Must be immediately followed by '+' or '-'
-    if i >= len(local) or local[i] not in "+-":
+    if i >= at:
+        return email
+    c = email[i]
+    if c != "+" and c != "-":
         return email
 
-    return base + domain
+    return base + email[at:]
 
 
 def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
