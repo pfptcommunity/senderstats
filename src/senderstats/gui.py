@@ -60,6 +60,7 @@ def validate_xlsx_file(file_path):
         raise ValueError("File must have a .xlsx extension.")
     return file_path
 
+
 def set_app_icon(root: tk.Tk):
     try:
         with resources.path("senderstats.images", "senderstats.png") as p:
@@ -76,6 +77,7 @@ def set_app_icon(root: tk.Tk):
                 root.iconbitmap(str(p))
         except Exception:
             pass
+
 
 class QueueOutput(io.TextIOBase):
     def __init__(self, q):
