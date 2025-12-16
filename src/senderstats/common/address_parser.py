@@ -1,9 +1,12 @@
-from typing import Dict, Tuple, Iterable, List
 import re
+from typing import Dict, Tuple, Iterable, List
 
-_PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
+# Keeping old just in case
+#_PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
+_PARSE_EMAIL_REGEX = r'^\s*(?:"(.*)"|(.*?))\s*(?:<?([A-Za-z0-9!#$%&\'*+\/=?^_`{|}~.-]+@[\[\]_A-Za-z0-9.-]+)>?)\s*$'
 
 _EMAIL_RE = re.compile(_PARSE_EMAIL_REGEX, re.IGNORECASE)
+
 
 def parse_email_details_tuple(email_str: str) -> Tuple[str, str, str]:
     """
@@ -20,8 +23,8 @@ def parse_email_details_tuple(email_str: str) -> Tuple[str, str, str]:
     m = _EMAIL_RE.match(email_str or "")
     if not m:
         return "", "", ""
-    display_name = m.group(1) or ""
-    email_address = m.group(2) or ""
+    display_name = (m.group(1) or m.group(2) or "").strip() or ""
+    email_address = m.group(3) or ""
     _, _, domain = email_address.partition("@")
     return display_name, email_address, domain
 
@@ -71,3 +74,4 @@ def parse_email_details_parallel(emails: Iterable[str]) -> Tuple[List[str], List
         ea_append(ea)
 
     return display_names, email_addresses
+
