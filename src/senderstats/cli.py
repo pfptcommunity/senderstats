@@ -10,6 +10,10 @@ def main():
     # Config object stores all arguments parsed
     config = ConfigManager(parse_arguments())
 
+    if not config.input_files:
+        print(f"No input files exist, please check if the input files exist")
+        return 1
+
     config.display_filter_criteria()
 
     # This will create a CSV data source or WebSocket for PoD Log API

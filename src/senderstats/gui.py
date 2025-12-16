@@ -628,6 +628,11 @@ class SenderStatsGUI:
                     # Everything printed here goes into the queue
                     with redirect_stdout(q_output), redirect_stderr(q_output):
                         config = ConfigManager(args)
+
+                        if not config.input_files:
+                            print(f"No input files to read, please check the input files exist")
+                            return
+                        
                         config.display_filter_criteria()
 
                         data_source_manager = DataSourceManager(config)
