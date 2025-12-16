@@ -1,12 +1,11 @@
-import re2
 import regex as re
 
 from senderstats.common.regex_patterns import *
 
 # Precompiled Regex matches IPv4 and IPv6 addresses
-ip_re = re2.compile(IPV46_REGEX)
+ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
 
-ooto_re = re2.compile(
+ooto_re = re.compile(
     r'(?i)(out[-\s]+of([-\s]+the)?[-\s]+office|auto(?:matic)?[-\s]*reply|autoreply|encrypted[-\s]message)')
 
 
