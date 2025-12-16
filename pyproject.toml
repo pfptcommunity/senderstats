@@ -24,7 +24,8 @@ dependencies = [
     'xlsxwriter',
     'regex',
     'google-re2',
-    'pyahocorasick'
+    'pyahocorasick',
+    'ciso8601'
 ]
 
 [project.optional-dependencies]
