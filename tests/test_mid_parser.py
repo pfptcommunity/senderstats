@@ -9,7 +9,7 @@ from statistics import median
 import pytest
 
 from senderstats.common.mid_parser import MIDParser
-from senderstats.common.tld_parser import TLDParser
+from senderstats.common.tld_parser import get_default_tld_parser
 
 
 def gen_message_ids(n: int, seed: int = 1337) -> list[str]:
@@ -49,17 +49,17 @@ def gen_message_ids(n: int, seed: int = 1337) -> list[str]:
 
         elif p < 0.90:
             # Extra dots / mixed tokens
-            left = f"{atom(3,8)}.{atom(3,8)}.{atom(3,8)}"
+            left = f"{atom(3, 8)}.{atom(3, 8)}.{atom(3, 8)}"
             right = host()
             out.append(f"<{left}@{right}>")
 
         elif p < 0.94:
             # Missing '@' (invalid/noncompliant)
-            out.append(f"<{atom(10,30)}>")
+            out.append(f"<{atom(10, 30)}>")
 
         elif p < 0.97:
             # Missing right side
-            out.append(f"<{atom(10,30)}@>")
+            out.append(f"<{atom(10, 30)}@>")
 
         elif p < 0.99:
             # Missing left side
@@ -74,8 +74,8 @@ def gen_message_ids(n: int, seed: int = 1337) -> list[str]:
         "<abc@EXAMPLE.COM>",
         "abc@EXAMPLE.COM",
         "<abc.def@foo.bar.city.kawasaki.jp>",
-        "<abc@192.168.0.1>",          # not RFC domain, but seen in logs
-        "<abc@[192.168.0.1]>",        # bracket-literal style
+        "<abc@192.168.0.1>",  # not RFC domain, but seen in logs
+        "<abc@[192.168.0.1]>",  # bracket-literal style
         "<abc@localhost>",
         "<@example.com>",
         "<abc@>",
@@ -129,12 +129,9 @@ def time_it(name: str, fn, items: list[str], *, reps: int = 1, warmup: int = 200
 
 
 @pytest.mark.perf
-def test_perf_message_id_parser_old_vs_new(msgids):
-    mid_parser = MIDParser(TLDParser.load_default())
+def test_perf_message_id_parser(msgids):
+    p1 = MIDParser(get_default_tld_parser()).parse
 
-    new = mid_parser.parse
-
-    r1 = time_it("parse_message_id_old", new, msgids, reps=3, rounds=7)
+    r1 = time_it("test_perf_message_id_parser", p1, msgids, reps=3, rounds=7)
 
     print(f"\n{r1.name}: {r1.total_ms:,.2f} ms | {r1.ns_per_op:,.1f} ns/op | {r1.ops_per_s:,.0f} ops/s")
-

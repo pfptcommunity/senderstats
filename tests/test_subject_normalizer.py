@@ -1,3 +1,6 @@
+import os
+import time
+
 import pytest
 
 from senderstats.common.subject_normalizer import get_default_normalizer
@@ -169,7 +172,6 @@ realistic_tests = {
         "your code {i} expires on {d}",
 }
 
-
 # --- Pytest glue ---
 
 TEST_SUITES = [
@@ -205,7 +207,27 @@ def snorm():
     list(_flatten_suites()),
     ids=lambda v: v if isinstance(v, str) else repr(v),
 )
-
 def test_subject_normalizer_cases(snorm, suite_name, inp, expected):
     out = snorm.normalize(inp)
     assert out == expected, f"[{suite_name}] input={inp!r}"
+
+
+@pytest.mark.perf
+def test_perf_subject_normalizer(request):
+    snorm = get_default_normalizer()
+
+    subjects = ["Linda - Invoice 123 for order #hsgske-heys on 2025-12-03"] * 200_000
+
+    # warmup
+    for s in subjects[:2000]:
+        snorm.normalize(s)
+
+    t0 = time.perf_counter()
+    for s in subjects:
+        snorm.normalize(s)
+    elapsed = time.perf_counter() - t0
+
+    per_sec = len(subjects) / elapsed if elapsed else float("inf")
+    us_per = (elapsed / len(subjects)) * 1e6 if subjects else 0.0
+
+    print(f"\ntest_perf_subject_normalizer {len(subjects):,} in {elapsed:.3f}s | {per_sec:,.0f}/s | {us_per:.2f} µs/subject")

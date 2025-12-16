@@ -1,5 +1,6 @@
 import os
 import time
+
 import pytest
 
 from senderstats.common.address_parser import parse_email_details_tuple
@@ -42,10 +43,6 @@ ADDRESS_SAMPLES = [
 ]
 
 
-def _perf_enabled(request) -> bool:
-    return request.config.getoption("--run-perf") or os.environ.get("RUN_PERF", "") == "1"
-
-
 @pytest.fixture(scope="session")
 def addresses():
     n = int(os.environ.get("PERF_COUNT", "200000"))
@@ -73,17 +70,12 @@ def _bench_loop(label: str, fn, items, warmup: int = 2000):
 
 
 @pytest.mark.perf
-def test_address_parse_tuple_perf(request, addresses):
-    if not _perf_enabled(request):
-        pytest.skip("perf test skipped (set RUN_PERF=1 or pass --run-perf)")
+def test_perf_parse_tuple(request, addresses):
     _bench_loop("parse_email_details_tuple", parse_email_details_tuple, addresses)
 
 
 @pytest.mark.perf
-def test_address_parse_dataframe_zip_perf(request, addresses):
-    if not _perf_enabled(request):
-        pytest.skip("perf test skipped (set RUN_PERF=1 or pass --run-perf)")
-
+def test_perf_address_parse_dataframe_zip(request, addresses):
     import pandas as pd  # import here so non-perf runs don't require pandas
 
     def transform_zip(df):
@@ -105,7 +97,7 @@ def test_address_parse_dataframe_zip_perf(request, addresses):
 
     rows = len(df)
     per_sec = rows / elapsed if elapsed else float("inf")
-    print(f"\nDF zip transform: {rows:,} rows in {elapsed:.3f}s | {per_sec:,.0f} rows/s")
+    print(f"\ntest_perf_address_parse_dataframe_zip: {rows:,} rows in {elapsed:.3f}s | {per_sec:,.0f} rows/s")
 
     # sanity
     assert "email_address" in out.columns
