@@ -70,7 +70,7 @@ def _bench_loop(label: str, fn, items, warmup: int = 2000):
 
 
 @pytest.mark.perf
-def test_perf_parse_tuple(request, addresses):
+def test_perf_parse_email_details_tuple(request, addresses):
     _bench_loop("parse_email_details_tuple", parse_email_details_tuple, addresses)
 
 
