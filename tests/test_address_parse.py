@@ -71,11 +71,11 @@ def _bench_loop(label: str, fn, items, warmup: int = 2000):
 
 @pytest.mark.perf
 def test_perf_parse_email_details_tuple(request, addresses):
-    _bench_loop("parse_email_details_tuple", parse_email_details_tuple, addresses)
+    _bench_loop("test_perf_parse_email_details_tuple", parse_email_details_tuple, addresses)
 
 
 @pytest.mark.perf
-def test_perf_address_parse_dataframe_zip(request, addresses):
+def test_perf_parse_email_details_dataframe_zip(request, addresses):
     import pandas as pd  # import here so non-perf runs don't require pandas
 
     def transform_zip(df):
@@ -97,7 +97,7 @@ def test_perf_address_parse_dataframe_zip(request, addresses):
 
     rows = len(df)
     per_sec = rows / elapsed if elapsed else float("inf")
-    print(f"\ntest_perf_address_parse_dataframe_zip: {rows:,} rows in {elapsed:.3f}s | {per_sec:,.0f} rows/s")
+    print(f"\ntest_perf_parse_email_details_dataframe_zip: {rows:,} rows in {elapsed:.3f}s | {per_sec:,.0f} rows/s")
 
     # sanity
     assert "email_address" in out.columns
