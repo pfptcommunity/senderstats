@@ -2,7 +2,7 @@ import re
 from typing import Dict, Tuple, Iterable, List
 
 # Keeping old just in case
-#_PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
+# _PARSE_EMAIL_REGEX = r'(?:\s*"?([^"]*)"?\s)?(?:<?([a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+@[\[\]_a-zA-Z0-9\.-]+)>?)'
 _PARSE_EMAIL_REGEX = r'^\s*(?:"(.*)"|(.*?))\s*(?:<?([A-Za-z0-9!#$%&\'*+\/=?^_`{|}~.-]+@[\[\]_A-Za-z0-9.-]+)>?)\s*$'
 
 _EMAIL_RE = re.compile(_PARSE_EMAIL_REGEX, re.IGNORECASE)
@@ -74,4 +74,3 @@ def parse_email_details_parallel(emails: Iterable[str]) -> Tuple[List[str], List
         ea_append(ea)
 
     return display_names, email_addresses
-
