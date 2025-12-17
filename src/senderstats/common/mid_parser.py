@@ -62,5 +62,5 @@ class MIDParser:
         if domain[-1] == '.':
             domain = domain.rstrip('.')
 
-        hn, sub, registrable, public_suffix = self.tld.split_host_extended(domain)
+        hn, sub, registrable, public_suffix = self.tld.split_host_extended_unchecked(domain)
         return hn, sub, registrable, public_suffix
