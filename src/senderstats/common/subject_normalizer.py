@@ -40,6 +40,7 @@ _STRIP_CHARS = "[](){}<>,.;!\"'"
 _RESOURCE_PACKAGE = "senderstats.common.data"
 _RESOURCE_NAME_SET = "global_names.pkl"
 
+
 def load_name_set() -> frozenset[str]:
     try:
         ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_SET)
@@ -47,6 +48,7 @@ def load_name_set() -> frozenset[str]:
             return frozenset(pickle.load(f))
     except FileNotFoundError:
         return frozenset()
+
 
 def _strip_wrap(tok: str) -> str:
     return tok.strip(_STRIP_CHARS)
