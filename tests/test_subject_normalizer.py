@@ -1,9 +1,8 @@
-import os
 import time
 
 import pytest
 
-from senderstats.common.subject_normalizer import get_default_normalizer
+from senderstats.common.subject_normalizer import normalize_subject
 
 iso_tests = {
     # originals
@@ -161,7 +160,7 @@ realistic_tests = {
 
     # extras
     "Order 123 placed on Dec 11, 2025 at 2:30pm":
-        "order {i} placed on {d} at {#}",
+        "order {i} placed on {d} at {tm}",
     "Reminder: Fri 1/2/25 9:00am - 10:00am (PST)":
         "reminder: {t}",
     "Billing statement for December 11 2025":
@@ -170,6 +169,17 @@ realistic_tests = {
         "your subscription renews in {m}",
     "Your code 987 expires on 2025-12-11":
         "your code {i} expires on {d}",
+}
+
+time_only_tests = {
+    "3pm": "{tm}",
+    "3 pm": "{tm}",
+    "03:15": "{tm}",
+    "03:15 PM": "{tm}",
+    "14:00": "{tm}",
+    "14:00 UTC": "{tm}",
+    "Meeting at 3pm": "meeting at {tm}",
+    "Meeting at 3 pm": "meeting at {tm}",
 }
 
 # --- Pytest glue ---
@@ -183,6 +193,7 @@ TEST_SUITES = [
     ("AM/PM Tests", ampm_tests),
     ("Time Ranges", time_range_tests),
     ("Month Only", month_only_tests),
+    ("Time Only", time_only_tests),
     ("ID Tests", id_tests),
     ("Integer Tests", int_tests),
     ("Realistic Mixed", realistic_tests),
@@ -196,38 +207,34 @@ def _flatten_suites():
             yield suite_name, inp, expected
 
 
-@pytest.fixture(scope="session")
-def snorm():
-    # Create once; if you ever need isolation, change scope to "function".
-    return get_default_normalizer()
-
-
 @pytest.mark.parametrize(
     "suite_name,inp,expected",
     list(_flatten_suites()),
     ids=lambda v: v if isinstance(v, str) else repr(v),
 )
-def test_subject_normalizer_cases(snorm, suite_name, inp, expected):
-    out = snorm.normalize(inp)
-    assert out == expected, f"[{suite_name}] input={inp!r}"
+
+def test_subject_normalizer_cases(suite_name, inp, expected):
+    out = normalize_subject(inp)
+    assert out == expected, f"[{suite_name}] input={inp!r} out={out!r}"
 
 
 @pytest.mark.perf
-def test_perf_subject_normalizer(request):
-    snorm = get_default_normalizer()
+def test_perf_subject_normalizer():
+    # NOTE: avoid building a huge list; loop over a constant sample
+    sample = "Linda - Invoice 123 for order #hsgske-heys on 2025-12-03"
 
-    subjects = ["Linda - Invoice 123 for order #hsgske-heys on 2025-12-03"] * 200_000
+    n = 1_000_000
 
     # warmup
-    for s in subjects[:2000]:
-        snorm.normalize(s)
+    for _ in range(20_000):
+        normalize_subject(sample)
 
     t0 = time.perf_counter()
-    for s in subjects:
-        snorm.normalize(s)
+    for _ in range(n):
+        normalize_subject(sample)
     elapsed = time.perf_counter() - t0
 
-    per_sec = len(subjects) / elapsed if elapsed else float("inf")
-    us_per = (elapsed / len(subjects)) * 1e6 if subjects else 0.0
+    per_sec = n / elapsed if elapsed else float("inf")
+    us_per = (elapsed / n) * 1e6 if n else 0.0
 
-    print(f"\ntest_perf_subject_normalizer {len(subjects):,} in {elapsed:.3f}s | {per_sec:,.0f}/s | {us_per:.2f} µs/subject")
+    print(f"\nnormalize_subject: {n:,} in {elapsed:.3f}s | {per_sec:,.0f}/s | {us_per:.2f} µs/subject")
