@@ -212,7 +212,6 @@ def _flatten_suites():
     list(_flatten_suites()),
     ids=lambda v: v if isinstance(v, str) else repr(v),
 )
-
 def test_subject_normalizer_cases(suite_name, inp, expected):
     out = normalize_subject(inp)
     assert out == expected, f"[{suite_name}] input={inp!r} out={out!r}"

@@ -10,6 +10,7 @@ import pytest
 
 from senderstats.common.address_tools import convert_srs, convert_srs_parallel
 
+
 def gen_emails(n: int, seed: int = 1337) -> list[str]:
     rnd = random.Random(seed)
     domains = ["example.com", "tld.net", "corp.org", "service.io", "foo.co.uk", "bar.com.au"]
@@ -170,21 +171,23 @@ TEST_SUITES = [
     ),
 ]
 
+
 def _flatten_suites():
     """Yield (suite_name, input_text, expected_output) for parametrization."""
     for suite_name, cases in TEST_SUITES:
         for inp, expected in cases.items():
             yield suite_name, inp, expected
 
+
 @pytest.mark.parametrize(
     "suite_name,inp,expected",
     list(_flatten_suites()),
     ids=lambda v: v if isinstance(v, str) else repr(v),
 )
-
 def test_convert_cases(suite_name, inp, expected):
     out = convert_srs(inp)
     assert out == expected, f"[{suite_name}] input={inp!r} out={out!r}"
+
 
 @pytest.mark.perf
 def test_perf_convert_srs(emails):
