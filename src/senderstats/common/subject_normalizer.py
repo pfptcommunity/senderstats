@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pickle
 from importlib import resources
-from typing import Optional, Any, Set
+
+from names_dataset import NameDataset
+
+_NAMEDATA = NameDataset()
 
 _CLS = bytearray(256)
 for o in range(256):
@@ -277,7 +280,7 @@ def _is_time_range_token(tok: str) -> bool:
 
 
 _IDENT_MARK_B = bytearray(256)
-for ch in b"-_./\\:+@=#%&?~":
+for ch in b"-_/\\:+@=#%&?~":
     _IDENT_MARK_B[ch] = 1
 
 
@@ -297,7 +300,6 @@ def _looks_identifier(tok: str) -> bool:
             elif c & 2:
                 any_d = True
             elif c & 16:
-                any_sym = True
                 if _IDENT_MARK_B[o]:
                     has_mark = True
         else:
@@ -580,6 +582,16 @@ def normalize_subject(subject: str) -> str:
         # Identifier-ish
         if looks_identifier(s):
             append("{#}")
+            i += 1
+            continue
+
+        if tok in _NAMEDATA.first_names:
+            append('{f}')
+            i += 1
+            continue
+
+        if tok in _NAMEDATA.last_names:
+            append('{l}')
             i += 1
             continue
 
