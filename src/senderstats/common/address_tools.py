@@ -33,6 +33,37 @@ def remove_prvs(email: str) -> str:
     return local[second + 1:] + email[at:]
 
 
+def remove_prvs_parallel(emails: list[str]) -> list[str]:
+    out: list[str] = []
+    ap = out.append
+    for email in emails:
+        if not email:
+            ap(email)
+            continue
+
+        at = email.find("@")
+        if at < 0:
+            ap(email)
+            continue
+
+        if not (email.startswith("prvs") or email.startswith("msprvs")):
+            ap(email)
+            continue
+
+        local = email[:at]
+        first = local.find("=")
+        if first < 0:
+            ap(email)
+            continue
+        second = local.find("=", first + 1)
+        if second < 0:
+            ap(email)
+            continue
+
+        ap(local[second + 1:] + email[at:])
+    return out
+
+
 def convert_srs(email: str) -> str:
     """
     Converts an email address from SRS back to its original form.
