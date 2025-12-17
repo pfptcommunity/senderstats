@@ -8,7 +8,7 @@ from statistics import median
 
 import pytest
 
-from senderstats.common.address_tools import remove_prvs
+from senderstats.common.address_tools import remove_prvs, remove_prvs_parallel
 
 
 def gen_emails(n: int, seed: int = 1337) -> list[str]:
@@ -105,6 +105,42 @@ def time_it(name: str, fn, items: list[str], *, reps: int = 1, warmup: int = 200
     return Perf(name, total_ns, ops)
 
 
+def time_it_batch(
+        name: str,
+        fn,
+        items: list[str],
+        *,
+        reps: int = 1,
+        rounds: int = 7,
+        warmup: int = 1,
+) -> Perf:
+    for _ in range(warmup):
+        out = fn(items)
+        _ = len(out)
+
+    ops = len(items) * reps
+    samples: list[int] = []
+    sink = 0
+
+    for _ in range(rounds):
+        t0 = time.perf_counter_ns()
+        for _ in range(reps):
+            out = fn(items)
+        t1 = time.perf_counter_ns()
+
+        if out:
+            sink ^= (len(out[0]) if out[0] else 0)
+            sink ^= (len(out[-1]) if out[-1] else 0)
+            sink ^= len(out)
+
+        samples.append(t1 - t0)
+
+    total_ns = median(samples)
+    if sink == -1:
+        raise AssertionError("sink")
+    return Perf(name, total_ns, ops)
+
+
 @pytest.mark.perf
 def test_perf_remove_prvs(emails):
     l1 = remove_prvs
@@ -112,3 +148,16 @@ def test_perf_remove_prvs(emails):
     r1 = time_it("test_perf_remove_prvs", l1, emails, reps=3, rounds=7)
 
     print(f"\n{r1.name}: {r1.total_ms:,.2f} ms | {r1.ns_per_op:,.1f} ns/op | {r1.ops_per_s:,.0f} ops/s")
+
+
+@pytest.mark.perf
+def test_perf_remove_prvs_parallel_inlined(emails):
+    r = time_it_batch(
+        "test_perf_remove_prvs_parallel",
+        remove_prvs_parallel,
+        emails,
+        reps=3,
+        rounds=7,
+        warmup=2,
+    )
+    print(f"\n{r.name}: {r.total_ms:,.2f} ms | {r.ns_per_op:,.1f} ns/op | {r.ops_per_s:,.0f} ops/s")
