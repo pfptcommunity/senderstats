@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pickle
 from importlib import resources
-from typing import Optional, Any
+from typing import Optional, Any, Set
 
 _CLS = bytearray(256)
 for o in range(256):
@@ -35,15 +35,15 @@ _TZ = {
 _STRIP_CHARS = "[](){}<>,.;!\"'"
 
 _RESOURCE_PACKAGE = "senderstats.common.data"
-_RESOURCE_NAME_AUTOMATON = "name_automaton.pkl"
-_AUTOMATION: Optional[Any] = None
+_RESOURCE_NAME_SET = "global_names.pkl"
 
-try:
-    ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_AUTOMATON)
-    with ref.open("rb") as f:
-        _AUTOMATION = pickle.load(f)
-except FileNotFoundError:
-    pass
+def load_name_set() -> frozenset[str]:
+    try:
+        ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_SET)
+        with ref.open("rb") as f:
+            return frozenset(pickle.load(f))
+    except FileNotFoundError:
+        return frozenset()
 
 def _strip_wrap(tok: str) -> str:
     return tok.strip(_STRIP_CHARS)
