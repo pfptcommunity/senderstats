@@ -50,7 +50,7 @@ def parse_email_details(email_str: str) -> Dict[str, str]:
     }
 
 
-def parse_email_details_parallel(emails: Iterable[str]) -> Tuple[List[str], List[str]]:
+def parse_email_details_batch(emails: Iterable[str]) -> Tuple[List[str], List[str]]:
     """
     Parses multiple email strings in sequence and collects results in parallel lists.
 
