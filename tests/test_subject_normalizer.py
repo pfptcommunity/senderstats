@@ -117,8 +117,8 @@ month_only_tests = {
     "Meeting in October": "meeting in {m}",
 
     # extras
-    "Sale ends in July": "sale ends in {m}",
-    "See you in jan": "see you in {m}",
+    "Incentive ends in July": "incentive ends in {m}",
+    "Don't forget about your appointment, in jan": "don't forget about your appointment, in {m}",
     "Billed through NOVEMBER": "billed through {m}",
 }
 
@@ -126,7 +126,7 @@ id_tests = {
     # originals
     "Order #hsgske-heys": "order {#}",
     "Tracking ABC123": "tracking {#}",
-    "Item A-1234 shipped Dec 11, 2025": "item {#} shipped {d}",
+    "Product A-1234 shipped Dec 11, 2025": "product {#} shipped {d}",
 
     # extras
     "Ref: INV-2025-12-11": "ref: {#}",
@@ -138,11 +138,11 @@ int_tests = {
     # originals
     "Invoice 12345": "invoice {i}",
     "Your code is 987": "your code is {i}",
-    "Room 403": "room {i}",
+    "Apartment 403": "apartment {i}",
 
     # extras
     "Balance: 0": "balance: {i}",
-    "You have 10 messages": "you have {i} messages",
+    "10 messages in your mailbox": "{i} messages in your mailbox",
 }
 
 realistic_tests = {
@@ -151,10 +151,10 @@ realistic_tests = {
         "appt confirmed: {t}",
     "Your appointment is scheduled for 04:30pm Mon, Dec 1, 2025":
         "your appointment is scheduled for {t}",
-    "Delivery expected Dec, 24":
-        "delivery expected {d}",
-    "Package #abc-999 will arrive on December 5 2025":
-        "package {#} will arrive on {d}",
+    "Your package expected Dec, 24":
+        "your package expected {d}",
+    "Parcel #abc-999 will arrive on December 5 2025":
+        "parcel {#} will arrive on {d}",
     "Invoice 123 for order #hsgske-heys on 2025-12-03":
         "invoice {i} for order {#} on {d}",
 
@@ -163,8 +163,8 @@ realistic_tests = {
         "order {i} placed on {d} at {tm}",
     "Reminder: Fri 1/2/25 9:00am - 10:00am (PST)":
         "reminder: {t}",
-    "Billing statement for December 11 2025":
-        "billing statement for {d}",
+    "Invoice statement for December 11 2025":
+        "invoice statement for {d}",
     "Your subscription renews in December":
         "your subscription renews in {m}",
     "Your code 987 expires on 2025-12-11":
