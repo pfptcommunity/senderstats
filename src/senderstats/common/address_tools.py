@@ -1,4 +1,5 @@
 import re
+from typing import Iterable, List
 
 _ENTROPY_HEX_PAIRS_RE = re.compile(r'(?=(?:[0-9][a-f]|[a-f][0-9]|[0-9]{2}))', re.IGNORECASE)
 
@@ -10,7 +11,6 @@ def remove_prvs(email: str) -> str:
     :param email: The email address to clean.
     :return: The email address without PRVS tags.
     """
-
     if not email:
         return email
 
@@ -30,10 +30,15 @@ def remove_prvs(email: str) -> str:
     if second < 0:
         return email
 
-    return local[second + 1:] + email[at:]
+    orig_local = local[second + 1:]
+    # Reject empty/garbage originals (e.g. "msprvs=deadbeef==@example.com")
+    if not orig_local or orig_local[0] == "=":
+        return email
+
+    return orig_local + email[at:]
 
 
-def remove_prvs_parallel(emails: list[str]) -> list[str]:
+def remove_prvs_parallel(emails: Iterable[str]) -> list[str]:
     out: list[str] = []
     ap = out.append
     for email in emails:
@@ -60,7 +65,13 @@ def remove_prvs_parallel(emails: list[str]) -> list[str]:
             ap(email)
             continue
 
-        ap(local[second + 1:] + email[at:])
+        orig_local = local[second + 1:]
+        # Reject empty/garbage originals (e.g. "msprvs=deadbeef==@example.com")
+        if not orig_local or orig_local[0] == "=":
+            ap(email)
+            continue
+
+        ap(orig_local + email[at:])
     return out
 
 
@@ -106,6 +117,60 @@ def convert_srs(email: str) -> str:
         return email
 
     return orig_local + "@" + orig_domain
+
+
+def convert_srs_parallel(emails: Iterable[str]) -> List[str]:
+    out: List[str] = []
+    ap = out.append
+
+    for email in emails:
+        if not email:
+            ap(email);
+            continue
+
+        at = email.find("@")
+        if at < 0:
+            ap(email);
+            continue
+
+        p = email.find("srs")
+        if p < 0 or p >= at:
+            ap(email);
+            continue
+
+        if p != 0 and email[p - 1] != "+":
+            ap(email);
+            continue
+
+        eq0 = email.find("=", p)
+        if eq0 < 0 or eq0 >= at:
+            ap(email);
+            continue
+
+        eq1 = email.find("=", eq0 + 1)
+        if eq1 < 0 or eq1 >= at:
+            ap(email);
+            continue
+
+        eq2 = email.find("=", eq1 + 1)
+        if eq2 < 0 or eq2 >= at:
+            ap(email);
+            continue
+
+        eq3 = email.find("=", eq2 + 1)
+        if eq3 < 0 or eq3 >= at:
+            ap(email);
+            continue
+
+        orig_domain = email[eq2 + 1: eq3]
+        orig_local = email[eq3 + 1: at]
+        if not orig_domain or not orig_local:
+            ap(email);
+            continue
+
+        ap(orig_local + "@" + orig_domain)
+
+    return out
 
 
 def normalize_bounces(email: str) -> str:

@@ -141,17 +141,66 @@ def time_it_batch(
     return Perf(name, total_ns, ops)
 
 
+TEST_SUITES = [
+    (
+        "Non-PRVS / Identity",
+        {
+            "": "",
+            "no-at-symbol": "no-at-symbol",
+            "user@example.com": "user@example.com",
+            "notprvs=dead=orig@example.com": "notprvs=dead=orig@example.com",
+            "@example.com": "@example.com",  # empty local, should not change
+        },
+    ),
+    (
+        "Malformed PRVS (should not convert)",
+        {
+            "prvs=deadbeeforig@example.com": "prvs=deadbeeforig@example.com",  # no '=' separators
+            "prvs=deadbeef=orig": "prvs=deadbeef=orig",  # no '@'
+            "prvs=deadbeeforig": "prvs=deadbeeforig",  # no '@' and no second '='
+            "msprvs=deadbeef==@example.com": "msprvs=deadbeef==@example.com",  # empty orig_local -> unchanged
+        },
+    ),
+    (
+        "Valid PRVS (should convert)",
+        {
+            "prvs=deadbeef=orig@example.com": "orig@example.com",
+            "msprvs=deadbeef=orig@example.com": "orig@example.com",
+            "prvs==orig@example.com": "orig@example.com",  # hash empty but still two '='
+            "prvs=deadbeef=orig@EXAMPLE.COM": "orig@EXAMPLE.COM",  # preserves domain case per current logic
+        },
+    ),
+]
+
+
+def _flatten_suites():
+    """Yield (suite_name, input_text, expected_output) for parametrization."""
+    for suite_name, cases in TEST_SUITES:
+        for inp, expected in cases.items():
+            yield suite_name, inp, expected
+
+
+@pytest.mark.parametrize(
+    "suite_name,inp,expected",
+    list(_flatten_suites()),
+    ids=lambda v: v if isinstance(v, str) else repr(v),
+)
+def test_remove_prvs_cases(suite_name, inp, expected):
+    out = remove_prvs(inp)
+    assert out == expected, f"[{suite_name}] input={inp!r} out={out!r} expected={expected!r}"
+
+
 @pytest.mark.perf
-def test_perf_remove_prvs(emails):
+def test_remove_prvs(emails):
     l1 = remove_prvs
 
-    r1 = time_it("test_perf_remove_prvs", l1, emails, reps=3, rounds=7)
+    r1 = time_it("test_remove_prvs", l1, emails, reps=3, rounds=7)
 
     print(f"\n{r1.name}: {r1.total_ms:,.2f} ms | {r1.ns_per_op:,.1f} ns/op | {r1.ops_per_s:,.0f} ops/s")
 
 
 @pytest.mark.perf
-def test_perf_remove_prvs_parallel_inlined(emails):
+def test_perf_remove_prvs_parallel(emails):
     r = time_it_batch(
         "test_perf_remove_prvs_parallel",
         remove_prvs_parallel,
