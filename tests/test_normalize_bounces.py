@@ -8,7 +8,7 @@ from statistics import median
 
 import pytest
 
-from senderstats.common.address_tools import normalize_bounces
+from senderstats.common.address_tools import normalize_bounces, normalize_bounces_parallel
 
 
 def gen_emails(n: int, seed: int = 1337) -> list[str]:
@@ -100,6 +100,97 @@ def time_it(name: str, fn, items: list[str], *, reps: int = 1, warmup: int = 200
     return Perf(name, median(samples), ops)
 
 
+def time_it_batch(
+        name: str,
+        fn,
+        items: list[str],
+        *,
+        reps: int = 1,
+        rounds: int = 7,
+        warmup: int = 1,
+) -> Perf:
+    for _ in range(warmup):
+        out = fn(items)
+        _ = len(out)
+
+    ops = len(items) * reps
+    samples: list[int] = []
+    sink = 0
+
+    for _ in range(rounds):
+        t0 = time.perf_counter_ns()
+        for _ in range(reps):
+            out = fn(items)
+        t1 = time.perf_counter_ns()
+
+        if out:
+            sink ^= (len(out[0]) if out[0] else 0)
+            sink ^= (len(out[-1]) if out[-1] else 0)
+            sink ^= len(out)
+
+        samples.append(t1 - t0)
+
+    total_ns = median(samples)
+    if sink == -1:
+        raise AssertionError("sink")
+    return Perf(name, total_ns, ops)
+
+
+TEST_SUITES = [
+    (
+        "Non-bounce / Identity",
+        {
+            "": "",
+            "noatsymbol": "noatsymbol",
+            "@example.com": "@example.com",  # empty local
+            "user@example.com": "user@example.com",  # normal
+            "rebounce+tag@example.com": "rebounce+tag@example.com",  # prefix not exact
+            "bounc@example.com": "bounc@example.com",  # not exact prefix
+        },
+    ),
+    (
+        "Valid bounce tags (should normalize)",
+        {
+            "bounce+tag@example.com": "bounce@example.com",
+            "bounce-tag@example.com": "bounce@example.com",
+            "bounces+tag@example.com": "bounces@example.com",
+            "bounces-tag@example.com": "bounces@example.com",
+            "bounce+@example.com": "bounce@example.com",  # empty tag still normalizes
+            "bounces-@example.com": "bounces@example.com",  # empty tag still normalizes
+        },
+    ),
+    (
+        "Invalid bounce tags (should not normalize)",
+        {
+            "bounce@example.com": "bounce@example.com",  # no +/- after prefix
+            "bounces@example.com": "bounces@example.com",  # no +/- after prefix
+            "bounceXtag@example.com": "bounceXtag@example.com",  # not prefix match
+            "bounce_tag@example.com": "bounce_tag@example.com",  # wrong delimiter
+            "bounces.tag@example.com": "bounces.tag@example.com",  # wrong delimiter
+            "bounce+tag": "bounce+tag",  # no '@'
+            "bounces-tag": "bounces-tag",  # no '@'
+        },
+    ),
+]
+
+
+def _flatten_suites():
+    """Yield (suite_name, input_text, expected_output) for parametrization."""
+    for suite_name, cases in TEST_SUITES:
+        for inp, expected in cases.items():
+            yield suite_name, inp, expected
+
+
+@pytest.mark.parametrize(
+    "suite_name,inp,expected",
+    list(_flatten_suites()),
+    ids=lambda v: v if isinstance(v, str) else repr(v),
+)
+def test_normalize_bounces_cases(suite_name, inp, expected):
+    out = normalize_bounces(inp)
+    assert out == expected, f"[{suite_name}] input={inp!r} out={out!r} expected={expected!r}"
+
+
 @pytest.mark.perf
 def test_perf_normalize_bounces(emails):
     f1 = normalize_bounces
@@ -107,3 +198,16 @@ def test_perf_normalize_bounces(emails):
     r1 = time_it("test_perf_normalize_bounces", f1, emails, reps=3, rounds=7)
 
     print(f"\n{r1.name}: {r1.total_ms:,.2f} ms | {r1.ns_per_op:,.1f} ns/op | {r1.ops_per_s:,.0f} ops/s")
+
+
+@pytest.mark.perf
+def test_perf_normalize_bounces_parallel(emails):
+    r = time_it_batch(
+        "test_perf_normalize_bounces_parallel",
+        normalize_bounces_parallel,
+        emails,
+        reps=3,
+        rounds=7,
+        warmup=2,
+    )
+    print(f"\n{r.name}: {r.total_ms:,.2f} ms | {r.ns_per_op:,.1f} ns/op | {r.ops_per_s:,.0f} ops/s")

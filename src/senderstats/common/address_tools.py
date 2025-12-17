@@ -206,6 +206,48 @@ def normalize_bounces(email: str) -> str:
     return base + email[at:]
 
 
+from typing import Iterable
+
+
+def normalize_bounces_parallel(emails: Iterable[str]) -> list[str]:
+    out: list[str] = []
+    ap = out.append
+
+    for email in emails:
+        if not email:
+            ap(email)
+            continue
+
+        at = email.find("@")
+        if at <= 0:
+            ap(email)
+            continue
+
+        # exact prefix gate
+        if email.startswith("bounces"):
+            i = 7
+            base = "bounces"
+        elif email.startswith("bounce"):
+            i = 6
+            base = "bounce"
+        else:
+            ap(email)
+            continue
+
+        if i >= at:
+            ap(email)
+            continue
+
+        c = email[i]
+        if c != "+" and c != "-":
+            ap(email)
+            continue
+
+        ap(base + email[at:])
+
+    return out
+
+
 def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
     """
         Determines if an email's local part suggests an automated sender based on entropy and hex pair count.
