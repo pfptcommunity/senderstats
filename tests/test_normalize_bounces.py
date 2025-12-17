@@ -8,7 +8,7 @@ from statistics import median
 
 import pytest
 
-from senderstats.common.address_tools import normalize_bounces, normalize_bounces_parallel
+from senderstats.common.address_tools import normalize_bounces, normalize_bounces_batch
 
 
 def gen_emails(n: int, seed: int = 1337) -> list[str]:
@@ -204,7 +204,7 @@ def test_perf_normalize_bounces(emails):
 def test_perf_normalize_bounces_parallel(emails):
     r = time_it_batch(
         "test_perf_normalize_bounces_parallel",
-        normalize_bounces_parallel,
+        normalize_bounces_batch,
         emails,
         reps=3,
         rounds=7,

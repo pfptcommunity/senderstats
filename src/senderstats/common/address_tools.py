@@ -38,7 +38,7 @@ def remove_prvs(email: str) -> str:
     return orig_local + email[at:]
 
 
-def remove_prvs_parallel(emails: Iterable[str]) -> list[str]:
+def remove_prvs_batch(emails: Iterable[str]) -> list[str]:
     out: list[str] = []
     ap = out.append
     for email in emails:
@@ -119,7 +119,7 @@ def convert_srs(email: str) -> str:
     return orig_local + "@" + orig_domain
 
 
-def convert_srs_parallel(emails: Iterable[str]) -> List[str]:
+def convert_srs_batch(emails: Iterable[str]) -> List[str]:
     out: List[str] = []
     ap = out.append
 
@@ -209,7 +209,7 @@ def normalize_bounces(email: str) -> str:
 from typing import Iterable
 
 
-def normalize_bounces_parallel(emails: Iterable[str]) -> list[str]:
+def normalize_bounces_batch(emails: Iterable[str]) -> list[str]:
     out: list[str] = []
     ap = out.append
 

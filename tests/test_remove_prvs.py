@@ -8,7 +8,7 @@ from statistics import median
 
 import pytest
 
-from senderstats.common.address_tools import remove_prvs, remove_prvs_parallel
+from senderstats.common.address_tools import remove_prvs, remove_prvs_batch
 
 
 def gen_emails(n: int, seed: int = 1337) -> list[str]:
@@ -203,7 +203,7 @@ def test_remove_prvs(emails):
 def test_perf_remove_prvs_parallel(emails):
     r = time_it_batch(
         "test_perf_remove_prvs_parallel",
-        remove_prvs_parallel,
+        remove_prvs_batch,
         emails,
         reps=3,
         rounds=7,
