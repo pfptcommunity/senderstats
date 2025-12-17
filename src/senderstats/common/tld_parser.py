@@ -165,6 +165,128 @@ class TLDParser:
         sub = ".".join(labels[:-(best_len + 1)])
         return (sub, registrable, public_suffix)
 
+    def split_host_extended_unchecked(self, h: str) -> Tuple[str, str, str, str]:
+        # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
+        if __debug__:
+            assert isinstance(h, str)
+            assert h == h.strip()
+            assert not h.endswith(".")
+            assert h == h.lower()
+
+        if not h or "." not in h:
+            return ("", "", h, "")
+
+        labels = h.split(".")
+        n = len(labels)
+
+        best_len = 1
+        cur = 0
+        matched_depth = 0
+        nodes = self.nodes
+
+        for i in range(n - 1, -1, -1):
+            children = nodes[cur][0]
+            lab = labels[i]
+
+            nxt = children.get(lab)
+            if nxt is None:
+                if children.get("*") is not None:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+                break
+
+            cur = nxt
+            matched_depth += 1
+
+            children, is_rule, has_star_child, is_exc = nodes[cur]
+
+            if is_exc:
+                cand = matched_depth - 1
+                if cand > best_len:
+                    best_len = cand
+                break
+
+            if is_rule and matched_depth > best_len:
+                best_len = matched_depth
+
+            if has_star_child:
+                cand = matched_depth + 1
+                if cand > best_len:
+                    best_len = cand
+
+        if best_len >= n:
+            return ("", "", h, h)
+
+        suffix = ".".join(labels[-best_len:])
+        registrable = ".".join(labels[-(best_len + 1):])
+        sub = ".".join(labels[:-(best_len + 1)])
+
+        if not sub:
+            return ("", "", registrable, suffix)
+
+        host_label, sep, rest = sub.partition(".")
+
+        return (host_label, rest if sep else "", registrable, suffix)
+
+    def split_host_extended_safe(self, host: str) -> Tuple[str, str, str, str]:
+        h = (host or "").strip().rstrip(".").lower()
+
+        if not h or "." not in h:
+            return ("", "", h, "")
+
+        labels = h.split(".")
+        n = len(labels)
+
+        best_len = 1
+        cur = 0
+        matched_depth = 0
+        nodes = self.nodes
+
+        for i in range(n - 1, -1, -1):
+            children = nodes[cur][0]
+            lab = labels[i]
+
+            nxt = children.get(lab)
+            if nxt is None:
+                if children.get("*") is not None:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+                break
+
+            cur = nxt
+            matched_depth += 1
+
+            children, is_rule, has_star_child, is_exc = nodes[cur]
+
+            if is_exc:
+                cand = matched_depth - 1
+                if cand > best_len:
+                    best_len = cand
+                break
+
+            if is_rule and matched_depth > best_len:
+                best_len = matched_depth
+
+            if has_star_child:
+                cand = matched_depth + 1
+                if cand > best_len:
+                    best_len = cand
+
+        if best_len >= n:
+            return ("", "", h, h)
+
+        suffix = ".".join(labels[-best_len:])
+        registrable = ".".join(labels[-(best_len + 1):])
+        sub = ".".join(labels[:-(best_len + 1)])
+
+        if not sub:
+            return ("", "", registrable, suffix)
+
+        host_label, sep, rest = sub.partition(".")
+        return (host_label, rest if sep else "", registrable, suffix)
+
     def split_host_batch_unchecked(self, hosts: Iterable[str]) -> List[Tuple[str, str, str]]:
         out: List[Tuple[str, str, str]] = []
         ap = out.append
