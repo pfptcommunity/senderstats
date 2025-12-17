@@ -49,10 +49,71 @@ class TLDParser:
                 raise TypeError("Invalid trie pickle: bad node schema")
 
     # -------------------------
-    # Splitting (core)
+    # Splitting, yes it's redundant but to prevent frames
     # -------------------------
 
-    def _split_host_core(self, h: str) -> Tuple[str, str, str]:
+    def split_host_unchecked(self, h: str) -> Tuple[str, str, str]:
+        # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
+        if __debug__:
+            assert isinstance(h, str)
+            assert h == h.strip()
+            assert not h.endswith(".")
+            assert h == h.lower()
+
+        if not h or "." not in h:
+            return ("", h, "")
+
+        labels = h.split(".")
+        n = len(labels)
+
+        best_len = 1
+        cur = 0
+        matched_depth = 0
+        nodes = self.nodes
+
+        for i in range(n - 1, -1, -1):
+            children = nodes[cur][0]
+            lab = labels[i]
+
+            nxt = children.get(lab)
+            if nxt is None:
+                if children.get("*") is not None:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+                break
+
+            cur = nxt
+            matched_depth += 1
+
+            children, is_rule, has_star_child, is_exc = nodes[cur]
+
+            if is_exc:
+                cand = matched_depth - 1
+                if cand > best_len:
+                    best_len = cand
+                break
+
+            if is_rule and matched_depth > best_len:
+                best_len = matched_depth
+
+            if has_star_child:
+                cand = matched_depth + 1
+                if cand > best_len:
+                    best_len = cand
+
+        if best_len >= n:
+            return ("", h, h)
+
+        public_suffix = ".".join(labels[-best_len:])
+        registrable = ".".join(labels[-(best_len + 1):])
+        sub = ".".join(labels[:-(best_len + 1)])
+        return (sub, registrable, public_suffix)
+
+    def split_host_safe(self, host: str) -> Tuple[str, str, str]:
+        # Safe: trim, strip trailing dots, lowercase
+        h = (host or "").strip().rstrip(".").lower()
+
         # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
         if not h or "." not in h:
             return ("", h, "")
@@ -104,39 +165,135 @@ class TLDParser:
         sub = ".".join(labels[:-(best_len + 1)])
         return (sub, registrable, public_suffix)
 
-    def split_host_unchecked(self, host: str) -> Tuple[str, str, str]:
-        """
-        FAST PATH.
+    def split_host_batch_unchecked(self, hosts: Iterable[str]) -> List[Tuple[str, str, str]]:
+        out: List[Tuple[str, str, str]] = []
+        ap = out.append
+        nodes = self.nodes  # bind once
 
-        Expects `host` is already:
-          - trimmed (no leading/trailing whitespace)
-          - no trailing dot
+        for h in hosts:
+            # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
+            if __debug__:
+                assert isinstance(h, str)
+                assert h == h.strip()
+                assert not h.endswith(".")
+                assert h == h.lower()
 
-        This function still lowercases for robustness.
-        """
-        if __debug__:
-            assert isinstance(host, str)
-            assert host == host.strip()
-            assert not host.endswith(".")
-        return self._split_host_core(host)
+            if not h or "." not in h:
+                ap(("", h, ""))
+                continue
 
-    def split_host_safe(self, host: str) -> Tuple[str, str, str]:
-        """
-        Safe path for untrusted input: trim whitespace, remove trailing dots, lowercase.
-        """
-        h = (host or "").strip().rstrip(".").lower()
-        return self._split_host_core(h)
+            labels = h.split(".")
+            n = len(labels)
 
-    def split_host_extended(self, host: str) -> Tuple[str, str, str, str]:
-        sub, registrable, suffix = self.split_host_unchecked(host)
-        if not sub:
-            return ("", "", registrable, suffix)
+            best_len = 1
+            cur = 0
+            matched_depth = 0
 
-        host_label, sep, rest = sub.partition(".")
-        subdomain = rest if sep else ""
-        return (host_label, subdomain, registrable, suffix)
+            for i in range(n - 1, -1, -1):
+                children = nodes[cur][0]
+                lab = labels[i]
 
-    def split_host_extended_parallel(
+                nxt = children.get(lab)
+                if nxt is None:
+                    if children.get("*") is not None:
+                        cand = matched_depth + 1
+                        if cand > best_len:
+                            best_len = cand
+                    break
+
+                cur = nxt
+                matched_depth += 1
+
+                children, is_rule, has_star_child, is_exc = nodes[cur]
+
+                if is_exc:
+                    cand = matched_depth - 1
+                    if cand > best_len:
+                        best_len = cand
+                    break
+
+                if is_rule and matched_depth > best_len:
+                    best_len = matched_depth
+
+                if has_star_child:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+
+            if best_len >= n:
+                ap(("", h, h))
+                continue
+
+            public_suffix = ".".join(labels[-best_len:])
+            registrable = ".".join(labels[-(best_len + 1):])
+            sub = ".".join(labels[:-(best_len + 1)])
+            ap((sub, registrable, public_suffix))
+
+        return out
+
+    def split_host_batch_safe(self, hosts: Iterable[str]) -> List[Tuple[str, str, str]]:
+        out: List[Tuple[str, str, str]] = []
+        ap = out.append
+        nodes = self.nodes  # bind once
+
+        for host in hosts:
+            h = (host or "").strip().rstrip(".").lower()
+
+            # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
+            if not h or "." not in h:
+                ap(("", h, ""))
+                continue
+
+            labels = h.split(".")
+            n = len(labels)
+
+            best_len = 1
+            cur = 0
+            matched_depth = 0
+
+            for i in range(n - 1, -1, -1):
+                children = nodes[cur][0]
+                lab = labels[i]
+
+                nxt = children.get(lab)
+                if nxt is None:
+                    if children.get("*") is not None:
+                        cand = matched_depth + 1
+                        if cand > best_len:
+                            best_len = cand
+                    break
+
+                cur = nxt
+                matched_depth += 1
+
+                children, is_rule, has_star_child, is_exc = nodes[cur]
+
+                if is_exc:
+                    cand = matched_depth - 1
+                    if cand > best_len:
+                        best_len = cand
+                    break
+
+                if is_rule and matched_depth > best_len:
+                    best_len = matched_depth
+
+                if has_star_child:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+
+            if best_len >= n:
+                ap(("", h, h))
+                continue
+
+            public_suffix = ".".join(labels[-best_len:])
+            registrable = ".".join(labels[-(best_len + 1):])
+            sub = ".".join(labels[:-(best_len + 1)])
+            ap((sub, registrable, public_suffix))
+
+        return out
+
+    def split_host_extended_batch_unchecked(
             self, hosts: Iterable[str]
     ) -> Tuple[List[str], List[str], List[str], List[str]]:
         host_labels: List[str] = []
@@ -144,18 +301,180 @@ class TLDParser:
         registrables: List[str] = []
         suffixes: List[str] = []
 
-        core = self.split_host_extended
         hl_append = host_labels.append
         sd_append = subdomains.append
         reg_append = registrables.append
         suf_append = suffixes.append
 
+        nodes = self.nodes  # bind once
+
         for h in hosts:
-            hl, sd, reg, suf = core(h)
-            hl_append(hl)
-            sd_append(sd)
-            reg_append(reg)
-            suf_append(suf)
+            # expects: lowercase hostname, no scheme/port, ideally trimmed/no trailing dot
+            if __debug__:
+                assert isinstance(h, str)
+                assert h == h.strip()
+                assert not h.endswith(".")
+                assert h == h.lower()
+
+            if not h or "." not in h:
+                # core result would be ("", h, "")
+                # extended mapping: if not sub => ("", "", registrable, suffix)
+                hl_append("")
+                sd_append("")
+                reg_append(h)
+                suf_append("")
+                continue
+
+            labels = h.split(".")
+            n = len(labels)
+
+            best_len = 1
+            cur = 0
+            matched_depth = 0
+
+            for i in range(n - 1, -1, -1):
+                children = nodes[cur][0]
+                lab = labels[i]
+
+                nxt = children.get(lab)
+                if nxt is None:
+                    if children.get("*") is not None:
+                        cand = matched_depth + 1
+                        if cand > best_len:
+                            best_len = cand
+                    break
+
+                cur = nxt
+                matched_depth += 1
+
+                children, is_rule, has_star_child, is_exc = nodes[cur]
+
+                if is_exc:
+                    cand = matched_depth - 1
+                    if cand > best_len:
+                        best_len = cand
+                    break
+
+                if is_rule and matched_depth > best_len:
+                    best_len = matched_depth
+
+                if has_star_child:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+
+            if best_len >= n:
+                # core: ("", h, h) -> extended: ("", "", registrable, suffix)
+                hl_append("")
+                sd_append("")
+                reg_append(h)
+                suf_append(h)
+                continue
+
+            suffix = ".".join(labels[-best_len:])
+            registrable = ".".join(labels[-(best_len + 1):])
+            sub = ".".join(labels[:-(best_len + 1)])
+
+            if not sub:
+                hl_append("")
+                sd_append("")
+                reg_append(registrable)
+                suf_append(suffix)
+            else:
+                host_label, sep, rest = sub.partition(".")
+                hl_append(host_label)
+                sd_append(rest if sep else "")
+                reg_append(registrable)
+                suf_append(suffix)
+
+        return host_labels, subdomains, registrables, suffixes
+
+    def split_host_extended_batch_safe(
+            self, hosts: Iterable[str]
+    ) -> Tuple[List[str], List[str], List[str], List[str]]:
+        host_labels: List[str] = []
+        subdomains: List[str] = []
+        registrables: List[str] = []
+        suffixes: List[str] = []
+
+        hl_append = host_labels.append
+        sd_append = subdomains.append
+        reg_append = registrables.append
+        suf_append = suffixes.append
+
+        nodes = self.nodes  # bind once
+
+        for host in hosts:
+            h = (host or "").strip().rstrip(".").lower()
+
+            # normalized string might be empty / no dot
+            if not h or "." not in h:
+                hl_append("")
+                sd_append("")
+                reg_append(h)
+                suf_append("")
+                continue
+
+            labels = h.split(".")
+            n = len(labels)
+
+            best_len = 1
+            cur = 0
+            matched_depth = 0
+
+            for i in range(n - 1, -1, -1):
+                children = nodes[cur][0]
+                lab = labels[i]
+
+                nxt = children.get(lab)
+                if nxt is None:
+                    if children.get("*") is not None:
+                        cand = matched_depth + 1
+                        if cand > best_len:
+                            best_len = cand
+                    break
+
+                cur = nxt
+                matched_depth += 1
+
+                children, is_rule, has_star_child, is_exc = nodes[cur]
+
+                if is_exc:
+                    cand = matched_depth - 1
+                    if cand > best_len:
+                        best_len = cand
+                    break
+
+                if is_rule and matched_depth > best_len:
+                    best_len = matched_depth
+
+                if has_star_child:
+                    cand = matched_depth + 1
+                    if cand > best_len:
+                        best_len = cand
+
+            if best_len >= n:
+                hl_append("")
+                sd_append("")
+                reg_append(h)
+                suf_append(h)
+                continue
+
+            suffix = ".".join(labels[-best_len:])
+            registrable = ".".join(labels[-(best_len + 1):])
+            sub = ".".join(labels[:-(best_len + 1)])
+
+            if not sub:
+                hl_append("")
+                sd_append("")
+                reg_append(registrable)
+                suf_append(suffix)
+            else:
+                host_label, sep, rest = sub.partition(".")
+                hl_append(host_label)
+                sd_append(rest if sep else "")
+                reg_append(registrable)
+                suf_append(suffix)
 
         return host_labels, subdomains, registrables, suffixes
 
@@ -163,15 +482,3 @@ class TLDParser:
 @lru_cache(maxsize=1)
 def get_default_tld_parser() -> TLDParser:
     return TLDParser.load_default()
-
-
-def split_host_unchecked(host: str) -> tuple[str, str, str]:
-    return get_default_tld_parser().split_host_unchecked(host)
-
-
-def split_host_safe(host: str) -> tuple[str, str, str]:
-    return get_default_tld_parser().split_host_safe(host)
-
-
-def split_host_extended(host: str) -> tuple[str, str, str, str]:
-    return get_default_tld_parser().split_host_extended(host)
