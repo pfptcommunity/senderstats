@@ -67,10 +67,60 @@ _REL_TIME_UNITS = {
     "week", "weeks",
 }
 
-_RESPONSE_PREFIXES = {
-    "re:", "fw:", "fwd:", "accepted:", "declined:", "canceled:", "tentative:",
-    "updated:", "invitation:", "reminder:", "cancelled:"
+_PREFIX_WORDS = {
+    # ─── Reply ──────────────────────────────────────────────
+    "re",        # English / global default
+    "aw",        # German (Antwort)
+    "sv",        # Scandinavian (Svar)
+    "vs",        # Finnish (Vastaus)
+    "odp",       # Polish (Odpowiedź)
+    "ynt",       # Turkish (Yanıt)
+    "ré",        # French (rare but real)
+
+    # ─── Forward ────────────────────────────────────────────
+    "fw",        # English / Dutch
+    "fwd",       # English
+    "wg",        # German (Weitergeleitet)
+    "tr",        # French (Transféré)
+    "rv",        # Spanish (Reenviado)
+    "reenv",     # Spanish (Reenviado)
+    "enc",       # Portuguese (Encaminhado)
+    "inoltro",   # Italian
+    "pd",        # Polish (Przekaż dalej)
+    "vb",        # Swedish (Vidarebefordrat)
+    "vl",        # Finnish (Välitetty)
+    "iletilen",  # Turkish (Forwarded)
+    "转发",        # Chinese (Forwarded)
+    "전달",        # Korean (Forwarded)
+
+    # ─── Calendar / Scheduling Systems ──────────────────────
+    "accepted",
+    "declined",
+    "tentative",
+    "canceled",
+    "cancelled",
+
+    # Non-English calendar verbs
+    "angenommen",   # German (Accepted)
+    "abgelehnt",    # German (Declined)
+    "aktualisiert", # German (Updated)
+    "mis à jour",   # French (Updated)
+    "mise à jour",  # French variant
+    "actualizado",  # Spanish (Updated)
+    "actualizada",  # Spanish (gendered)
+    "aggiornato",   # Italian (Updated)
+    "aggiornata",
+
+    # ─── System / Notification Noise ────────────────────────
+    "updated",
+    "invitation",
+    "reminder",
+    "notification",
+    "alert",
+    "notice",
 }
+
+_RESPONSE_PREFIXES = {word + ":" for word in _PREFIX_WORDS}
 
 _IDENT_MARK_B = bytearray(256)
 for ch in b"-_/\\:+@=#%&?~.":
@@ -109,20 +159,54 @@ def normalize_subject(subject: str) -> str:
         S[idx] = s
         SL[idx] = lower(s) if s else ""
 
+    # Handle leading response prefixes
+    has_prefix = False
+    i = 0
+    while i < n:
+        sl = SL[i]
+        if sl in _PREFIX_WORDS and i + 1 < n and SL[i + 1] == ":":
+            has_prefix = True
+            i += 2
+            continue
+        elif sl in _RESPONSE_PREFIXES:
+            has_prefix = True
+            i += 1
+            continue
+        if ":" in sl:
+            parts = sl.split(":")
+            prefix_count = 0
+            for p in parts:
+                if p and p in _PREFIX_WORDS:
+                    prefix_count += 1
+                else:
+                    break
+            if prefix_count > 0:
+                has_prefix = True
+                remaining_sl = ":".join(parts[prefix_count:])
+                if remaining_sl:
+                    # Update S[i] and SL[i]
+                    tok_parts = tokens[i].split(":")
+                    if len(tok_parts) == len(parts):
+                        remaining_tok = ":".join(tok_parts[prefix_count:])
+                    else:
+                        remaining_tok = remaining_sl  # fallback
+                    S[i] = remaining_tok.strip(strip_all).rstrip(tail_punct).strip(strip_all)
+                    SL[i] = lower(S[i])
+                    break
+                else:
+                    i += 1
+                    continue
+        break
+
     out: list[str] = []
     append = out.append
+    if has_prefix:
+        append("{r}")
 
-    i = 0
     while i < n:
         tok = tokens[i]
         s = S[i]
         sl = SL[i]
-
-        # Handle response prefixes
-        if sl in _RESPONSE_PREFIXES:
-            append("{r}")
-            i += 1
-            continue
 
         # Month-only replacement in normal text: "Meeting in October" -> "meeting in {m}"
         # Inlined _is_month_norm and _month_is_part_of_date

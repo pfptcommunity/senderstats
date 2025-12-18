@@ -31,17 +31,24 @@ class CSVMapper(FieldMapper):
 
     def map_fields(self, row: List[str]) -> MessageData:
         message_data = MessageData()
-        for field in self._index_map.keys():
-            value = self.extract_value(row, field)
-            if field == 'msgsz':
-                value = int(value) if value.isdigit() else -1
-            elif field == 'rcpts':
-                value = value.casefold().strip().split(',')
-            elif field == 'subject':
-                value = value.strip()
+
+        extract_value = self.extract_value
+        idx_keys = self._index_map.keys()
+        set_attr = setattr
+
+        for field in idx_keys:
+            v = extract_value(row, field)
+            if field == "msgsz":
+                v = int(v) if v.isdigit() else -1
+            elif field == "rcpts":
+                s = v.strip().casefold()
+                v = s.split(",")
+            elif field == "subject":
+                v = v.strip()
             else:
-                value = value.casefold().strip()
-            setattr(message_data, field, value)
+                v = v.strip().casefold()
+            set_attr(message_data, field, v)
+
         return message_data
 
     def add_mapping(self, field_name: str, csv_field_name: str):

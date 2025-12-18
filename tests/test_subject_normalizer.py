@@ -210,6 +210,32 @@ time_only_tests = {
     "Meeting at 3 pm": "meeting at {tm}",
 }
 
+response_prefix_tests = {
+    # Simple
+    "Re: Hello": "{r} hello",
+    "FW: Hello": "{r} hello",
+    "Fwd: Hello": "{r} hello",
+    "AW: Hallo": "{r} hallo",
+    "WG: Weiterleitung": "{r} weiterleitung",
+
+    # Multiple stacked
+    "RE: FW: AW: WG: Subject": "{r} subject",
+    "Sv: Re: Fwd: Update": "{r} update",
+
+    # Non-English reply
+    "Odp: Problém": "{r} problém",
+    "Ynt: Yanıt": "{r} yanıt",
+    "Vs: Vastaus": "{r} vastaus",
+
+    # Forward non-English
+    "Tr: Transféré": "{r} transféré",
+    "Rv: Reenviado": "{r} reenviado",
+    "Enc: Encaminhado": "{r} encaminhado",
+    "Vb: Vidarebefordrat": "{r} vidarebefordrat",
+    "Vl: Välitetty": "{r} välitetty",
+}
+
+
 # --- Pytest glue ---
 
 TEST_SUITES = [
@@ -225,6 +251,7 @@ TEST_SUITES = [
     ("ID Tests", id_tests),
     ("Integer Tests", int_tests),
     ("Realistic Mixed", realistic_tests),
+    ("Response Prefix", response_prefix_tests),
 ]
 
 
