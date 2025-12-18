@@ -3,9 +3,9 @@ from __future__ import annotations
 import pickle
 from importlib import resources
 
-from names_dataset import NameDataset
-
-_NAMEDATA = NameDataset()
+# from names_dataset import NameDataset
+#
+# _NAMEDATA = NameDataset()
 
 _CLS = bytearray(256)
 for o in range(256):
@@ -37,98 +37,440 @@ _TZ = {
 
 _STRIP_CHARS = "[](){}<>,.;!\"'"
 
-_RESOURCE_PACKAGE = "senderstats.common.data"
-_RESOURCE_NAME_SET = "global_names.pkl"
+# _RESOURCE_PACKAGE = "senderstats.common.data"
+# _RESOURCE_NAME_SET = "global_names.pkl"
+#
+#
+# def load_name_set() -> frozenset[str]:
+#     try:
+#         ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_SET)
+#         with ref.open("rb") as f:
+#             return frozenset(pickle.load(f))
+#     except FileNotFoundError:
+#         return frozenset()
 
+_EXTRA_WRAP_CHARS = "`*~^"
+_TAIL_PUNCT = ",.;!?"
+_STRIP_ALL = _STRIP_CHARS + _EXTRA_WRAP_CHARS
 
-def load_name_set() -> frozenset[str]:
-    try:
-        ref = resources.files(_RESOURCE_PACKAGE).joinpath(_RESOURCE_NAME_SET)
-        with ref.open("rb") as f:
-            return frozenset(pickle.load(f))
-    except FileNotFoundError:
-        return frozenset()
+# Cheap edge-check set: only chars that trigger cleaning if seen at token edges.
+# (We only need to detect, not remove.)
+_EDGE_DIRTY = set(_STRIP_ALL + _TAIL_PUNCT)
 
+_REL_TIME_UNITS = {
+    "second", "seconds", "sec", "secs",
+    "minute", "minutes", "min", "mins",
+    "hour", "hours", "hr", "hrs",
+    "day", "days",
+    "month", "months",
+    "year", "years", "yr", "yrs",
+    "week", "weeks",
+}
 
-def _strip_wrap(tok: str) -> str:
-    return tok.strip(_STRIP_CHARS)
+_RESPONSE_PREFIXES = {
+    "re:", "fw:", "fwd:", "accepted:", "declined:", "canceled:", "tentative:",
+    "updated:", "invitation:", "reminder:", "cancelled:"
+}
 
+_IDENT_MARK_B = bytearray(256)
+for ch in b"-_/\\:+@=#%&?~.":
+    _IDENT_MARK_B[ch] = 1
 
-def _is_month_norm(sl: str) -> bool:
-    return sl in _MONTHS
+def normalize_subject(subject: str) -> str:
+    if not subject:
+        return ""
 
+    tokens = subject.split()
+    n = len(tokens)
+    strip_all = _STRIP_ALL
+    tail_punct = _TAIL_PUNCT
+    edge_dirty = _EDGE_DIRTY
+    lower = str.lower
 
-def _is_dow_norm(sl: str) -> bool:
-    return sl in _DOW
+    S = [None] * n
+    SL = [None] * n
 
+    for idx, t in enumerate(tokens):
+        if not t:
+            S[idx] = ""
+            SL[idx] = ""
+            continue
 
-def _is_tz_norm(sl: str) -> bool:
-    return sl in _TZ
+        # Fast path: if edges are “clean”, avoid all stripping work.
+        c0 = t[0]
+        cN = t[-1]
+        if (c0 not in edge_dirty) and (cN not in edge_dirty):
+            s = t
+        else:
+            s = t.strip(strip_all)
+            s = s.rstrip(tail_punct)
+            s = s.strip(strip_all)
 
+        S[idx] = s
+        SL[idx] = lower(s) if s else ""
 
-def _parse_ordinal_day_norm(sl: str) -> int | None:
-    # sl is already strip+lower+rstrip(",")
-    if not sl:
-        return None
-    # fast reject: must start with digit
-    c0 = sl[0]
-    if c0 < "0" or c0 > "9":
-        return None
-    if len(sl) >= 3 and sl[-2:] in ("st", "nd", "rd", "th"):
-        num = sl[:-2]
+    out: list[str] = []
+    append = out.append
+
+    i = 0
+    while i < n:
+        tok = tokens[i]
+        s = S[i]
+        sl = SL[i]
+
+        # Handle response prefixes
+        if sl in _RESPONSE_PREFIXES:
+            append("{r}")
+            i += 1
+            continue
+
+        # Month-only replacement in normal text: "Meeting in October" -> "meeting in {m}"
+        # Inlined _is_month_norm and _month_is_part_of_date
+        if sl in _MONTHS and len(s) >= 3:
+            # Check if part of date: month day... or day month...
+            is_date_part = False
+            if i + 1 < n:
+                day_sl = SL[i + 1]
+                if day_sl and day_sl[0].isdigit():
+                    if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
+                        num = day_sl[:-2]
+                    else:
+                        num = day_sl
+                    if num.isdigit():
+                        d = int(num)
+                        if 1 <= d <= 31:
+                            is_date_part = True
+            if not is_date_part and i > 0:
+                day_sl = SL[i - 1]
+                if day_sl and day_sl[0].isdigit():
+                    if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
+                        num = day_sl[:-2]
+                    else:
+                        num = day_sl
+                    if num.isdigit():
+                        d = int(num)
+                        if 1 <= d <= 31:
+                            is_date_part = True
+            if not is_date_part:
+                append("{m}")
+                i += 1
+                continue
+
+        if s and len(s) >= 16:
+            c0 = s[0]
+            if "0" <= c0 <= "9":
+                # quick shape: YYYY-MM-DD[T ]...
+                # Inlined _is_iso_date_token_s
+                if len(s) >= 10:
+                    date_part = s[:10]
+                    if len(date_part) == 10:
+                        sep = date_part[4]
+                        if sep in "-/." and date_part[7] == sep:
+                            y, m, d = date_part[0:4], date_part[5:7], date_part[8:10]
+                            if y.isdigit() and m.isdigit() and d.isdigit():
+                                yy, mm, dd = int(y), int(m), int(d)
+                                # Inlined _valid_ymd
+                                if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
+                                    if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
+                                        if len(s) >= 16:
+                                            sep = s[10]
+                                            if sep in ("T", " "):
+                                                # Inlined rough _is_time_token check for {t}
+                                                time_part = s[11:]
+                                                if _is_time_token_impl(time_part):
+                                                    append("{t}")
+                                                    i += 1
+                                                    continue
+
+        # Inlined _consume_date
+        date_start_i = i
+        if i < n and SL[i] in _DOW:  # optional DOW
+            i += 1
+
+        if i >= n:
+            i = date_start_i  # reset if no date
+            # continue to next checks
+        else:
+            a_s = S[i]
+            a_sl = SL[i]
+
+            # single-token ISO/numeric/compact date
+            is_date = False
+            # Inlined _is_iso_date_token_s
+            if len(a_s) == 10:
+                sep = a_s[4]
+                if sep in "-/." and a_s[7] == sep:
+                    y, m, d = a_s[0:4], a_s[5:7], a_s[8:10]
+                    if y.isdigit() and m.isdigit() and d.isdigit():
+                        yy, mm, dd = int(y), int(m), int(d)
+                        if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
+                            if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
+                                is_date = True
+            if not is_date:
+                # Inlined _is_numeric_date_token_s
+                sep = None
+                for ch in a_s:
+                    if ch in "/-.":
+                        sep = ch
+                        break
+                if sep:
+                    parts = a_s.split(sep)
+                    if len(parts) == 3:
+                        a, b, c = parts
+                        if a and b and c and a.isdigit() and b.isdigit() and c.isdigit():
+                            aa, bb, yy = int(a), int(b), int(c)
+                            valid1 = 0 <= yy <= 9999 and 1 <= aa <= 12 and 1 <= bb <= 31
+                            if valid1 and not (aa in (4, 6, 9, 11) and bb > 30) and not (aa == 2 and bb > 29):
+                                is_date = True
+                            else:
+                                valid2 = 0 <= yy <= 9999 and 1 <= bb <= 12 and 1 <= aa <= 31
+                                if valid2 and not (bb in (4, 6, 9, 11) and aa > 30) and not (bb == 2 and aa > 29):
+                                    is_date = True
+            if not is_date:
+                # Inlined _is_compact_ymd_s
+                if len(a_s) == 8 and a_s.isdigit():
+                    y, m, d = a_s[0:4], a_s[4:6], a_s[6:8]
+                    yy, mm, dd = int(y), int(m), int(d)
+                    if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
+                        if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
+                            is_date = True
+            if is_date:
+                append("{d}")
+                i += 1
+                j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
+                if j > i:
+                    out.pop()
+                    append("{t}")
+                    i = j
+                continue
+
+            # Month Day [Year]
+            if a_sl in _MONTHS and i + 1 < n:
+                day_sl = SL[i + 1]
+                if day_sl and day_sl[0].isdigit():
+                    if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
+                        num = day_sl[:-2]
+                    else:
+                        num = day_sl
+                    if num.isdigit():
+                        d = int(num)
+                        if 1 <= d <= 31:
+                            # optional year
+                            if i + 2 < n:
+                                ytok = SL[i + 2]
+                                if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                                    append("{d}")
+                                    i += 3
+                                    j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
+                                    if j > i:
+                                        out.pop()
+                                        append("{t}")
+                                        i = j
+                                    continue
+                            append("{d}")
+                            i += 2
+                            j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
+                            if j > i:
+                                out.pop()
+                                append("{t}")
+                                i = j
+                            continue
+
+            # Day Month [Year]
+            if a_sl and a_sl[0].isdigit():
+                if len(a_sl) >= 3 and a_sl[-2:] in ("st", "nd", "rd", "th"):
+                    num = a_sl[:-2]
+                else:
+                    num = a_sl
+                if num.isdigit():
+                    d = int(num)
+                    if 1 <= d <= 31 and i + 1 < n and SL[i + 1] in _MONTHS:
+                        if i + 2 < n:
+                            ytok = SL[i + 2]
+                            if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                                append("{d}")
+                                i += 3
+                                j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
+                                if j > i:
+                                    out.pop()
+                                    append("{t}")
+                                    i = j
+                                continue
+                        append("{d}")
+                        i += 2
+                        j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
+                        if j > i:
+                            out.pop()
+                            append("{t}")
+                            i = j
+                        continue
+
+            i = date_start_i  # reset i if no date consumed
+
+        # Drop pure punctuation tokens
+        if not s:
+            i += 1
+            continue
+        any_alnum = False
+        for ch in s:
+            o = ord(ch)
+            if o < 256 and (_CLS[o] & 4):
+                any_alnum = True
+                break
+        if not any_alnum:
+            i += 1
+            continue
+
+        # Inlined _is_time_token_sl or _is_time_range_token
+        if _is_time_or_range_impl(sl, s):
+            base_j = i + 1
+            if base_j < n and SL[base_j] in ("am", "pm"):
+                base_j += 1
+            dow_j = base_j
+            if dow_j < n and SL[dow_j] in _DOW:
+                dow_j += 1
+            k = _consume_date_after_time_impl(tokens, S, SL, dow_j, n)
+            if k > dow_j:
+                append("{t}")
+                i = k
+                continue
+            append("{tm}")
+            i = base_j
+            if i < n and SL[i] in _TZ:
+                i += 1
+            continue
+
+        # Split AM/PM: "3" "pm" or "3:15" "PM"
+        if i + 1 < n:
+            suf = SL[i + 1]
+            if suf in ("am", "pm"):
+                glued = sl + suf
+                if _is_time_token_impl(glued):
+                    append("{tm}")
+                    i += 2
+                    if i < n and SL[i] in _TZ:
+                        i += 1
+                    continue
+
+        # Inlined _consume_bare_duration: "24 hours" etc.
+        if i + 1 < n and s.isdigit() and SL[i + 1] in _REL_TIME_UNITS:
+            append("{t}")
+            i += 2
+            continue
+
+        # Integer
+        if s.isdigit():
+            append("{i}")
+            i += 1
+            continue
+
+        if tok.endswith(":"):
+            head = tok[:-1]
+            head_stripped = head.strip(_STRIP_CHARS)
+            if head_stripped and head_stripped.isalpha():
+                append(head_stripped.lower() + ":")
+                i += 1
+                continue
+
+        # Inlined _looks_identifier
+        if s.isalpha():
+            pass  # false
+        else:
+            any_a = any_d = any_sym = has_mark = False
+            for ch in s:
+                o = ord(ch)
+                if o < 256:
+                    c = _CLS[o]
+                    if c & 1:
+                        any_a = True
+                    elif c & 2:
+                        any_d = True
+                    elif c & 16:
+                        if _IDENT_MARK_B[o]:
+                            has_mark = True
+                else:
+                    any_sym = True
+                if has_mark and (any_a or any_d):
+                    break  # early exit
+            if (any_a or any_d) and ((any_a and any_d) or has_mark or (any_sym and (any_a or any_d))):
+                append("{#}")
+                i += 1
+                continue
+
+        # if tok in _NAMEDATA.first_names:
+        #     append('{f}')
+        #     i += 1
+        #     continue
+        #
+        # if tok in _NAMEDATA.last_names:
+        #     append('{l}')
+        #     i += 1
+        #     continue
+
+        # Normal word/token
+        append(tok.lower())
+        i += 1
+
+    return " ".join(out)
+
+# Helper impls for inlined time/date logic (kept separate to avoid bloating main loop)
+def _is_time_token_impl(t: str) -> bool:
+    if not t:
+        return False
+    suffix = ""
+    if t.endswith("am") or t.endswith("pm"):
+        suffix = t[-2:]
+        t = t[:-2]
+        if not t:
+            return False
+    if ":" not in t:
+        if suffix and t.isdigit() and 1 <= int(t) <= 12:
+            return True
+        return False
+    c1 = t.find(":")
+    if c1 <= 0:
+        return False
+    hh = t[:c1]
+    rest = t[c1 + 1:]
+    if not (hh.isdigit() and len(hh) <= 2):
+        return False
+    if len(rest) < 2 or not rest[:2].isdigit():
+        return False
+    mm = int(rest[:2])
+    ss = None
+    if len(rest) > 2:
+        if len(rest) != 5 or rest[2] != ":" or not rest[3:5].isdigit():
+            return False
+        ss = int(rest[3:5])
+        if ss > 59:
+            return False
+    h = int(hh)
+    if suffix:
+        if h < 1 or h > 12:
+            return False
     else:
-        num = sl
-    if not _is_all_digits(num):
-        return None
-    d = _parse_upto_4_digits(num)
-    return d if 1 <= d <= 31 else None
+        if h > 23:
+            return False
+    return mm <= 59
 
-
-def _is_all_digits(s: str) -> bool:
-    return bool(s) and s.isdigit()
-
-
-def _parse_upto_4_digits(s: str) -> int:
-    # s is ASCII digits, length 1..4
-    v = 0
-    for ch in s:
-        v = v * 10 + (ord(ch) - 48)
-    return v
-
-
-def _valid_ymd(y: int, m: int, d: int) -> bool:
-    # Your tests include year 0000 and 9999, so accept wide range.
-    if y < 0 or y > 9999:
-        return False
-    if m < 1 or m > 12:
-        return False
-    if d < 1 or d > 31:
-        return False
-    if m in (4, 6, 9, 11) and d > 30:
-        return False
-    if m == 2 and d > 29:
-        return False
-    return True
-
-
-def _is_time_token_sl(sl: str) -> bool:
-    # sl is already stripped+lower+rstrip(",") (SL[i])
-    if not sl:
-        return False
-
+def _is_time_or_range_impl(sl: str, s: str) -> bool:
+    dash = s.find("-")
+    if dash > 0 and dash < len(s) - 1:
+        a = s[:dash].strip().lower()
+        b = s[dash + 1:].strip().lower()
+        if _is_time_token_impl(a) and _is_time_token_impl(b):
+            return True
+    # time
     suffix = ""
     if sl.endswith("am") or sl.endswith("pm"):
         suffix = sl[-2:]
         sl = sl[:-2]
         if not sl:
             return False
-
     if ":" not in sl:
-        if suffix and sl.isdigit():
-            h = _parse_upto_4_digits(sl)
-            return 1 <= h <= 12
+        if suffix and sl.isdigit() and 1 <= int(sl) <= 12:
+            return True
         return False
-
     c1 = sl.find(":")
     if c1 <= 0:
         return False
@@ -138,467 +480,148 @@ def _is_time_token_sl(sl: str) -> bool:
         return False
     if len(rest) < 2 or not rest[:2].isdigit():
         return False
-    mm = _parse_upto_4_digits(rest[:2])
-
-    if len(rest) != 2:
+    mm = int(rest[:2])
+    if len(rest) > 2:
         if len(rest) != 5 or rest[2] != ":" or not rest[3:5].isdigit():
             return False
-        ss = _parse_upto_4_digits(rest[3:5])
-        if ss > 59:
+        if int(rest[3:5]) > 59:
             return False
-
-    h = _parse_upto_4_digits(hh)
+    h = int(hh)
     if suffix:
         if h < 1 or h > 12:
             return False
     else:
         if h > 23:
             return False
-
-    return mm <= 59
-
-
-def _is_compact_ymd_s(t: str) -> bool:
-    if len(t) != 8 or not t.isdigit():
-        return False
-    y = _parse_upto_4_digits(t[0:4])
-    m = _parse_upto_4_digits(t[4:6])
-    d = _parse_upto_4_digits(t[6:8])
-    return _valid_ymd(y, m, d)
-
-
-def _is_iso_date_token_s(t: str) -> bool:
-    if len(t) != 10:
-        return False
-    sep = t[4]
-    if sep not in "-/." or t[7] != sep:
-        return False
-    y, m, d = t[0:4], t[5:7], t[8:10]
-    if not (y.isdigit() and m.isdigit() and d.isdigit()):
-        return False
-    return _valid_ymd(_parse_upto_4_digits(y), _parse_upto_4_digits(m), _parse_upto_4_digits(d))
-
-
-def _is_numeric_date_token_s(t: str) -> bool:
-    # t already stripped
-    sep = None
-    for ch in t:
-        if ch in "/-.":
-            sep = ch
-            break
-    if not sep:
-        return False
-    parts = t.split(sep)
-    if len(parts) != 3:
-        return False
-    a, b, c = parts
-    if not (a and b and c and a.isdigit() and b.isdigit() and c.isdigit()):
-        return False
-    aa = _parse_upto_4_digits(a)
-    bb = _parse_upto_4_digits(b)
-    yy = _parse_upto_4_digits(c)
-    return _valid_ymd(yy, aa, bb) or _valid_ymd(yy, bb, aa)
-
-
-def _is_iso_datetime_token(tok: str) -> bool:
-    t = tok.strip(_STRIP_CHARS)
-    if len(t) < 16:
-        return False
-    if not _is_iso_date_token_s(t[:10]):  # no extra strip
-        return False
-    sep = t[10]
-    if sep != "T" and sep != " ":
-        return False
-    return _is_time_token(t[11:])
-
-
-def _is_time_token(tok: str) -> bool:
-    # Supports:
-    # - HH:MM
-    # - HH:MM:SS
-    # - Hpm / HHpm / H:MMpm / H:MM pm (the separated "pm" is handled elsewhere)
-    t = _strip_wrap(tok).lower().rstrip(",")
-    if not t:
-        return False
-
-    # peel am/pm suffix if present
-    suffix = ""
-    if t.endswith("am") or t.endswith("pm"):
-        suffix = t[-2:]
-        t = t[:-2]
-        if not t:
-            return False
-
-    # pure hour like "2" is not a time token here (we only treat "2pm" etc)
-    # so require either ":" or suffix+digits handled below.
-    if ":" not in t:
-        # allow "2pm" / "12am" case (suffix already peeled)
-        if suffix and _is_all_digits(t) and 1 <= _parse_upto_4_digits(t) <= 12:
-            return True
-        return False
-
-    c1 = t.find(":")
-    if c1 <= 0:
-        return False
-    hh = t[:c1]
-    rest = t[c1 + 1:]
-    if not (_is_all_digits(hh) and len(hh) <= 2):
-        return False
-    if len(rest) < 2 or not _is_all_digits(rest[:2]):
-        return False
-    mm = _parse_upto_4_digits(rest[:2])
-
-    ss = None
-    if len(rest) == 2:
-        pass
-    else:
-        if len(rest) != 5 or rest[2] != ":" or not _is_all_digits(rest[3:5]):
-            return False
-        ss = _parse_upto_4_digits(rest[3:5])
-
-    h = _parse_upto_4_digits(hh)
-    if suffix:
-        if h < 1 or h > 12:
-            return False
-    else:
-        if h < 0 or h > 23:
-            return False
     if mm > 59:
-        return False
-    if ss is not None and ss > 59:
         return False
     return True
 
-
-def _is_time_range_token(tok: str) -> bool:
-    # "2pm-3pm" or "14:00-15:30"
-    t = _strip_wrap(tok).lower()
-    dash = t.find("-")
-    if dash <= 0 or dash >= len(t) - 1:
-        return False
-    a = t[:dash].strip()
-    b = t[dash + 1:].strip()
-    return _is_time_token(a) and _is_time_token(b)
-
-
-_IDENT_MARK_B = bytearray(256)
-for ch in b"-_/\\:+@=#%&?~":
-    _IDENT_MARK_B[ch] = 1
-
-
-def _looks_identifier(tok: str) -> bool:
-    if tok.isalpha():
-        return False
-    # identifier-ish: mix of alpha+digit, or symbols mixed with alnum, or contains ident marks
-    any_a = any_d = any_sym = has_mark = False
-    CLS = _CLS
-
-    for ch in tok:
-        o = ord(ch)
-        if o < 256:
-            c = CLS[o]
-            if c & 1:
-                any_a = True
-            elif c & 2:
-                any_d = True
-            elif c & 16:
-                if _IDENT_MARK_B[o]:
-                    has_mark = True
+def _consume_datetime_after_date_impl(tokens: list[str], S: list[str], SL: list[str], i: int, n: int) -> int:
+    if i >= n or SL[i] == "at":
+        return i
+    # consume time or range
+    t0_s = S[i]
+    t0_sl = SL[i]
+    if _is_time_or_range_impl(t0_sl, t0_s):
+        j = i + 1
+    elif i + 1 < n and SL[i + 1] in ("am", "pm") and (":" in t0_sl or t0_sl.isdigit()):
+        glued = t0_sl + SL[i + 1]
+        if _is_time_token_impl(glued):
+            j = i + 2
         else:
-            any_sym = True
+            return i
+    else:
+        return i
+    # eat am/pm/tz
+    if j < n and SL[j] in ("am", "pm"):
+        j += 1
+    if j < n and SL[j] in _TZ:
+        j += 1
+    # optional range "-"
+    if j < n and S[j] == "-":
+        if j + 1 >= n:
+            return i
+        t1_s = S[j + 1]
+        t1_sl = SL[j + 1]
+        if _is_time_or_range_impl(t1_sl, t1_s):
+            j += 2
+        elif j + 2 < n and SL[j + 2] in ("am", "pm") and (":" in t1_sl or t1_sl.isdigit()):
+            glued = t1_sl + SL[j + 2]
+            if _is_time_token_impl(glued):
+                j += 3
+            else:
+                return i
+        else:
+            return i
+        # eat am/pm/tz again
+        if j < n and SL[j] in ("am", "pm"):
+            j += 1
+        if j < n and SL[j] in _TZ:
+            j += 1
+    # optional paren tz
+    if j < n and SL[j] in _TZ:
+        j += 1
+    return j
 
-        # OPTIONAL early exit (small win)
-        if has_mark and (any_a or any_d):
-            return True
-
-    if not (any_a or any_d):
-        return False
-
-    return (any_a and any_d) or has_mark or (any_sym and (any_a or any_d))
-
-
-def _month_is_part_of_date(SL: list[str], i: int) -> bool:
-    # month day...
-    if i + 1 < len(SL) and _parse_ordinal_day_norm(SL[i + 1]) is not None:
-        return True
-    # day month...
-    if i > 0 and _parse_ordinal_day_norm(SL[i - 1]) is not None:
-        return True
-    return False
-
-
-def _consume_date(tokens: list[str], S: list[str], SL: list[str], i: int) -> tuple[bool, int]:
-    """If tokens[i..] starts with a date (possibly with DOW), consume it and return (True, new_i)."""
-    n = len(tokens)
-
-    # optional DOW (use SL)
-    if i < n and _is_dow_norm(SL[i]):
+def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str], i: int, n: int) -> int:
+    # Similar to _consume_date, but returns new i or old i
+    date_start_i = i
+    if i < n and SL[i] in _DOW:  # optional DOW
         i += 1
-
     if i >= n:
-        return False, i
-
+        return date_start_i
     a_s = S[i]
     a_sl = SL[i]
-
-    # single-token ISO/numeric/compact date (use stripped string to reduce strip churn a bit)
-    if _is_iso_date_token_s(a_s) or _is_numeric_date_token_s(a_s) or _is_compact_ymd_s(a_s):
-        return True, i + 1
-
-    # Month Day [Year]
-    if _is_month_norm(a_sl) and i + 1 < n:
-        day = _parse_ordinal_day_norm(SL[i + 1])
-        if day is not None:
-            # optional year (2 or 4 digits)
-            if i + 2 < n:
-                ytok = SL[i + 2]  # already stripped+lower+rstrip(",")
-                if _is_all_digits(ytok) and (len(ytok) == 2 or len(ytok) == 4):
-                    return True, i + 3
-            return True, i + 2
-
-    # Day Month [Year]
-    day = _parse_ordinal_day_norm(a_sl)
-    if day is not None and i + 1 < n and _is_month_norm(SL[i + 1]):
-        if i + 2 < n:
-            ytok = SL[i + 2]
-            if _is_all_digits(ytok) and (len(ytok) == 2 or len(ytok) == 4):
-                return True, i + 3
-        return True, i + 2
-
-    return False, i
-
-
-def _consume_datetime_after_date(tokens: list[str], S: list[str], SL: list[str], i: int) -> tuple[bool, int]:
-    """
-    Assumes i is positioned at the first token AFTER a consumed date.
-    Consumes:
-      - time
-      - optional range ("-" time) or single-token "time-time"
-      - optional timezone tokens, including "(EST)" etc
-    Returns (True, new_i) if a time/time-range was consumed.
-    """
-    is_time_token = _is_time_token
-    is_all_digits = _is_all_digits
-    is_tz_norm = _is_tz_norm
-    is_time_token_sl = _is_time_token_sl
-    is_time_range_token = _is_time_range_token
-
-    def eat_ampm_tz(j: int) -> int:
-        if j < n and SL[j] in ("am", "pm"):
-            j += 1
-        if j < n and is_tz_norm(SL[j]):
-            j += 1
-        return j
-
-    n = len(tokens)
-    if i >= n:
-        return False, i
-
-    # If "at" appears, do NOT treat it as datetime (matches your "… at 2:30pm" => {#})
-    if SL[i] == "at":
-        return False, i
-
-    # time can be in one token, OR split as ["2", "pm"]
-    def consume_time(j: int) -> tuple[bool, int]:
-        if j >= n:
-            return False, j
-
-        t0_s = S[j]
-        t0_sl = SL[j]
-
-        if is_time_token_sl(t0_sl) or is_time_range_token(t0_s):
-            return True, j + 1
-
-        # split am/pm: "2" "pm" or "2:30" "pm"
-        core = t0_sl
-        if (core and (":" in core or is_all_digits(core))) and j + 1 < n:
-            suf = SL[j + 1]
-            if suf in ("am", "pm"):
-                glued = core + suf
-                if is_time_token(glued):
-                    return True, j + 2
-
-        return False, j
-
-    ok, j = consume_time(i)
-    if not ok:
-        return False, i
-
-    j = eat_ampm_tz(j)
-
-    # optional range: "-" then another time (or token like "2pm-3pm" already handled)
-    if j < n and S[j] == "-":
-        ok2, j2 = consume_time(j + 1)
-        if ok2:
-            j = eat_ampm_tz(j2)
-
-    # optional parenthesized tz like "(EST)"
-    if j < n and is_tz_norm(SL[j]):
-        j += 1
-
-    return True, j
-
-
-def normalize_subject(subject: str) -> str:
-    CLS = _CLS
-    is_month_norm = _is_month_norm
-    month_is_part_of_date = _month_is_part_of_date
-    is_iso_datetime_token = _is_iso_datetime_token
-    consume_date = _consume_date
-    consume_datetime_after_date = _consume_datetime_after_date
-    is_time_token_sl = _is_time_token_sl
-    is_dow_norm = _is_dow_norm
-    is_tz_norm = _is_tz_norm
-    is_all_digits = _is_all_digits
-    looks_identifier = _looks_identifier
-    is_time_token = _is_time_token
-
-    def _eat_tz(j: int) -> int:
-        if j < n and is_tz_norm(SL[j]):
-            return j + 1
-        return j
-
-    def _eat_ampm_tz(j: int) -> int:
-        if j < n and SL[j] in ("am", "pm"):
-            j += 1
-        if j < n and is_tz_norm(SL[j]):
-            j += 1
-        return j
-
-    if not subject:
-        return ""
-
-    # tokens = subject.split()
-    # S = [t.strip(_STRIP_CHARS) for t in tokens]
-    # SL = [s.lower().rstrip(",") if s else "" for s in S]
-    stripchars = _STRIP_CHARS
-    tokens = subject.split()
-    S = [t.strip(stripchars) for t in tokens]
-    SL = [s.lower().rstrip(",") if s else "" for s in S]
-
-    out: list[str] = []
-    append = out.append
-
-    i = 0
-    n = len(tokens)
-
-    while i < n:
-        tok = tokens[i]
-        s = S[i]
-        sl = SL[i]
-
-        # Month-only replacement in normal text:
-        # "Meeting in October" -> "meeting in {m}"
-        if is_month_norm(sl) and len(s) >= 3 and not month_is_part_of_date(SL, i):
-            append("{m}")
-            i += 1
-            continue
-
-        # Standalone ISO datetime token like "2025-12-11T14:22:33"
-        if is_iso_datetime_token(tok):
-            append("{t}")
-            i += 1
-            continue
-
-        # Date (possibly with DOW) and optional attached time/range
-        ok_date, j = consume_date(tokens, S, SL, i)
-        if ok_date:
-            # if a time follows immediately, collapse to {t}; else {d}
-            ok_dt, k = consume_datetime_after_date(tokens, S, SL, j)
-            if ok_dt:
-                append("{t}")
-                i = k
-            else:
-                append("{d}")
-                i = j
-            continue
-
-        # If token itself is a time range (rare, but you have "2pm-3pm" case after date)
-        # Outside date context, your tests expect time-like things to become {#}, not {t}.
-        # So we intentionally do NOT emit {t} here.
-
-        # Drop pure punctuation tokens
-        if not s:
-            i += 1
-            continue
-        any_alnum = False
-        for ch in s:
-            o = ord(ch)
-            if o < 256 and (CLS[o] & 4):
-                any_alnum = True
+    is_date = False
+    # ISO
+    if len(a_s) == 10:
+        sep = a_s[4]
+        if sep in "-/." and a_s[7] == sep:
+            y, m, d = a_s[0:4], a_s[5:7], a_s[8:10]
+            if y.isdigit() and m.isdigit() and d.isdigit():
+                yy, mm, dd = int(y), int(m), int(d)
+                if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
+                    if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
+                        is_date = True
+    if not is_date:
+        # Numeric
+        sep = None
+        for ch in a_s:
+            if ch in "/-.":
+                sep = ch
                 break
-        if not any_alnum:
-            i += 1
-            continue
-
-        core = sl
-
-        if is_time_token_sl(sl):
-            j = i + 1
-
-            # allow optional standalone AM/PM token (rare here, but consistent)
-            if j < n:
-                s = SL[j]
-                if s in ("am", "pm"):
-                    j += 1
-
-            # allow optional DOW token ("Mon," etc.)
-            if j < n and is_dow_norm(SL[j]):
-                j += 1
-
-            ok_date, k = consume_date(tokens, S, SL, j)
-            if ok_date:
-                append("{t}")
-                i = k
-                continue
-
-            # otherwise it's time-only
-            append("{tm}")
-            i = _eat_ampm_tz(i + 1)
-            continue
-
-        # Split AM/PM: "3" "pm" or "3:15" "PM"
-        if i + 1 < n:
-            suf = SL[i + 1]
-            if suf in ("am", "pm"):
-                glued = core + suf
-                if is_time_token(glued):
-                    append("{tm}")
-                    i = _eat_tz(i + 2)
-                    continue
-
-        # Integer
-        if is_all_digits(s):
-            append("{i}")
-            i += 1
-            continue
-
-        if tok.endswith(":"):
-            head = tok[:-1]
-            head_stripped = _strip_wrap(head)
-            if head_stripped and head_stripped.isalpha():
-                append(head_stripped.lower() + ":")
-                i += 1
-                continue
-
-        # Identifier-ish
-        if looks_identifier(s):
-            append("{#}")
-            i += 1
-            continue
-
-        if tok in _NAMEDATA.first_names:
-            append('{f}')
-            i += 1
-            continue
-
-        if tok in _NAMEDATA.last_names:
-            append('{l}')
-            i += 1
-            continue
-
-        # Normal word/token
-        append(tok.lower())
-        i += 1
-
-    return " ".join(out)
+        if sep:
+            parts = a_s.split(sep)
+            if len(parts) == 3:
+                a, b, c = parts
+                if a and b and c and a.isdigit() and b.isdigit() and c.isdigit():
+                    aa, bb, yy = int(a), int(b), int(c)
+                    valid1 = 0 <= yy <= 9999 and 1 <= aa <= 12 and 1 <= bb <= 31
+                    if valid1 and not (aa in (4, 6, 9, 11) and bb > 30) and not (aa == 2 and bb > 29):
+                        is_date = True
+                    else:
+                        valid2 = 0 <= yy <= 9999 and 1 <= bb <= 12 and 1 <= aa <= 31
+                        if valid2 and not (bb in (4, 6, 9, 11) and aa > 30) and not (bb == 2 and aa > 29):
+                            is_date = True
+    if not is_date:
+        # Compact
+        if len(a_s) == 8 and a_s.isdigit():
+            y, m, d = a_s[0:4], a_s[4:6], a_s[6:8]
+            yy, mm, dd = int(y), int(m), int(d)
+            if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
+                if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
+                    is_date = True
+    if is_date:
+        return i + 1  # consume the date token
+    # Month Day [Year]
+    if a_sl in _MONTHS and i + 1 < n:
+        day_sl = SL[i + 1]
+        if day_sl and day_sl[0].isdigit():
+            if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
+                num = day_sl[:-2]
+            else:
+                num = day_sl
+            if num.isdigit():
+                d = int(num)
+                if 1 <= d <= 31:
+                    if i + 2 < n:
+                        ytok = SL[i + 2]
+                        if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                            return i + 3
+                    return i + 2
+    # Day Month [Year]
+    if a_sl and a_sl[0].isdigit():
+        if len(a_sl) >= 3 and a_sl[-2:] in ("st", "nd", "rd", "th"):
+            num = a_sl[:-2]
+        else:
+            num = a_sl
+        if num.isdigit():
+            d = int(num)
+            if 1 <= d <= 31 and i + 1 < n and SL[i + 1] in _MONTHS:
+                if i + 2 < n:
+                    ytok = SL[i + 2]
+                    if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                        return i + 3
+                return i + 2
+    return date_start_i
