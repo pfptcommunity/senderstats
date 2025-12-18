@@ -158,17 +158,45 @@ realistic_tests = {
     "Invoice 123 for order #hsgske-heys on 2025-12-03":
         "invoice {i} for order {#} on {d}",
 
-    # extras
+    # identifier / numeric mix
+    "Task# 997 for ServiceReq: 2000445.0 has been accepted":
+        "{#} {i} for servicereq: {#} has been accepted",
+
+    # time + date mixes
     "Order 123 placed on Dec 11, 2025 at 2:30pm":
         "order {i} placed on {d} at {tm}",
     "Reminder: Fri 1/2/25 9:00am - 10:00am (PST)":
-        "reminder: {t}",
+        "{r} {t}",
     "Invoice statement for December 11 2025":
         "invoice statement for {d}",
     "Your subscription renews in December":
         "your subscription renews in {m}",
     "Your code 987 expires on 2025-12-11":
         "your code {i} expires on {d}",
+
+    # --- relative duration normalization => {t} ---
+    "Your upcoming appointment is starting in approximately 24 hours":
+        "your upcoming appointment is starting in approximately {t}",
+    "Your upcoming appointment is starting in approximately 1 hour":
+        "your upcoming appointment is starting in approximately {t}",
+    "Your upcoming appointment is starting in approximately 10 minutes":
+        "your upcoming appointment is starting in approximately {t}",
+
+    # without prefix
+    "Your upcoming appointment is starting in 24 hours":
+        "your upcoming appointment is starting in {t}",
+    "Your upcoming appointment is starting in 1 hour":
+        "your upcoming appointment is starting in {t}",
+    "Your upcoming appointment is starting in 10 minutes":
+        "your upcoming appointment is starting in {t}",
+
+    # longer units
+    "Your upcoming appointment is starting in 2 months":
+        "your upcoming appointment is starting in {t}",
+    "Your upcoming appointment is starting in 1 year":
+        "your upcoming appointment is starting in {t}",
+    "Your upcoming appointment is starting in 3 years":
+        "your upcoming appointment is starting in {t}",
 }
 
 time_only_tests = {
