@@ -4,38 +4,32 @@ from typing import Iterable, List
 _ENTROPY_HEX_PAIRS_RE = re.compile(r'(?=(?:[0-9][a-f]|[a-f][0-9]|[0-9]{2}))', re.IGNORECASE)
 
 
-def remove_prvs(email: str) -> str:
-    """
-    Removes PRVS tags from an email address for bounce attack prevention.
-
-    :param email: The email address to clean.
-    :return: The email address without PRVS tags.
-    """
+def remove_prvs(email: str) -> tuple[str, bool]:
     if not email:
-        return email
+        return email, False
 
     at = email.find("@")
     if at < 0:
-        return email
+        return email, False
 
     # fast gate: avoid slicing in the common case
     if not (email.startswith("prvs") or email.startswith("msprvs")):
-        return email
+        return email, False
 
     local = email[:at]
     first = local.find("=")
     if first < 0:
-        return email
+        return email, False
     second = local.find("=", first + 1)
     if second < 0:
-        return email
+        return email, False
 
     orig_local = local[second + 1:]
     # Reject empty/garbage originals (e.g. "msprvs=deadbeef==@example.com")
     if not orig_local or orig_local[0] == "=":
-        return email
+        return email, False
 
-    return orig_local + email[at:]
+    return orig_local + email[at:], True
 
 
 def remove_prvs_batch(emails: Iterable[str]) -> list[str]:
@@ -75,48 +69,41 @@ def remove_prvs_batch(emails: Iterable[str]) -> list[str]:
     return out
 
 
-def convert_srs(email: str) -> str:
-    """
-    Converts an email address from SRS back to its original form.
-
-    :param email: The SRS modified email address.
-    :return: The original email address before SRS modification.
-    """
-
+def convert_srs(email: str) -> tuple[str, bool]:
     if not email:
-        return email
+        return email, False
 
     at = email.find("@")
     if at < 0:
-        return email
+        return email, False
 
     p = email.find("srs")
     if p < 0 or p >= at:
-        return email
+        return email, False
 
+    # Require "srs" at start OR preceded by '+'
     if p != 0 and email[p - 1] != "+":
-        return email
+        return email, False
 
     eq0 = email.find("=", p)
     if eq0 < 0 or eq0 >= at:
-        return email
-
+        return email, False
     eq1 = email.find("=", eq0 + 1)
     if eq1 < 0 or eq1 >= at:
-        return email
+        return email, False
     eq2 = email.find("=", eq1 + 1)
     if eq2 < 0 or eq2 >= at:
-        return email
+        return email, False
     eq3 = email.find("=", eq2 + 1)
     if eq3 < 0 or eq3 >= at:
-        return email
+        return email, False
 
     orig_domain = email[eq2 + 1: eq3]
     orig_local = email[eq3 + 1: at]
     if not orig_domain or not orig_local:
-        return email
+        return email, False
 
-    return orig_local + "@" + orig_domain
+    return f"{orig_local}@{orig_domain}", True
 
 
 def convert_srs_batch(emails: Iterable[str]) -> List[str]:
@@ -173,20 +160,13 @@ def convert_srs_batch(emails: Iterable[str]) -> List[str]:
     return out
 
 
-def normalize_bounces(email: str) -> str:
-    """
-    Converts bounce addresses to a normal form removing the tracking data.
-
-    :param email: The bounce modified email address.
-    :return: The original email address or bounce modified email address.
-    """
-
+def normalize_bounces(email: str) -> tuple[str, bool]:
     if not email:
-        return email
+        return email, False
 
     at = email.find("@")
     if at <= 0:
-        return email
+        return email, False
 
     if email.startswith("bounces"):
         i = 7
@@ -195,18 +175,16 @@ def normalize_bounces(email: str) -> str:
         i = 6
         base = "bounce"
     else:
-        return email
+        return email, False
 
     if i >= at:
-        return email
+        return email, False
+
     c = email[i]
     if c != "+" and c != "-":
-        return email
+        return email, False
 
-    return base + email[at:]
-
-
-from typing import Iterable
+    return (base + email[at:]), True
 
 
 def normalize_bounces_batch(emails: Iterable[str]) -> list[str]:
@@ -248,44 +226,32 @@ def normalize_bounces_batch(emails: Iterable[str]) -> list[str]:
     return out
 
 
-def normalize_entropy(email: str, entropy_threshold: float = 0.6, hex_pair_threshold: int = 6):
-    """
-        Determines if an email's local part suggests an automated sender based on entropy and hex pair count.
-
-        Args:
-            email (str): The full email address to analyze (e.g., "user@example.com").
-            entropy_threshold (float): Minimum entropy score to consider the email automated (default: 0.6).
-            hex_pair_threshold (int): Minimum number of hex pairs required to consider the email automated (default: 6).
-
-        Returns:
-            bool: True if the email is likely automated (high entropy and enough hex pairs), False otherwise.
-
-        Note:
-            Assumes `entropy_hex_pairs_re` is a pre-compiled regex (e.g., r'(?=(?:[0-9][a-fA-F]|[a-fA-F][0-9]|[0-9][0-9]))')
-            defined globally to identify overlapping hex-like pairs.
-    """
+def normalize_entropy(
+        email: str,
+        entropy_threshold: float = 0.6,
+        hex_pair_threshold: int = 6,
+) -> tuple[str, bool]:
     try:
-        local_part, domain_part = email.split("@")
+        local, domain = email.rsplit("@", 1)
     except ValueError:
-        return email
+        return email, False
 
-    total_length = len(local_part)
+    total_length = len(local)
+    if total_length == 0:
+        return email, False
 
-    # Count character types
-    numbers = sum(c.isdigit() for c in local_part)
-    symbols = sum(c in "-+=_." for c in local_part)
+    numbers = sum(c.isdigit() for c in local)
+    symbols = sum(c in "-+=_." for c in local)
+    hex_pairs = sum(1 for _ in _ENTROPY_HEX_PAIRS_RE.finditer(local))
 
-    # Count hex pairs using regex
-    hex_pairs = len([m.start() for m in _ENTROPY_HEX_PAIRS_RE.finditer(local_part)])
-
-    # Weighted entropy
     weighted_entropy = (2 * hex_pairs + 1.5 * numbers + 1.5 * symbols) / total_length
 
-    # Conditions
-    is_high_entropy = weighted_entropy >= entropy_threshold
-    has_enough_hex_pairs = hex_pairs >= hex_pair_threshold
+    is_entropy = (
+            weighted_entropy >= entropy_threshold
+            and hex_pairs >= hex_pair_threshold
+    )
 
-    if is_high_entropy and has_enough_hex_pairs:
-        return "#entropy#@" + domain_part
+    if is_entropy:
+        return f"#entropy#@{domain}", True
 
-    return email
+    return email, False

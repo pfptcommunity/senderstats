@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import pickle
-from importlib import resources
+from typing import Tuple
 
 # from names_dataset import NameDataset
 #
@@ -69,29 +68,29 @@ _REL_TIME_UNITS = {
 
 _PREFIX_WORDS = {
     # ─── Reply ──────────────────────────────────────────────
-    "re",        # English / global default
-    "aw",        # German (Antwort)
-    "sv",        # Scandinavian (Svar)
-    "vs",        # Finnish (Vastaus)
-    "odp",       # Polish (Odpowiedź)
-    "ynt",       # Turkish (Yanıt)
-    "ré",        # French (rare but real)
+    "re",  # English / global default
+    "aw",  # German (Antwort)
+    "sv",  # Scandinavian (Svar)
+    "vs",  # Finnish (Vastaus)
+    "odp",  # Polish (Odpowiedź)
+    "ynt",  # Turkish (Yanıt)
+    "ré",  # French (rare but real)
 
     # ─── Forward ────────────────────────────────────────────
-    "fw",        # English / Dutch
-    "fwd",       # English
-    "wg",        # German (Weitergeleitet)
-    "tr",        # French (Transféré)
-    "rv",        # Spanish (Reenviado)
-    "reenv",     # Spanish (Reenviado)
-    "enc",       # Portuguese (Encaminhado)
-    "inoltro",   # Italian
-    "pd",        # Polish (Przekaż dalej)
-    "vb",        # Swedish (Vidarebefordrat)
-    "vl",        # Finnish (Välitetty)
+    "fw",  # English / Dutch
+    "fwd",  # English
+    "wg",  # German (Weitergeleitet)
+    "tr",  # French (Transféré)
+    "rv",  # Spanish (Reenviado)
+    "reenv",  # Spanish (Reenviado)
+    "enc",  # Portuguese (Encaminhado)
+    "inoltro",  # Italian
+    "pd",  # Polish (Przekaż dalej)
+    "vb",  # Swedish (Vidarebefordrat)
+    "vl",  # Finnish (Välitetty)
     "iletilen",  # Turkish (Forwarded)
-    "转发",        # Chinese (Forwarded)
-    "전달",        # Korean (Forwarded)
+    "转发",  # Chinese (Forwarded)
+    "전달",  # Korean (Forwarded)
 
     # ─── Calendar / Scheduling Systems ──────────────────────
     "accepted",
@@ -101,14 +100,14 @@ _PREFIX_WORDS = {
     "cancelled",
 
     # Non-English calendar verbs
-    "angenommen",   # German (Accepted)
-    "abgelehnt",    # German (Declined)
-    "aktualisiert", # German (Updated)
-    "mis à jour",   # French (Updated)
+    "angenommen",  # German (Accepted)
+    "abgelehnt",  # German (Declined)
+    "aktualisiert",  # German (Updated)
+    "mis à jour",  # French (Updated)
     "mise à jour",  # French variant
     "actualizado",  # Spanish (Updated)
     "actualizada",  # Spanish (gendered)
-    "aggiornato",   # Italian (Updated)
+    "aggiornato",  # Italian (Updated)
     "aggiornata",
 
     # ─── System / Notification Noise ────────────────────────
@@ -126,9 +125,12 @@ _IDENT_MARK_B = bytearray(256)
 for ch in b"-_/\\:+@=#%&?~.":
     _IDENT_MARK_B[ch] = 1
 
-def normalize_subject(subject: str) -> str:
+
+def normalize_subject(subject: str) -> Tuple[str, bool]:
     if not subject:
-        return ""
+        return "", False
+
+    is_response: bool = False
 
     tokens = subject.split()
     n = len(tokens)
@@ -201,6 +203,7 @@ def normalize_subject(subject: str) -> str:
     out: list[str] = []
     append = out.append
     if has_prefix:
+        is_response = True
         append("{r}")
 
     while i < n:
@@ -495,7 +498,8 @@ def normalize_subject(subject: str) -> str:
         append(tok.lower())
         i += 1
 
-    return " ".join(out)
+    return " ".join(out), is_response
+
 
 # Helper impls for inlined time/date logic (kept separate to avoid bloating main loop)
 def _is_time_token_impl(t: str) -> bool:
@@ -536,6 +540,7 @@ def _is_time_token_impl(t: str) -> bool:
         if h > 23:
             return False
     return mm <= 59
+
 
 def _is_time_or_range_impl(sl: str, s: str) -> bool:
     dash = s.find("-")
@@ -580,6 +585,7 @@ def _is_time_or_range_impl(sl: str, s: str) -> bool:
     if mm > 59:
         return False
     return True
+
 
 def _consume_datetime_after_date_impl(tokens: list[str], S: list[str], SL: list[str], i: int, n: int) -> int:
     if i >= n or SL[i] == "at":
@@ -627,6 +633,7 @@ def _consume_datetime_after_date_impl(tokens: list[str], S: list[str], SL: list[
     if j < n and SL[j] in _TZ:
         j += 1
     return j
+
 
 def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str], i: int, n: int) -> int:
     # Similar to _consume_date, but returns new i or old i
