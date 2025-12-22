@@ -42,6 +42,7 @@ class ConfigManager:
         self.normalize_entropy = args.normalize_entropy
         self.no_empty_hfrom = args.no_empty_hfrom
         self.sample_subject = args.sample_subject
+        self.with_probability = args.with_probability
 
         if args.no_default_exclude_ips:
             self.exclude_ips = ConfigManager.__prepare_exclusions(args.exclude_ips)

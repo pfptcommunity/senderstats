@@ -30,7 +30,11 @@ class PipelineManager:
         if config.exclude_dup_msgids:
             pipeline.set_next(self.__filter_manager.exclude_duplicate_message_id_filter)
 
+        if config.sample_subject:
+            pipeline.set_next(self.__transform_manager.subject_transform)
+
         pipeline.set_next(self.__transform_manager.date_transform)
+
         pipeline.set_next(self.__processor_manager.mfrom_processor)
 
         if config.gen_hfrom or config.gen_alignment:

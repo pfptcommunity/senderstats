@@ -10,3 +10,4 @@ class TransformManager:
         self.hfrom_transform = HFromTransform(config.no_display_name, config.no_empty_hfrom)
         self.msgid_transform = MIDTransform()
         self.rpath_transform = RPathTransform(config.decode_srs, config.remove_prvs)
+        self.subject_transform = SubjectTransform()
