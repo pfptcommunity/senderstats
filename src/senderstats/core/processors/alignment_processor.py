@@ -26,7 +26,7 @@ class AlignmentProcessor(Processor[MessageData], Reportable):
         expand_recipients: bool = False,
         topk_subjects: int = 64,
         report_top_n: int = 50,
-        debug: bool = True,
+        debug: bool = False,
     ):
         super().__init__()
         self.__sample_subject = sample_subject

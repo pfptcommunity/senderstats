@@ -136,6 +136,7 @@ class SenderStatsGUI:
         self.normalize_entropy = tk.BooleanVar()
         self.no_empty_hfrom = tk.BooleanVar()
         self.sample_subject = tk.BooleanVar(value=True)
+        self.with_probability = tk.BooleanVar(value=True)
         self.exclude_ips = []
         self.exclude_domains = []
         self.restrict_domains = []
@@ -181,7 +182,26 @@ class SenderStatsGUI:
         self.result_queue = queue.Queue()
         self.__start_queue_watcher()
         self.load_settings()
+        # Make sure no one manipulated the config file an fix the conflict
+        self.__wire_option_dependencies()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def __wire_option_dependencies(self):
+        if getattr(self, "_deps_wired", False):
+            return
+        self._deps_wired = True
+        def apply():
+            if not self.sample_subject.get():
+                if self.with_probability.get():
+                    self.with_probability.set(False)
+                if hasattr(self, "with_probability_cb"):
+                    self.with_probability_cb.config(state="disabled")
+            else:
+                if hasattr(self, "with_probability_cb"):
+                    self.with_probability_cb.config(state="normal")
+
+        self.sample_subject.trace_add("write", lambda *_: apply())
+        apply()
 
     def __start_queue_watcher(self):
         def watcher():
@@ -331,14 +351,19 @@ class SenderStatsGUI:
             ("Remove PRVS", self.remove_prvs),
             ("Decode SRS", self.decode_srs),
             ("Normalize Bounces", self.normalize_bounces),
-            # ("Normalize Entropy", self.normalize_entropy),
+            ("Normalize Entropy", self.normalize_entropy),
             ("No Empty HFrom", self.no_empty_hfrom),
             ("Sample Subject", self.sample_subject),
-            ("Exclude Duplicate MsgIDs", self.exclude_dup_msgids)
+            ("With Probability (requires Sample Subject)", self.with_probability),
+            ("Exclude Duplicate MsgIDs", self.exclude_dup_msgids),
         ]
 
         for i, (label, var) in enumerate(checkboxes):
-            tk.Checkbutton(tab, text=label, variable=var).grid(row=i, column=0, sticky=tk.W, padx=5, pady=5)
+            cb = tk.Checkbutton(tab, text=label, variable=var)
+            cb.grid(row=i, column=0, sticky=tk.W, padx=5, pady=5)
+
+            if var is self.with_probability:
+                self.with_probability_cb = cb  # <-- keep reference
 
     def create_filters_tab(self):
         tab = ttk.Frame(self.notebook)
@@ -434,7 +459,8 @@ class SenderStatsGUI:
         if files:
             for f in files:
                 if f.lower().endswith(".csv"):
-                    self.input_files.append(f)
+                    if f not in self.input_files:
+                        self.input_files.append(f)
             self.update_input_listbox()
             self.suggest_output_file()
 
@@ -569,6 +595,8 @@ class SenderStatsGUI:
 
     def run_tool(self):
         try:
+            if self.with_probability.get() and not self.sample_subject.get():
+                raise ValueError("With Probability requires Sample Subject.")
             # Validate required
             if not self.input_files:
                 raise ValueError("Input files are required.")
@@ -612,6 +640,7 @@ class SenderStatsGUI:
             args.normalize_entropy = self.normalize_entropy.get()
             args.no_empty_hfrom = self.no_empty_hfrom.get()
             args.sample_subject = self.sample_subject.get()
+            args.with_probability = self.with_probability.get()
             args.exclude_ips = self.exclude_ips
             args.exclude_domains = self.exclude_domains
             args.restrict_domains = self.restrict_domains
@@ -625,35 +654,38 @@ class SenderStatsGUI:
                 q_output = QueueOutput(self.result_queue)
 
                 try:
-                    # Everything printed here goes into the queue
                     with redirect_stdout(q_output), redirect_stderr(q_output):
                         config = ConfigManager(args)
 
+                        # Treat "no input files" as an error path (not a silent return)
                         if not config.input_files:
-                            print(f"No input files to read, please check the input files exist")
-                            return
-                        
+                            raise ValueError("No input files to read. Please check the input files exist.")
+
                         config.display_filter_criteria()
 
                         data_source_manager = DataSourceManager(config)
                         pipeline_manager = PipelineManager(config)
+
                         processor = PipelineProcessor(data_source_manager, pipeline_manager)
                         processor.process_data()
+
                         pipeline_manager.get_filter_manager().display_summary()
 
                         report = PipelineProcessorReport(config.output_file, pipeline_manager)
+
                         report.generate()
+
                         report.close()
 
-                    # optional: flush (no-op in your QueueOutput, but harmless)
-                    q_output.flush()
                     self.result_queue.put(("success", None))
 
                 except Exception as e:
+                    self.result_queue.put(("error", str(e)))
+                finally:
                     try:
                         q_output.flush()
-                    finally:
-                        self.result_queue.put(("error", str(e)))
+                    except Exception:
+                        pass
 
             threading.Thread(target=process, daemon=True).start()
 
@@ -690,10 +722,17 @@ class SenderStatsGUI:
                 self.normalize_entropy.set(settings.get('normalize_entropy', False))
                 self.no_empty_hfrom.set(settings.get('no_empty_hfrom', False))
                 self.sample_subject.set(settings.get('sample_subject', False))
+                self.with_probability.set(settings.get('with_probability', False))
                 self.exclude_dup_msgids.set(settings.get('exclude_dup_msgids', False))
                 self.no_default_exclude_domains.set(settings.get('no_default_exclude_domains', False))
                 self.no_default_exclude_ips.set(settings.get('no_default_exclude_ips', False))
-                # Lists (repopulate internal lists and listboxes)
+
+                # Clear values incase we decide to call load multiple times.
+                self.exclude_ips_listbox.delete(0, tk.END)
+                self.exclude_domains_listbox.delete(0, tk.END)
+                self.restrict_domains_listbox.delete(0, tk.END)
+                self.exclude_senders_listbox.delete(0, tk.END)
+
                 self.exclude_ips = settings.get('exclude_ips', [])
                 for ip in self.exclude_ips:
                     self.exclude_ips_listbox.insert(tk.END, ip)
@@ -727,7 +766,7 @@ class SenderStatsGUI:
             'gen_rpath': self.gen_rpath.get(),
             'gen_alignment': self.gen_alignment.get(),
             'gen_msgid': self.gen_msgid.get(),
-            'expand_recipient': self.expand_recipients.get(),
+            'expand_recipients': self.expand_recipients.get(),
             'no_display': self.no_display.get(),
             'remove_prvs': self.remove_prvs.get(),
             'decode_srs': self.decode_srs.get(),
@@ -735,6 +774,7 @@ class SenderStatsGUI:
             'normalize_entropy': self.normalize_entropy.get(),
             'no_empty_hfrom': self.no_empty_hfrom.get(),
             'sample_subject': self.sample_subject.get(),
+            'with_probability': self.with_probability.get(),
             'exclude_dup_msgids': self.exclude_dup_msgids.get(),
             'no_default_exclude_domains': self.no_default_exclude_domains.get(),
             'no_default_exclude_ips': self.no_default_exclude_ips.get(),
