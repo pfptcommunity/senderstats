@@ -11,15 +11,15 @@ K = TypeVar("K")
 
 class KeyedAggReport(Generic[K]):
     def __init__(
-        self,
-        *,
-        title: str,
-        key_columns: List[str],
-        key_to_cells: Callable[[K], List[object]],
-        report_top_n: int,
-        sample_subject: bool,
-        with_probability: bool,   # NEW
-        debug: bool,
+            self,
+            *,
+            title: str,
+            key_columns: List[str],
+            key_to_cells: Callable[[K], List[object]],
+            report_top_n: int,
+            sample_subject: bool,
+            with_probability: bool,  # NEW
+            debug: bool,
     ):
         self._title = title
         self._key_columns = key_columns
@@ -30,10 +30,10 @@ class KeyedAggReport(Generic[K]):
         self._debug = debug
 
     def report(
-        self,
-        items: Iterable[Tuple[K, MessageAgg]],
-        *,
-        days: float,
+            self,
+            items: Iterable[Tuple[K, MessageAgg]],
+            *,
+            days: float,
     ) -> Iterator[Tuple[str, Iterator[list]]]:
 
         def get_report_name() -> str:

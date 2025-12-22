@@ -5,8 +5,11 @@ from senderstats.interfaces.transform import Transform
 
 
 class MFromTransform(Transform[MessageData, MessageData]):
-    def __init__(self, decode_srs: bool = False, remove_prvs: bool = False, normalize_bounces: bool = False,
-                 normalize_entropy: bool = False):
+    def __init__(self, decode_srs: bool = False,
+                 remove_prvs: bool = False,
+                 normalize_bounces: bool = False,
+                 normalize_entropy: bool = False
+                 ):
         super().__init__()
         self.__decode_srs = decode_srs
         self.__remove_prvs = remove_prvs

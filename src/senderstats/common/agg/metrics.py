@@ -4,6 +4,7 @@ from typing import List, Tuple
 from .message import MessageAgg, PatternEntry
 from .scoring import normalized_entropy
 
+
 @dataclass(frozen=True)
 class MessageAggMetrics:
     total_messages: int
@@ -23,11 +24,12 @@ class MessageAggMetrics:
     avg_rcpts: float
     avg_ext_rcpts: float
 
+
 def compute_message_agg_metrics(
-    agg: MessageAgg,
-    *,
-    days: float,
-    report_top_n: int,
+        agg: MessageAgg,
+        *,
+        days: float,
+        report_top_n: int,
 ) -> MessageAggMetrics:
     total_messages = agg.messages
     messages_per_day = (total_messages / days) if days > 0 else 0.0

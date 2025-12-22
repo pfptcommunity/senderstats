@@ -15,7 +15,6 @@ class SenderScore(NamedTuple):
     sort_score: float
 
 
-
 def _sigmoid(x: float) -> float:
     if x >= 0:
         z = exp(-x)
@@ -28,13 +27,14 @@ def _sigmoid(x: float) -> float:
 def _clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
+
 def classify_sender(
-    rows_per_day: float,
-    reply_ratio: float,
-    p_human: float,
-    top1_ratio: float,
-    *,
-    top1_template: str = "",
+        rows_per_day: float,
+        reply_ratio: float,
+        p_human: float,
+        top1_ratio: float,
+        *,
+        top1_template: str = "",
 ) -> tuple[str, float]:
     if p_human >= 0.40:
         return "Likely Human", 0.05
@@ -49,6 +49,7 @@ def classify_sender(
         return "Medium Probability App", 0.70
 
     return "Unknown/Ambiguous", 0.30
+
 
 def normalized_entropy(counts: List[int], total: int) -> float:
     """
@@ -79,12 +80,12 @@ def normalized_entropy(counts: List[int], total: int) -> float:
 
 
 def app_probability(
-    n_effective_rows: int,
-    top_mass: float,
-    top3_mass: float,
-    top1_ratio: float,
-    ent_norm: float,
-    reply_ratio: float,
+        n_effective_rows: int,
+        top_mass: float,
+        top3_mass: float,
+        top1_ratio: float,
+        ent_norm: float,
+        reply_ratio: float,
 ) -> float:
     if n_effective_rows <= 0:
         return 0.0
@@ -96,10 +97,10 @@ def app_probability(
     reply_ratio = _clamp01(reply_ratio)
 
     score = (
-        3.0 * (top_mass - 0.60) +
-        2.0 * (top3_mass - 0.75) +
-        1.5 * (top1_ratio - 0.30) +
-        2.5 * ((1.0 - ent_norm) - 0.35)
+            3.0 * (top_mass - 0.60) +
+            2.0 * (top3_mass - 0.75) +
+            1.5 * (top1_ratio - 0.30) +
+            2.5 * ((1.0 - ent_norm) - 0.35)
     )
 
     # Conversation penalty (kept)
@@ -121,11 +122,11 @@ def volume_prior(rows_per_day: float) -> float:
     r = max(0.0, rows_per_day)
 
     pts = [
-        (0.0,   0.05),
-        (5.0,   0.10),
-        (25.0,  0.35),
-        (50.0,  0.90),
-        (75.0,  0.97),
+        (0.0, 0.05),
+        (5.0, 0.10),
+        (25.0, 0.35),
+        (50.0, 0.90),
+        (75.0, 0.97),
         (100.0, 0.99),
     ]
 
@@ -156,13 +157,14 @@ def human_probability(reply_ratio: float, rows_per_day: float) -> float:
     vol_gate = 1.0 - _sigmoid(0.18 * (rpd - 25.0))
     return rr_score * vol_gate
 
+
 def autonomy_score(
-    *,
-    p_app_like: float,
-    p_human: float,
-    rows_per_day: float,
-    reply_ratio: float,
-    top1_ratio: float,
+        *,
+        p_app_like: float,
+        p_human: float,
+        rows_per_day: float,
+        reply_ratio: float,
+        top1_ratio: float,
 ) -> float:
     # 0..1 clamps
     p_app_like = max(0.0, min(1.0, p_app_like))
@@ -175,7 +177,7 @@ def autonomy_score(
     # - high volume => more "app"
     # - very low reply => more "app"
     # - low-volume + top1_ratio high => "automated source"
-    vol_boost = min(1.0, rows_per_day / 20.0)          # hits 1 around your "High Probability App" cutoff
+    vol_boost = min(1.0, rows_per_day / 20.0)  # hits 1 around your "High Probability App" cutoff
     rr_boost = min(1.0, max(0.0, (0.30 - reply_ratio) / 0.30))  # 1 when rr=0, 0 when rr>=0.30
     lowvol_auto = 1.0 if (rows_per_day < 1.0 and reply_ratio == 0.0 and top1_ratio >= 0.95) else 0.0
 
@@ -194,14 +196,14 @@ def autonomy_score(
 
 
 def compute_sender_scores_and_label(
-    *,
-    total_messages: int,
-    messages_per_day: float,
-    reply_ratio: float,
-    top_mass: float,
-    top3_mass: float,
-    top1_ratio: float,
-    ent: float,
+        *,
+        total_messages: int,
+        messages_per_day: float,
+        reply_ratio: float,
+        top_mass: float,
+        top3_mass: float,
+        top1_ratio: float,
+        ent: float,
 ) -> SenderScore:
     p_template = app_probability(
         n_effective_rows=total_messages,

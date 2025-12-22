@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
 from math import sqrt
+from typing import Dict, List, Optional, Tuple
+
 
 @dataclass
 class PatternEntry:
@@ -50,6 +51,7 @@ class TopKNormalizedPatterns:
     def top_items(self, n: int = 10) -> List[Tuple[str, PatternEntry]]:
         return sorted(self.patterns.items(), key=lambda kv: kv[1].count, reverse=True)[:n]
 
+
 @dataclass
 class RunningStats:
     n: int = 0
@@ -76,6 +78,7 @@ class RunningStats:
 
     def cv(self) -> float:
         return (self.std() / self.mean) if self.mean > 0 else 0.0
+
 
 @dataclass
 class MessageAgg:

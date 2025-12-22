@@ -4,6 +4,7 @@ from typing import Callable, Dict, Generic, Hashable, Iterator, Tuple, TypeVar
 K = TypeVar("K", bound=Hashable)
 AggT = TypeVar("AggT")
 
+
 @dataclass
 class KeyedAggregator(Generic[K, AggT]):
     agg_factory: Callable[[], AggT]

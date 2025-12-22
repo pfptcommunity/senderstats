@@ -190,6 +190,7 @@ class SenderStatsGUI:
         if getattr(self, "_deps_wired", False):
             return
         self._deps_wired = True
+
         def apply():
             if not self.sample_subject.get():
                 if self.with_probability.get():

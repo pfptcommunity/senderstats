@@ -2,13 +2,12 @@ from __future__ import annotations
 
 from typing import Iterator, Optional, Tuple
 
-from senderstats.common.agg.report import KeyedAggReport
 from senderstats.common.agg.aggregator import KeyedAggregator
 from senderstats.common.agg.message import MessageAgg, TopKNormalizedPatterns
+from senderstats.common.agg.report import KeyedAggReport
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
 from senderstats.interfaces.reportable import Reportable
-
 
 MIDKey = tuple[str, str, str]  # (mfrom, msgid_host, msgid_domain)
 
@@ -22,13 +21,13 @@ class MIDProcessor(Processor[MessageData], Reportable):
     """
 
     def __init__(
-        self,
-        sample_subject: bool = False,
-        with_probability: bool = False,
-        expand_recipients: bool = False,
-        topk_subjects: int = 64,
-        report_top_n: int = 50,
-        debug: bool = False,
+            self,
+            sample_subject: bool = False,
+            with_probability: bool = False,
+            expand_recipients: bool = False,
+            topk_subjects: int = 64,
+            report_top_n: int = 50,
+            debug: bool = False,
     ):
         super().__init__()
         self.__sample_subject = sample_subject
@@ -73,7 +72,6 @@ class MIDProcessor(Processor[MessageData], Reportable):
             msg_date=data.date or None,
             rcpt_count=count
         )
-
 
     def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
         days = float(context) if context else 0.0
