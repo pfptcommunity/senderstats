@@ -19,16 +19,20 @@ class MFromTransform(Transform[MessageData, MessageData]):
         mfrom = mfrom_parts['email_address']
 
         if self.__decode_srs:
-            mfrom = convert_srs(mfrom)
+            mfrom, has_srs = convert_srs(mfrom)
+            setattr(data, 'mfrom_had_srs', has_srs)
 
         if self.__remove_prvs:
-            mfrom = remove_prvs(mfrom)
+            mfrom, had_prvs = remove_prvs(mfrom)
+            setattr(data, 'mfrom_had_prvs', had_prvs)
 
         if self.__normalize_bounces:
-            mfrom = normalize_bounces(mfrom)
+            mfrom, has_bounce = normalize_bounces(mfrom)
+            setattr(data, 'mfrom_had_bounces', has_bounce)
 
         if self.__normalize_entropy:
-            mfrom = normalize_entropy(mfrom)
+            mfrom, has_entropy = normalize_entropy(mfrom)
+            setattr(data, 'mfrom_had_entropy', has_entropy)
 
         data.mfrom = mfrom
         return data
