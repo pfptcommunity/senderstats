@@ -9,6 +9,8 @@ from senderstats.data.data_source_type import DataSourceType
 
 class ConfigManager:
     def __init__(self, args):
+        # Debug Output Flag
+        self.debug = args.debug
         # Data source configurations
         self.source_type = args.source_type
         self.input_files = ConfigManager.__prepare_input_files(args.input_files)

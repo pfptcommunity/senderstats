@@ -112,6 +112,10 @@ class SenderStatsGUI:
         self.root.rowconfigure(1, weight=2)  # log
         self.root.rowconfigure(2, weight=0)  # run button (natural size)
 
+        # Debug
+        self.debug_mode = tk.BooleanVar(value=False)  # hidden debug state
+        self.root.bind_all("<Control-Shift-D>", self.__toggle_debug_mode)
+
         # TK variables with defaults
         self.input_files = []
         self.output_file = tk.StringVar()
@@ -185,6 +189,16 @@ class SenderStatsGUI:
         # Make sure no one manipulated the config file an fix the conflict
         self.__wire_option_dependencies()
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def __toggle_debug_mode(self, event=None):
+        new_val = not self.debug_mode.get()
+        self.debug_mode.set(new_val)
+
+        # Optional: visually indicate it somewhere
+        if new_val:
+            self.root.title(f"SenderStats v{get_version()} [DEBUG]")
+        else:
+            self.root.title(f"SenderStats v{get_version()}")
 
     def __wire_option_dependencies(self):
         if getattr(self, "_deps_wired", False):
@@ -615,6 +629,7 @@ class SenderStatsGUI:
 
             # Create args namespace
             args = SimpleNamespace()
+            args.debug = self.debug_mode.get()
             args.source_type = DataSourceType.CSV
             args.input_files = self.input_files
             args.token = None

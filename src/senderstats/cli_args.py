@@ -134,6 +134,8 @@ def parse_arguments():
     output_group.add_argument('--no-default-exclude-ips', action='store_true', dest="no_default_exclude_ips",
                               help='Will not include the default localhost ip exclusion.')
 
+    output_group.add_argument("--debug", action="store_true", dest="debug", help=argparse.SUPPRESS)
+
     if len(sys.argv) == 1:
         parser.print_usage(sys.stderr)
         sys.exit(1)
