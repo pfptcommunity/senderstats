@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 from math import exp, log2
-from typing import List
+from typing import List, NamedTuple
+
+
+class SenderScore(NamedTuple):
+    p_template: float
+    p_volume: float
+    p_app_like: float
+    p_human: float
+    p_final: float
+    p_rank: float
+    label: str
+    sort_score: float
+
 
 
 def _sigmoid(x: float) -> float:
-    # numerically stable-ish for large magnitude
     if x >= 0:
         z = exp(-x)
         return 1.0 / (1.0 + z)
@@ -17,6 +28,27 @@ def _sigmoid(x: float) -> float:
 def _clamp01(x: float) -> float:
     return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
+def classify_sender(
+    rows_per_day: float,
+    reply_ratio: float,
+    p_human: float,
+    top1_ratio: float,
+    *,
+    top1_template: str = "",
+) -> tuple[str, float]:
+    if p_human >= 0.40:
+        return "Likely Human", 0.05
+
+    if rows_per_day >= 20.0:
+        return "High Probability App", 0.90
+
+    if rows_per_day < 1.0 and reply_ratio == 0.0 and top1_ratio >= 0.95:
+        return "Low-Volume Automated Source", 0.55
+
+    if rows_per_day >= 1.0 and reply_ratio == 0.0:
+        return "Medium Probability App", 0.70
+
+    return "Unknown/Ambiguous", 0.30
 
 def normalized_entropy(counts: List[int], total: int) -> float:
     """
@@ -159,3 +191,63 @@ def autonomy_score(
         score = min(score, 0.10)
 
     return max(0.0, min(1.0, score))
+
+
+def compute_sender_scores_and_label(
+    *,
+    total_messages: int,
+    messages_per_day: float,
+    reply_ratio: float,
+    top_mass: float,
+    top3_mass: float,
+    top1_ratio: float,
+    ent: float,
+) -> SenderScore:
+    p_template = app_probability(
+        n_effective_rows=total_messages,
+        top_mass=top_mass,
+        top3_mass=top3_mass,
+        top1_ratio=top1_ratio,
+        ent_norm=ent,
+        reply_ratio=reply_ratio,
+    )
+
+    p_volume = volume_prior(messages_per_day)
+    p_app_like = combine_probabilities(p_template, p_volume)
+    p_human = human_probability(reply_ratio=reply_ratio, rows_per_day=messages_per_day)
+
+    p_final = p_app_like * (1.0 - p_human)
+
+    # caps (kept)
+    if reply_ratio >= 0.40:
+        p_final = min(p_final, 0.10)
+    elif reply_ratio >= 0.30:
+        p_final = min(p_final, 0.20)
+
+    label, base = classify_sender(
+        rows_per_day=messages_per_day,
+        reply_ratio=reply_ratio,
+        p_human=p_human,
+        top1_ratio=top1_ratio,
+    )
+
+    p_rank = autonomy_score(
+        p_app_like=p_app_like,
+        p_human=p_human,
+        rows_per_day=messages_per_day,
+        reply_ratio=reply_ratio,
+        top1_ratio=top1_ratio,
+    )
+
+    sort_score = base + (max(0.0, min(1.0, float(p_rank))) * 0.099)
+
+    return SenderScore(
+        p_template=p_template,
+        p_volume=p_volume,
+        p_app_like=p_app_like,
+        p_human=p_human,
+        p_final=p_final,
+        p_rank=p_rank,
+        label=label,
+        sort_score=sort_score,
+    )

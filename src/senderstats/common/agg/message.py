@@ -8,13 +8,13 @@ from math import sqrt
 @dataclass
 class PatternEntry:
     count: int
-    sample: str  # representative original subject
+    sample: str
 
 
 @dataclass
 class TopKNormalizedPatterns:
     """
-    Space-Saving heavy hitters for normalized_subject patterns.
+    Used to aggregate subject lines and heavy hitting subjects
 
     Stores a bounded map:
       normalized_subject -> {count, sample_original_subject}
@@ -103,36 +103,30 @@ class MessageAgg:
     )
 
     def add_message(
-        self,
-        msgsz: int,
-        subject: str,
-        normalized_subject: str,
-        is_response: bool,
-        rcpts: List[str],
-        msg_date: Optional[datetime],
-        *,
-        weight: int = 1,
+            self,
+            msgsz: int,
+            subject: str,
+            normalized_subject: str,
+            is_response: bool,
+            msg_date: Optional[datetime],
+            *,
+            rcpt_count: int = 1,
     ) -> None:
-        """
-        weight:
-          - default 1 (normal semantics)
-          - optionally len(rcpts) if you want recipient-expanded counts/bytes
-        """
-        if weight <= 0:
+        if msgsz < 0:
             return
 
-        # message + bytes (weighted)
-        self.messages += weight
-        self.total_bytes_original += msgsz * weight
+        if rcpt_count <= 0:
+            rcpt_count = 1
 
-        # size stats (if you want weighted properly, keep loop or implement add_weighted)
-        for _ in range(weight):
-            self.size_stats.add(float(msgsz))
+        # Message-unit stats for non-expanded
+        self.messages += 1
+        self.total_bytes_original += msgsz
+        self.size_stats.add(float(msgsz))
 
         if is_response:
-            self.responses += weight
+            self.responses += 1
 
-        # Timing gaps: NOT weighted (usually)
+        # Timing gaps
         if msg_date is not None:
             if self.last_date is not None:
                 delta = (msg_date - self.last_date).total_seconds()
@@ -140,13 +134,9 @@ class MessageAgg:
                     self.gap_stats.add(float(delta))
             self.last_date = msg_date
 
-        # Recipient aggregate (weighted semantics: bytes*rcpts per message instance)
-        if rcpts:
-            n = len(rcpts)
-            self.total_recipients += n * weight
-            self.total_recipients_bytes += (msgsz * n) * weight
+        # Delivery stats recipient expanded
+        self.total_recipients += rcpt_count
+        self.total_recipients_bytes += msgsz * rcpt_count
 
-        # Subject patterns (weight times)
-        # If you want weight to affect patterns, do it here; otherwise ignore weight.
-        for _ in range(weight):
-            self.norm_patterns.add(normalized_subject or "", subject or "")
+        # Subject patterns per message
+        self.norm_patterns.add(normalized_subject or "", subject or "")
