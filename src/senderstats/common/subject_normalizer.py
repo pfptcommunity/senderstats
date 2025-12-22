@@ -218,23 +218,23 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
             is_date_part = False
             if i + 1 < n:
                 day_sl = SL[i + 1]
-                if day_sl and day_sl[0].isdigit():
+                if day_sl and ('0' <= day_sl[0] <= '9'):
                     if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
                         num = day_sl[:-2]
                     else:
                         num = day_sl
-                    if num.isdigit():
+                    if num.isascii() and num.isdecimal():
                         d = int(num)
                         if 1 <= d <= 31:
                             is_date_part = True
             if not is_date_part and i > 0:
                 day_sl = SL[i - 1]
-                if day_sl and day_sl[0].isdigit():
+                if day_sl and ('0' <= day_sl[0] <= '9'):
                     if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
                         num = day_sl[:-2]
                     else:
                         num = day_sl
-                    if num.isdigit():
+                    if num.isascii() and num.isdecimal():
                         d = int(num)
                         if 1 <= d <= 31:
                             is_date_part = True
@@ -254,7 +254,9 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                         sep = date_part[4]
                         if sep in "-/." and date_part[7] == sep:
                             y, m, d = date_part[0:4], date_part[5:7], date_part[8:10]
-                            if y.isdigit() and m.isdigit() and d.isdigit():
+                            if (y.isascii() and y.isdecimal() and
+                                m.isascii() and m.isdecimal() and
+                                d.isascii() and d.isdecimal()):
                                 yy, mm, dd = int(y), int(m), int(d)
                                 # Inlined _valid_ymd
                                 if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
@@ -288,7 +290,9 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                 sep = a_s[4]
                 if sep in "-/." and a_s[7] == sep:
                     y, m, d = a_s[0:4], a_s[5:7], a_s[8:10]
-                    if y.isdigit() and m.isdigit() and d.isdigit():
+                    if (y.isascii() and y.isdecimal() and
+                        m.isascii() and m.isdecimal() and
+                        d.isascii() and d.isdecimal()):
                         yy, mm, dd = int(y), int(m), int(d)
                         if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
                             if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
@@ -304,7 +308,10 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                     parts = a_s.split(sep)
                     if len(parts) == 3:
                         a, b, c = parts
-                        if a and b and c and a.isdigit() and b.isdigit() and c.isdigit():
+                        if (a and b and c and
+                            a.isascii() and a.isdecimal() and
+                            b.isascii() and b.isdecimal() and
+                            c.isascii() and c.isdecimal()):
                             aa, bb, yy = int(a), int(b), int(c)
                             valid1 = 0 <= yy <= 9999 and 1 <= aa <= 12 and 1 <= bb <= 31
                             if valid1 and not (aa in (4, 6, 9, 11) and bb > 30) and not (aa == 2 and bb > 29):
@@ -315,7 +322,7 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                                     is_date = True
             if not is_date:
                 # Inlined _is_compact_ymd_s
-                if len(a_s) == 8 and a_s.isdigit():
+                if len(a_s) == 8 and a_s.isascii() and a_s.isdecimal():
                     y, m, d = a_s[0:4], a_s[4:6], a_s[6:8]
                     yy, mm, dd = int(y), int(m), int(d)
                     if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
@@ -334,18 +341,18 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
             # Month Day [Year]
             if a_sl in _MONTHS and i + 1 < n:
                 day_sl = SL[i + 1]
-                if day_sl and day_sl[0].isdigit():
+                if day_sl and ('0' <= day_sl[0] <= '9'):
                     if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
                         num = day_sl[:-2]
                     else:
                         num = day_sl
-                    if num.isdigit():
+                    if num.isascii() and num.isdecimal():
                         d = int(num)
                         if 1 <= d <= 31:
                             # optional year
                             if i + 2 < n:
                                 ytok = SL[i + 2]
-                                if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                                if (ytok.isascii() and ytok.isdecimal()) and (len(ytok) == 2 or len(ytok) == 4):
                                     append("{d}")
                                     i += 3
                                     j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
@@ -364,17 +371,17 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                             continue
 
             # Day Month [Year]
-            if a_sl and a_sl[0].isdigit():
+            if a_sl and ('0' <= a_sl[0] <= '9'):
                 if len(a_sl) >= 3 and a_sl[-2:] in ("st", "nd", "rd", "th"):
                     num = a_sl[:-2]
                 else:
                     num = a_sl
-                if num.isdigit():
+                if num.isascii() and num.isdecimal():
                     d = int(num)
                     if 1 <= d <= 31 and i + 1 < n and SL[i + 1] in _MONTHS:
                         if i + 2 < n:
                             ytok = SL[i + 2]
-                            if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                            if (ytok.isascii() and ytok.isdecimal()) and (len(ytok) == 2 or len(ytok) == 4):
                                 append("{d}")
                                 i += 3
                                 j = _consume_datetime_after_date_impl(tokens, S, SL, i, n)
@@ -440,13 +447,13 @@ def normalize_subject(subject: str) -> Tuple[str, bool]:
                     continue
 
         # Inlined _consume_bare_duration: "24 hours" etc.
-        if i + 1 < n and s.isdigit() and SL[i + 1] in _REL_TIME_UNITS:
+        if i + 1 < n and s.isascii() and s.isdecimal() and SL[i + 1] in _REL_TIME_UNITS:
             append("{t}")
             i += 2
             continue
 
         # Integer
-        if s.isdigit():
+        if s.isascii() and s.isdecimal():
             append("{i}")
             i += 1
             continue
@@ -512,7 +519,7 @@ def _is_time_token_impl(t: str) -> bool:
         if not t:
             return False
     if ":" not in t:
-        if suffix and t.isdigit() and 1 <= int(t) <= 12:
+        if suffix and t.isascii() and t.isdecimal() and 1 <= int(t) <= 12:
             return True
         return False
     c1 = t.find(":")
@@ -520,14 +527,14 @@ def _is_time_token_impl(t: str) -> bool:
         return False
     hh = t[:c1]
     rest = t[c1 + 1:]
-    if not (hh.isdigit() and len(hh) <= 2):
+    if not (len(hh) <= 2 and hh.isascii() and hh.isdecimal()):
         return False
-    if len(rest) < 2 or not rest[:2].isdigit():
+    if len(rest) < 2 or not (rest[:2].isascii() and rest[:2].isdecimal()):
         return False
     mm = int(rest[:2])
     ss = None
     if len(rest) > 2:
-        if len(rest) != 5 or rest[2] != ":" or not rest[3:5].isdigit():
+        if len(rest) != 5 or rest[2] != ":" or not (rest[3:5].isascii() and rest[3:5].isdecimal()):
             return False
         ss = int(rest[3:5])
         if ss > 59:
@@ -557,7 +564,7 @@ def _is_time_or_range_impl(sl: str, s: str) -> bool:
         if not sl:
             return False
     if ":" not in sl:
-        if suffix and sl.isdigit() and 1 <= int(sl) <= 12:
+        if suffix and sl.isascii() and sl.isdecimal() and 1 <= int(sl) <= 12:
             return True
         return False
     c1 = sl.find(":")
@@ -565,13 +572,13 @@ def _is_time_or_range_impl(sl: str, s: str) -> bool:
         return False
     hh = sl[:c1]
     rest = sl[c1 + 1:]
-    if not (hh.isdigit() and len(hh) <= 2):
+    if not (len(hh) <= 2 and hh.isascii() and hh.isdecimal()):
         return False
-    if len(rest) < 2 or not rest[:2].isdigit():
+    if len(rest) < 2 or not (rest[:2].isascii() and rest[:2].isdecimal()):
         return False
     mm = int(rest[:2])
     if len(rest) > 2:
-        if len(rest) != 5 or rest[2] != ":" or not rest[3:5].isdigit():
+        if len(rest) != 5 or rest[2] != ":" or not (rest[3:5].isascii() and rest[3:5].isdecimal()):
             return False
         if int(rest[3:5]) > 59:
             return False
@@ -595,7 +602,7 @@ def _consume_datetime_after_date_impl(tokens: list[str], S: list[str], SL: list[
     t0_sl = SL[i]
     if _is_time_or_range_impl(t0_sl, t0_s):
         j = i + 1
-    elif i + 1 < n and SL[i + 1] in ("am", "pm") and (":" in t0_sl or t0_sl.isdigit()):
+    elif i + 1 < n and SL[i + 1] in ("am", "pm") and (":" in t0_sl or (t0_sl.isascii() and t0_sl.isdecimal())):
         glued = t0_sl + SL[i + 1]
         if _is_time_token_impl(glued):
             j = i + 2
@@ -616,7 +623,7 @@ def _consume_datetime_after_date_impl(tokens: list[str], S: list[str], SL: list[
         t1_sl = SL[j + 1]
         if _is_time_or_range_impl(t1_sl, t1_s):
             j += 2
-        elif j + 2 < n and SL[j + 2] in ("am", "pm") and (":" in t1_sl or t1_sl.isdigit()):
+        elif j + 2 < n and SL[j + 2] in ("am", "pm") and (":" in t1_sl or (t1_sl.isascii() and t1_sl.isdecimal())):
             glued = t1_sl + SL[j + 2]
             if _is_time_token_impl(glued):
                 j += 3
@@ -650,7 +657,9 @@ def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str]
         sep = a_s[4]
         if sep in "-/." and a_s[7] == sep:
             y, m, d = a_s[0:4], a_s[5:7], a_s[8:10]
-            if y.isdigit() and m.isdigit() and d.isdigit():
+            if (y.isascii() and y.isdecimal() and
+                m.isascii() and m.isdecimal() and
+                d.isascii() and d.isdecimal()):
                 yy, mm, dd = int(y), int(m), int(d)
                 if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
                     if not (mm in (4, 6, 9, 11) and dd > 30) and not (mm == 2 and dd > 29):
@@ -666,7 +675,10 @@ def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str]
             parts = a_s.split(sep)
             if len(parts) == 3:
                 a, b, c = parts
-                if a and b and c and a.isdigit() and b.isdigit() and c.isdigit():
+                if (a and b and c and
+                    a.isascii() and a.isdecimal() and
+                    b.isascii() and b.isdecimal() and
+                    c.isascii() and c.isdecimal()):
                     aa, bb, yy = int(a), int(b), int(c)
                     valid1 = 0 <= yy <= 9999 and 1 <= aa <= 12 and 1 <= bb <= 31
                     if valid1 and not (aa in (4, 6, 9, 11) and bb > 30) and not (aa == 2 and bb > 29):
@@ -677,7 +689,7 @@ def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str]
                             is_date = True
     if not is_date:
         # Compact
-        if len(a_s) == 8 and a_s.isdigit():
+        if len(a_s) == 8 and a_s.isascii() and a_s.isdecimal():
             y, m, d = a_s[0:4], a_s[4:6], a_s[6:8]
             yy, mm, dd = int(y), int(m), int(d)
             if 0 <= yy <= 9999 and 1 <= mm <= 12 and 1 <= dd <= 31:
@@ -688,31 +700,31 @@ def _consume_date_after_time_impl(tokens: list[str], S: list[str], SL: list[str]
     # Month Day [Year]
     if a_sl in _MONTHS and i + 1 < n:
         day_sl = SL[i + 1]
-        if day_sl and day_sl[0].isdigit():
+        if day_sl and ('0' <= day_sl[0] <= '9'):
             if len(day_sl) >= 3 and day_sl[-2:] in ("st", "nd", "rd", "th"):
                 num = day_sl[:-2]
             else:
                 num = day_sl
-            if num.isdigit():
+            if num.isascii() and num.isdecimal():
                 d = int(num)
                 if 1 <= d <= 31:
                     if i + 2 < n:
                         ytok = SL[i + 2]
-                        if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                        if (ytok.isascii() and ytok.isdecimal()) and (len(ytok) == 2 or len(ytok) == 4):
                             return i + 3
                     return i + 2
     # Day Month [Year]
-    if a_sl and a_sl[0].isdigit():
+    if a_sl and ('0' <= a_sl[0] <= '9'):
         if len(a_sl) >= 3 and a_sl[-2:] in ("st", "nd", "rd", "th"):
             num = a_sl[:-2]
         else:
             num = a_sl
-        if num.isdigit():
+        if num.isascii() and num.isdecimal():
             d = int(num)
             if 1 <= d <= 31 and i + 1 < n and SL[i + 1] in _MONTHS:
                 if i + 2 < n:
                     ytok = SL[i + 2]
-                    if ytok.isdigit() and (len(ytok) == 2 or len(ytok) == 4):
+                    if (ytok.isascii() and ytok.isdecimal()) and (len(ytok) == 2 or len(ytok) == 4):
                         return i + 3
                 return i + 2
     return date_start_i
