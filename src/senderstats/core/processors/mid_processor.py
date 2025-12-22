@@ -1,67 +1,83 @@
-from random import random
-from typing import Dict, Optional, Iterator, Tuple
+from __future__ import annotations
 
-from senderstats.common.utils import average
+from typing import Iterator, Optional, Tuple
+
+from senderstats.common.agg.report import KeyedAggReport
+from senderstats.common.agg.aggregator import KeyedAggregator
+from senderstats.common.agg.message import MessageAgg, TopKNormalizedPatterns
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
 from senderstats.interfaces.reportable import Reportable
 
 
-# MIDProcessor.py
-class MIDProcessor(Processor[MessageData], Reportable):
-    sheet_name = "MFrom + Message ID"
-    headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-    __msgid_data: Dict[tuple, Dict]
-    __sample_subject: bool
-    __expand_recipients: bool
+MIDKey = tuple[str, str, str]  # (mfrom, msgid_host, msgid_domain)
 
-    def __init__(self, sample_subject=False, expand_recipients=False):
+
+class MIDProcessor(Processor[MessageData], Reportable):
+    """
+    Aggregates per (MFrom, Message-ID host, Message-ID domain) stats.
+
+    Aggregation: KeyedAggregator[MIDKey, MessageAgg]
+    Reporting: identical to MFromProcessor (template metrics + probabilities via scoring.py)
+    """
+
+    def __init__(
+        self,
+        sample_subject: bool = False,
+        with_probability: bool = False,
+        expand_recipients: bool = False,
+        topk_subjects: int = 64,
+        report_top_n: int = 50,
+        debug: bool = True,
+    ):
         super().__init__()
-        self.__msgid_data = dict()
         self.__sample_subject = sample_subject
+        self.__with_probability = with_probability
         self.__expand_recipients = expand_recipients
+        self.__topk_subjects = topk_subjects
+        self.__report_top_n = report_top_n
+        self.__debug = debug
+
+        # Keyed buckets for per-group aggregation
+        self.__by_mid: KeyedAggregator[MIDKey, MessageAgg] = KeyedAggregator(
+            agg_factory=lambda: MessageAgg(
+                # ensure per-processor top-k size is applied
+                norm_patterns=TopKNormalizedPatterns(k=self.__topk_subjects)
+            )
+        )
+
+        self.__reporter = KeyedAggReport[MIDKey](
+            title="MFrom + Message ID",
+            key_columns=["MFrom", "Message ID Host", "Message ID Domain"],
+            key_to_cells=lambda k: [k[0], k[1], k[2]],
+            report_top_n=self.__report_top_n,
+            sample_subject=self.__sample_subject,
+            with_probability=self.__with_probability,
+            debug=self.__debug,
+        )
 
     def execute(self, data: MessageData) -> None:
-        mid_host_domain_index = (data.mfrom, data.msgid_host, data.msgid_domain)
-        self.__msgid_data.setdefault(mid_host_domain_index, {})
-
-        msgid_data = self.__msgid_data[mid_host_domain_index]
+        key: MIDKey = (data.mfrom, data.msgid_host, data.msgid_domain)
 
         if self.__expand_recipients:
-            msgid_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            count = len(data.rcpts)
         else:
-            msgid_data.setdefault("message_size", []).append(data.msgsz)
+            count = 1
 
-        if self.__sample_subject:
-            msgid_data.setdefault("subjects", [])
-            if data.subject:
-                probability = 1 / len(msgid_data['message_size'])
-                if not msgid_data['subjects'] or random() < probability:
-                    msgid_data['subjects'].append(data.subject)
+        agg = self.__by_mid.get(key)
+        agg.add_message(
+            msgsz=int(data.msgsz),
+            subject=data.subject,
+            normalized_subject=data.subject_norm,
+            is_response=data.subject_is_response,
+            msg_date=data.date or None,
+            rcpt_count=count
+        )
+
 
     def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
-        # Yield the report name and the data generator together
-        def get_report_name():
-            return "MFrom + Message ID"
-
-        def get_report_data():
-            headers = ['MFrom', 'Message ID Host', 'Message ID Domain', 'Messages', 'Size', 'Messages Per Day',
-                       'Total Bytes']
-            if self.__sample_subject:
-                headers.append('Subjects')
-            yield headers
-            for k, v in self.__msgid_data.items():
-                messages_per_sender = len(v['message_size'])
-                total_bytes = sum(v['message_size'])
-                average_message_size = average(v['message_size'])
-                messages_per_sender_per_day = messages_per_sender / context
-                row = [k[0], k[1], k[2], messages_per_sender, average_message_size, messages_per_sender_per_day,
-                       total_bytes]
-                if self.__sample_subject:
-                    row.append('\n'.join(v['subjects']))
-                yield row
-
-        yield get_report_name(), get_report_data()
+        days = float(context) if context else 0.0
+        return self.__reporter.report(self.__by_mid.items(), days=days)
 
     @property
     def create_data_table(self) -> bool:

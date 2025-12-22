@@ -1,67 +1,77 @@
-from random import random
-from typing import Dict, Optional, Iterator, Tuple
+from __future__ import annotations
 
-from senderstats.common.utils import average
+from typing import Iterator, Optional, Tuple
+
+from senderstats.common.agg.report import KeyedAggReport
+from senderstats.common.agg.aggregator import KeyedAggregator
+from senderstats.common.agg.message import MessageAgg, TopKNormalizedPatterns
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
 from senderstats.interfaces.reportable import Reportable
 
 
 class RPathProcessor(Processor[MessageData], Reportable):
-    sheet_name = "Return Path"
-    headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-    __rpath_data: Dict[str, Dict]
-    __sample_subject: bool
-    __expand_recipients: bool
+    """
+    Aggregates per Return-Path (RPath) stats.
 
-    def __init__(self, sample_subject=False, expand_recipients=False):
+    Aggregation: KeyedAggregator[str, MessageAgg]
+    Reporting: identical to MFromProcessor (template metrics + probabilities via scoring.py)
+    """
+
+    def __init__(
+        self,
+        sample_subject: bool = False,
+        with_probability: bool = False,
+        expand_recipients: bool = False,
+        topk_subjects: int = 64,
+        report_top_n: int = 50,
+        debug: bool = True,
+    ):
         super().__init__()
-        self.__rpath_data = dict()
         self.__sample_subject = sample_subject
+        self.__with_probability = with_probability
         self.__expand_recipients = expand_recipients
+        self.__topk_subjects = topk_subjects
+        self.__report_top_n = report_top_n
+        self.__debug = debug
+
+        # Keyed buckets for per-rpath aggregation
+        self.__by_rpath: KeyedAggregator[str, MessageAgg] = KeyedAggregator(
+            agg_factory=lambda: MessageAgg(
+                norm_patterns=TopKNormalizedPatterns(k=self.__topk_subjects)
+            )
+        )
+
+        self.__reporter = KeyedAggReport[str](
+            title="Return Path",
+            key_columns=["RPath"],
+            key_to_cells=lambda k: [k],
+            report_top_n=self.__report_top_n,
+            sample_subject=self.__sample_subject,
+            with_probability=self.__with_probability,
+            debug=self.__debug,
+        )
 
     def execute(self, data: MessageData) -> None:
-        self.__rpath_data.setdefault(data.rpath, {})
-
-        rpath_data = self.__rpath_data[data.rpath]
 
         if self.__expand_recipients:
-            rpath_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            count = len(data.rcpts)
         else:
-            rpath_data.setdefault("message_size", []).append(data.msgsz)
+            count = 1
 
-        if self.__sample_subject:
-            rpath_data.setdefault("subjects", [])
-            # Avoid storing empty subject lines
-            if data.subject:
-                # Calculate probability based on the number of processed records
-                probability = 1 / len(rpath_data['message_size'])
-
-                # Ensure at least one subject is added if subjects array is empty
-                if not rpath_data['subjects'] or random() < probability:
-                    rpath_data['subjects'].append(data.subject)
+        agg = self.__by_rpath.get(data.rpath)
+        agg.add_message(
+            msgsz=int(data.msgsz),
+            subject=data.subject,
+            normalized_subject=data.subject_norm,
+            is_response=data.subject_is_response,
+            msg_date=data.date or None,
+            rcpt_count=count
+        )
 
     def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
-        # Yield the report name and the data generator together
-        def get_report_name():
-            return "Return Path"
-
-        def get_report_data():
-            headers = ['RPath', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-            if self.__sample_subject:
-                headers.append('Subjects')
-            yield headers
-            for k, v in self.__rpath_data.items():
-                messages_per_sender = len(v['message_size'])
-                total_bytes = sum(v['message_size'])
-                average_message_size = average(v['message_size'])
-                messages_per_sender_per_day = messages_per_sender / context
-                row = [k, messages_per_sender, average_message_size, messages_per_sender_per_day, total_bytes]
-                if self.__sample_subject:
-                    row.append('\n'.join(v['subjects']))
-                yield row
-
-        yield get_report_name(), get_report_data()
+        days = float(context) if context else 0.0
+        return self.__reporter.report(self.__by_rpath.items(), days=days)
 
     @property
     def create_data_table(self) -> bool:

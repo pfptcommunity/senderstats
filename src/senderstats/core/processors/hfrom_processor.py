@@ -1,64 +1,85 @@
-from random import random
-from typing import TypeVar, Generic, Dict, Optional, Iterator, Tuple
+from __future__ import annotations
 
-from senderstats.common.utils import average
+from typing import Dict, Iterator, List, Optional, Tuple
+
+from senderstats.common.agg.report import KeyedAggReport
+from senderstats.common.agg.aggregator import KeyedAggregator
+from senderstats.common.agg.message import MessageAgg, TopKNormalizedPatterns
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
 from senderstats.interfaces.reportable import Reportable
 
-TMessageData = TypeVar('TMessageData', bound=MessageData)
 
+class HFromProcessor(Processor[MessageData], Reportable):
+    """
+    Aggregates per-envelope-sender (HFrom) stats.
 
-# HFromProcessor.py
-class HFromProcessor(Processor[MessageData], Reportable, Generic[TMessageData]):
-    __hfrom_data: Dict[str, Dict]
-    __sample_subject: bool
-    __expand_recipients: bool
+    Aggregation: KeyedAggregator[str, MessageAgg]
+    Reporting: derives template metrics + probabilities using scoring.py
+    """
 
-    def __init__(self, sample_subject=False, expand_recipients=False):
+    def __init__(
+        self,
+        sample_subject: bool = False,
+        with_probability: bool = False,
+        expand_recipients: bool = False,
+        topk_subjects: int = 64,
+        report_top_n: int = 50,
+        debug: bool = True,
+    ):
         super().__init__()
-        self.__hfrom_data = dict()
         self.__sample_subject = sample_subject
+        self.__with_probability = with_probability
         self.__expand_recipients = expand_recipients
+        self.__topk_subjects = topk_subjects
+        self.__report_top_n = report_top_n
+        self.__debug = debug
 
-    def execute(self, data: TMessageData) -> None:
-        self.__hfrom_data.setdefault(data.hfrom, {})
+        # Keyed buckets for per-sender aggregation
+        self.__by_hfrom: KeyedAggregator[str, MessageAgg] = KeyedAggregator(
+            agg_factory=lambda: MessageAgg(
+                # ensure per-processor top-k size is applied
+                norm_patterns=TopKNormalizedPatterns(k=self.__topk_subjects)
+            )
+        )
+        self.__reporter = KeyedAggReport[str](
+            title="Header From",
+            key_columns=["HFrom"],
+            key_to_cells=lambda k: [k],
+            report_top_n=self.__report_top_n,
+            sample_subject=self.__sample_subject,
+            with_probability=self.__with_probability,
+            debug=self.__debug,
+        )
 
-        hfrom_data = self.__hfrom_data[data.hfrom]
-
+    def execute(self, data: MessageData) -> None:
         if self.__expand_recipients:
-            hfrom_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            count = len(data.rcpts)
         else:
-            hfrom_data.setdefault("message_size", []).append(data.msgsz)
+            count = 1
 
         if self.__sample_subject:
-            hfrom_data.setdefault("subjects", [])
-            if data.subject:
-                probability = 1 / len(hfrom_data['message_size'])
-                if not hfrom_data['subjects'] or random() < probability:
-                    hfrom_data['subjects'].append(data.subject)
+            subject = data.subject
+            snorm = data.subject_norm
+            is_response = data.subject_is_response
+        else:
+            subject = ""
+            snorm = ""
+            is_response = ""
+
+        agg = self.__by_hfrom.get(data.hfrom)
+        agg.add_message(
+            msgsz=int(data.msgsz),
+            subject=subject,
+            normalized_subject=snorm,
+            is_response=is_response,
+            msg_date=data.date or None,
+            rcpt_count=count
+        )
 
     def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
-        # Yield the report name and the data generator together
-        def get_report_name():
-            return "Header From"
-
-        def get_report_data():
-            headers = ['HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-            if self.__sample_subject:
-                headers.append('Subjects')
-            yield headers
-            for k, v in self.__hfrom_data.items():
-                messages_per_sender = len(v['message_size'])
-                total_bytes = sum(v['message_size'])
-                average_message_size = average(v['message_size'])
-                messages_per_sender_per_day = messages_per_sender / context
-                row = [k, messages_per_sender, average_message_size, messages_per_sender_per_day, total_bytes]
-                if self.__sample_subject:
-                    row.append('\n'.join(v['subjects']))
-                yield row
-
-        yield get_report_name(), get_report_data()
+        days = float(context) if context else 0.0
+        return self.__reporter.report(self.__by_hfrom.items(), days=days)
 
     @property
     def create_data_table(self) -> bool:

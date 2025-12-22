@@ -1,62 +1,79 @@
-from random import random
-from typing import Dict, Optional, Iterator, Tuple
+from __future__ import annotations
 
-from senderstats.common.utils import average
+from typing import Iterator, Optional, Tuple
+
+from senderstats.common.agg.report import KeyedAggReport
+from senderstats.common.agg.aggregator import KeyedAggregator
+from senderstats.common.agg.message import MessageAgg, TopKNormalizedPatterns
 from senderstats.data.message_data import MessageData
 from senderstats.interfaces.processor import Processor
 from senderstats.interfaces.reportable import Reportable
 
 
-class AlignmentProcessor(Processor[MessageData], Reportable):
-    __alignment_data: Dict[tuple, Dict]
-    __sample_subject: bool
-    __expand_recipients: bool
+AlignKey = tuple[str, str]  # (mfrom, hfrom)
 
-    def __init__(self, sample_subject=False, expand_recipients=False):
+
+class AlignmentProcessor(Processor[MessageData], Reportable):
+    """
+    Aggregates per (MFrom, HFrom) alignment stats.
+
+    Aggregation: KeyedAggregator[AlignKey, MessageAgg]
+    """
+    def __init__(
+        self,
+        sample_subject: bool = False,
+        with_probability: bool = False,
+        expand_recipients: bool = False,
+        topk_subjects: int = 64,
+        report_top_n: int = 50,
+        debug: bool = True,
+    ):
         super().__init__()
-        self.__alignment_data = dict()
         self.__sample_subject = sample_subject
+        self.__with_probability = with_probability
         self.__expand_recipients = expand_recipients
+        self.__topk_subjects = topk_subjects
+        self.__report_top_n = report_top_n
+        self.__debug = debug
+
+        self.__by_alignment: KeyedAggregator[AlignKey, MessageAgg] = KeyedAggregator(
+            agg_factory=lambda: MessageAgg(
+                norm_patterns=TopKNormalizedPatterns(k=self.__topk_subjects)
+            )
+        )
+
+        self.__reporter = KeyedAggReport[AlignKey](
+            title="MFrom + HFrom (Alignment)",
+            key_columns=["MFrom", "HFrom"],
+            key_to_cells=lambda k: [k[0], k[1]],
+            report_top_n=self.__report_top_n,
+            sample_subject=self.__sample_subject,
+            with_probability=self.__with_probability,
+            debug=self.__debug,
+        )
 
     def execute(self, data: MessageData) -> None:
-        sender_header_index = (data.mfrom, data.hfrom)
-        self.__alignment_data.setdefault(sender_header_index, {})
-
-        alignment_data = self.__alignment_data[sender_header_index]
+        key: AlignKey = (data.mfrom, data.hfrom)
 
         if self.__expand_recipients:
-            alignment_data.setdefault("message_size", []).extend([data.msgsz] * len(data.rcpts))
+            count = len(data.rcpts)
         else:
-            alignment_data.setdefault("message_size", []).append(data.msgsz)
+            count = 1
 
-        if self.__sample_subject:
-            alignment_data.setdefault("subjects", [])
-            if data.subject:
-                probability = 1 / len(alignment_data['message_size'])
-                if not alignment_data['subjects'] or random() < probability:
-                    alignment_data['subjects'].append(data.subject)
+        agg = self.__by_alignment.get(key)
+        agg.add_message(
+            msgsz=int(data.msgsz),
+            subject=data.subject,
+            normalized_subject=data.subject_norm,
+            is_response=data.subject_is_response,
+            msg_date=data.date or None,
+            rcpt_count=count
+        )
+
 
     def report(self, context: Optional = None) -> Iterator[Tuple[str, Iterator[list]]]:
-        # Yield the report name and the data generator together
-        def get_report_name():
-            return "MFrom + HFrom (Alignment)"
-
-        def get_report_data():
-            headers = ['MFrom', 'HFrom', 'Messages', 'Size', 'Messages Per Day', 'Total Bytes']
-            if self.__sample_subject:
-                headers.append('Subjects')
-            yield headers
-            for k, v in self.__alignment_data.items():
-                messages_per_sender = len(v['message_size'])
-                total_bytes = sum(v['message_size'])
-                average_message_size = average(v['message_size'])
-                messages_per_sender_per_day = messages_per_sender / context
-                row = [k[0], k[1], messages_per_sender, average_message_size, messages_per_sender_per_day, total_bytes]
-                if self.__sample_subject:
-                    row.append('\n'.join(v['subjects']))
-                yield row
-
-        yield get_report_name(), get_report_data()
+        days = float(context) if context else 0.0
+        return self.__reporter.report(self.__by_alignment.items(), days=days)
 
     @property
     def create_data_table(self) -> bool:
