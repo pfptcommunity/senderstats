@@ -10,6 +10,13 @@ class FormatManager:
             {'align': 'right', 'hidden': True, 'bg_color': '#FFFF00'})
         self.field_values_format = self.create_format({'align': 'right', 'locked': False, 'hidden': True})
         self.data_cell_format = self.create_format({'valign': 'top', 'text_wrap': True})
+        self.grouped_header_format = workbook.add_format({
+            "bold": True,
+            "align": "center",
+            "valign": "bottom",
+            "text_wrap": False,
+            "bg_color": "#D9E1F2",
+        })
 
     def create_format(self, properties):
         return self.workbook.add_format(properties)
