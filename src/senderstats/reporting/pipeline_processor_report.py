@@ -13,26 +13,17 @@ from senderstats.processing.pipeline_manager import PipelineManager
 from senderstats.reporting.format_manager import FormatManager
 
 
-# -----------------------------
-# Context + helpers
-# -----------------------------
 @dataclass(frozen=True)
 class ReportContext:
     workbook: Workbook
     formats: FormatManager
     days: int
+    with_probability: bool
 
 
 class ExcelFormulas:
-    """
-    Excel-friendly formulas: NO LET / NO XLOOKUP.
-    Uses nested IF + INDEX/MATCH.
-    """
-
     def __init__(self, *, days: int):
         self._days = days
-
-    # ----- Core structured ref helpers -----
 
     @staticmethod
     def _col(table_cell: str, col_name: str) -> str:
@@ -42,8 +33,6 @@ class ExcelFormulas:
     @staticmethod
     def _sumif(cond_rng: str, threshold_cell: str, data_rng: str) -> str:
         return f'SUMIF({cond_rng},">="&{threshold_cell},{data_rng})'
-
-    # ----- Formatting helpers (match your behavior) -----
 
     @staticmethod
     def format_bytes(numeric_expr: str) -> str:
@@ -66,8 +55,6 @@ class ExcelFormulas:
     def monthly_scale(self, numeric_expr: str) -> str:
         # (value)/days*30
         return f'(({numeric_expr}))/{self._days}*30'
-
-    # ----- Summary metric formulas (numeric / string) -----
 
     def conditional_bytes_raw(self, *, table_cell: str, threshold_cell: str) -> str:
         cond = self._col(table_cell, "Messages Per Day")
@@ -113,6 +100,37 @@ class ExcelFormulas:
 
     def total_delivery_bytes_raw(self, *, table_cell: str) -> str:
         return f'=SUM({self._col(table_cell, "Delivery Bytes")})'
+
+    def prob_bytes_raw(self, *, table_cell: str, threshold_cell: str) -> str:
+        cond = self._col(table_cell, "Autonomy Score (%)")
+        data = self._col(table_cell, "Total Bytes")
+        return f'={self._sumif(cond, threshold_cell, data)}'
+
+    def prob_messages_raw(self, *, table_cell: str, threshold_cell: str) -> str:
+        cond = self._col(table_cell, "Autonomy Score (%)")
+        data = self._col(table_cell, "Messages")
+        return f'=ROUNDUP({self._sumif(cond, threshold_cell, data)},0)'
+
+    def prob_delivery_bytes_raw(self, *, table_cell: str, threshold_cell: str) -> str:
+        cond = self._col(table_cell, "Autonomy Score (%)")
+        data = self._col(table_cell, "Delivery Bytes")
+        return f'={self._sumif(cond, threshold_cell, data)}'
+
+    def prob_avg_kb_display(self, *, table_cell: str, threshold_cell: str) -> str:
+        cond = self._col(table_cell, "Autonomy Score (%)")
+        bytes_rng = self._col(table_cell, "Total Bytes")
+        msgs_rng = self._col(table_cell, "Messages")
+        sum_bytes = self._sumif(cond, threshold_cell, bytes_rng)
+        sum_msgs = self._sumif(cond, threshold_cell, msgs_rng)
+        return f'=IF(({sum_msgs})=0,"",ROUNDUP(({sum_bytes})/({sum_msgs})/1024,0)&" KB")'
+
+    def prob_pct_of_total_display(self, *, table_cell: str, threshold_cell: str) -> str:
+        cond = self._col(table_cell, "Autonomy Score (%)")
+        bytes_rng = self._col(table_cell, "Total Bytes")
+        num = self._sumif(cond, threshold_cell, bytes_rng)
+        den = f'SUM({bytes_rng})'
+        return f'=IF(({den})=0,"",ROUNDUP(({num})/({den})*100,1)&"%")'
+
 
 class ExcelSheetWriter:
     def __init__(self, ctx: ReportContext, *, table_style: str = "Table Style Medium 9"):
@@ -173,7 +191,9 @@ class SummarySheetBuilder:
         self._threshold = threshold
         self._fx = ExcelFormulas(days=ctx.days)
         self._cell_threshold = "Summary!$B$20"  # row 19, col 1
+        self._cell_prob_threshold = "Summary!$E$20"
         self._cell_selected_table = "Summary!$B$21"  # row 20, col 1
+
 
     def build(self, *, table_names: List[str]) -> None:
         # Pick a default
@@ -203,8 +223,44 @@ class SummarySheetBuilder:
         calc.hide()  # or calc.set_hidden(2) for very hidden
         self._write_summary_calc(calc, table_names)
 
+        # Hidden _ProbCalc sheet (only when probability enabled)
+        if self._ctx.with_probability:
+            pcalc = self._ctx.workbook.add_worksheet("_ProbCalc")
+            pcalc.hide()
+            self._write_prob_calc(pcalc, table_names)
+
         # Now write the Summary content (labels, validations, formulas)
         self._write_summary_sheet(summary, default_selection=default_selection)
+
+    def _apply_summary_geometry(self, summary: Worksheet) -> None:
+        # A: labels (left block)
+        summary.set_column("A:A", 38)
+
+        # B: values (left block)
+        summary.set_column("B:B", 18)
+
+        # C: gutter / spacing
+        summary.set_column("C:C", 3)
+
+        # D: labels (right block)
+        summary.set_column("D:D", 38)
+
+        # E: values (right block)
+        summary.set_column("E:E", 22)
+
+        # F+: keep unused area narrow
+        summary.set_column("F:Z", 2)
+
+        # Give section headers a little breathing room
+        summary.set_row(0, 20)
+        summary.set_row(6, 20)
+        summary.set_row(12, 20)
+        summary.set_row(18, 20)
+
+        # Optional: legend header + a few rows below it
+        summary.set_row(22, 18)
+        for r in range(23, 30):
+            summary.set_row(r, 16)
 
     def _write_summary_calc(self, calc: Worksheet, table_names: List[str]) -> None:
         fm = self._ctx.formats
@@ -305,18 +361,92 @@ class SummarySheetBuilder:
 
         calc.autofit()
 
+    def _write_prob_calc(self, calc: Worksheet, table_names: List[str]) -> None:
+        fm = self._ctx.formats
+        fx = self._fx
+
+        headers = [
+            "Table",                 # A
+            "ProbBytesRaw",          # B
+            "ProbBytesDisp",         # C
+            "ProbMsgsRaw",           # D
+            "ProbAvgKBDisp",         # E
+            "ProbPctDisp",           # F
+            "MonthlyProbBytesDisp",  # G
+            "MonthlyProbMsgsRaw",    # H
+            "MonthlyProbAvgKBDisp",  # I
+            "MonthlyProbDelivDisp",  # J
+        ]
+        for c, h in enumerate(headers):
+            calc.write_string(0, c, h, fm.header_format)
+
+        for i, table_name in enumerate(table_names, start=1):
+            r = i
+            calc.write_string(r, 0, table_name, fm.data_cell_format)
+            table_cell = f"$A{r + 1}"  # 1-based row
+
+            # B: Prob bytes raw
+            calc.write_formula(
+                r, 1,
+                fx.prob_bytes_raw(table_cell=table_cell, threshold_cell=self._cell_prob_threshold),
+                fm.data_cell_format
+            )
+            # C: Prob bytes display
+            calc.write_formula(r, 2, fx.format_bytes(f"_ProbCalc!$B{r + 1}"), fm.data_cell_format)
+
+            # D: Prob messages raw
+            calc.write_formula(
+                r, 3,
+                fx.prob_messages_raw(table_cell=table_cell, threshold_cell=self._cell_prob_threshold),
+                fm.data_cell_format
+            )
+
+            # E: Prob avg size KB display
+            calc.write_formula(
+                r, 4,
+                fx.prob_avg_kb_display(table_cell=table_cell, threshold_cell=self._cell_prob_threshold),
+                fm.data_cell_format
+            )
+
+            # F: Prob % of total bytes display
+            calc.write_formula(
+                r, 5,
+                fx.prob_pct_of_total_display(table_cell=table_cell, threshold_cell=self._cell_prob_threshold),
+                fm.data_cell_format
+            )
+
+            # G: Monthly prob bytes display
+            monthly_bytes_expr = fx.monthly_scale(f"_ProbCalc!$B{r + 1}")
+            calc.write_formula(r, 6, fx.format_bytes(monthly_bytes_expr), fm.data_cell_format)
+
+            # H: Monthly prob msgs raw
+            monthly_msgs_expr = fx.monthly_scale(f"_ProbCalc!$D{r + 1}")
+            calc.write_formula(r, 7, f"={monthly_msgs_expr}", fm.data_cell_format)
+
+            # I: Monthly prob avg KB display (same as E)
+            calc.write_formula(r, 8, f"=_ProbCalc!$E{r + 1}", fm.data_cell_format)
+
+            # J: Monthly prob delivery bytes display
+            cond_deliv_raw_expr = fx.prob_delivery_bytes_raw(
+                table_cell=table_cell,
+                threshold_cell=self._cell_prob_threshold
+            )[1:]  # strip '='
+            monthly_deliv_expr = fx.monthly_scale(f"({cond_deliv_raw_expr})")
+            calc.write_formula(r, 9, fx.format_bytes(monthly_deliv_expr), fm.data_cell_format)
+
+        calc.autofit()
+
+
     @staticmethod
-    def _index_match(selected_table_cell: str, return_col_letter: str) -> str:
-        """
-        =IFERROR(INDEX(_SummaryCalc!C:C, MATCH(Summary!$B$16, _SummaryCalc!A:A, 0)), "")
-        """
+    def _index_match(sheet_name: str, selected_table_cell: str, return_col_letter: str) -> str:
         return (
             f'=IFERROR('
-            f'INDEX(_SummaryCalc!${return_col_letter}:${return_col_letter},'
-            f'MATCH({selected_table_cell},_SummaryCalc!$A:$A,0)'
+            f'INDEX({sheet_name}!${return_col_letter}:${return_col_letter},'
+            f'MATCH({selected_table_cell},{sheet_name}!$A:$A,0)'
             f'),""'
             f')'
         )
+
 
     def _write_summary_sheet(self, summary: Worksheet, *, default_selection: str) -> None:
         fm = self._ctx.formats
@@ -357,40 +487,101 @@ class SummarySheetBuilder:
         })
 
         # Row 0 - Header
-        summary.write_formula(1, 1, self._index_match(self._cell_selected_table, "K"), fm.summary_values_format)
-        summary.write_formula(2, 1, self._index_match(self._cell_selected_table, "L"), fm.summary_values_format)
-        summary.write_formula(3, 1, self._index_match(self._cell_selected_table, "M"), fm.summary_values_format)
+        summary.write_formula(1, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "K"), fm.summary_values_format)
+        summary.write_formula(2, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "L"), fm.summary_values_format)
+        summary.write_formula(3, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "M"), fm.summary_values_format)
         summary.write_formula(4, 1, "=MAX('Hourly Metrics'!B:B)", fm.summary_values_format)
         # 5 - Space
         # Row 6 - Header
-        summary.write_formula(7, 1, self._index_match(self._cell_selected_table, "C"), fm.summary_values_format)
-        summary.write_formula(8, 1, self._index_match(self._cell_selected_table, "D"), fm.summary_values_format)
-        summary.write_formula(9, 1, self._index_match(self._cell_selected_table, "E"), fm.summary_values_format)
-        summary.write_formula(10, 1, self._index_match(self._cell_selected_table, "F"), fm.summary_values_format)
+        summary.write_formula(7, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "C"), fm.summary_values_format)
+        summary.write_formula(8, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "D"), fm.summary_values_format)
+        summary.write_formula(9, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "E"), fm.summary_values_format)
+        summary.write_formula(10, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "F"), fm.summary_values_format)
         # 11 - Space
         # Row 12 - Header
-        summary.write_formula(13, 1, self._index_match(self._cell_selected_table, "G"), fm.summary_highlight_values_format)
-        summary.write_formula(14, 1, self._index_match(self._cell_selected_table, "H"), fm.summary_highlight_values_format)
-        summary.write_formula(15, 1, self._index_match(self._cell_selected_table, "I"), fm.summary_highlight_values_format)
-        summary.write_formula(16, 1, self._index_match(self._cell_selected_table, "N"), fm.summary_highlight_values_format)
+        summary.write_formula(13, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "G"), fm.summary_values_format)
+        summary.write_formula(14, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "H"), fm.summary_values_format)
+        summary.write_formula(15, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "I"), fm.summary_values_format)
+        summary.write_formula(16, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "N"), fm.summary_highlight_values_format)
         # 17 - Space
         # Row 18 - Header all configs are defined above
-        summary.autofit()
+
+        # ----------------------------
+        # Probabilistic side (D/E)
+        # ----------------------------
+        if self._ctx.with_probability:
+            # headings
+            summary.merge_range(6, 3, 6, 4, f"Probabilistic Summary ({days} days)", fm.grouped_header_format)
+            summary.write(7, 3, "App Message Data", fm.summary_format)
+            summary.write(8, 3, "App Messages", fm.summary_format)
+            summary.write(9, 3, "App Average Message Size", fm.summary_format)
+            summary.write(10, 3, "App Volume Percentage", fm.summary_format)
+
+            summary.merge_range(12, 3, 12, 4, "Probabilistic Monthly Summary", fm.grouped_header_format)
+            summary.write(13, 3, "Estimated App Data", fm.summary_format)
+            summary.write(14, 3, "Estimated App Messages", fm.summary_format)
+            summary.write(15, 3, "Estimated App Message Size", fm.summary_format)
+            summary.write(16, 3, "Estimated App Delivery Data", fm.summary_highlight_format)
+
+            summary.merge_range(18, 3, 18, 4, "Probabilistic Options", fm.grouped_header_format)
+            summary.write(19, 3, "Autonomy Threshold (Number must be >= 0):", fm.summary_format)
+            summary.write_number(19, 4, 70, fm.field_values_format)
+            summary.set_column(4, 4, 25)
+            summary.data_validation(19, 4, 19, 4, {"validate": "integer", "criteria": ">=", "value": 0})
+
+            # Live label (uses the threshold in E20)
+            summary.write(20, 3, "Threshold Label:", fm.summary_format)
+            summary.write_formula(
+                20, 4,
+                '=IF($E$20>=90,"High Probability App",'
+                'IF($E$20>=70,"Medium Probability App",'
+                'IF($E$20>=55,"Low-Volume Automated Source",'
+                'IF($E$20>=30,"Unknown/Ambiguous","Likely Human"))))',
+                fm.summary_values_format
+            )
+
+            # values via _ProbCalc
+            summary.write_formula(7, 4, self._index_match("_ProbCalc", self._cell_selected_table, "C"), fm.summary_values_format)
+            summary.write_formula(8, 4, self._index_match("_ProbCalc", self._cell_selected_table, "D"), fm.summary_values_format)
+            summary.write_formula(9, 4, self._index_match("_ProbCalc", self._cell_selected_table, "E"), fm.summary_values_format)
+            summary.write_formula(10, 4, self._index_match("_ProbCalc", self._cell_selected_table, "F"), fm.summary_values_format)
+
+            summary.write_formula(13, 4, self._index_match("_ProbCalc", self._cell_selected_table, "G"), fm.summary_values_format)
+            summary.write_formula(14, 4, self._index_match("_ProbCalc", self._cell_selected_table, "H"), fm.summary_values_format)
+            summary.write_formula(15, 4, self._index_match("_ProbCalc", self._cell_selected_table, "I"), fm.summary_values_format)
+            summary.write_formula(16, 4, self._index_match("_ProbCalc", self._cell_selected_table, "J"), fm.summary_highlight_values_format)
+
+            # Legend block (starts at row 21, col 3)
+            legend_r = 22
+            legend_c = 3
+
+            summary.merge_range(legend_r, legend_c, legend_r, legend_c + 1,
+                                "Legend (Autonomy Score → Label)", fm.grouped_header_format)
+
+            rows = [
+                ("90–100", "High Probability App"),
+                ("70–89.99", "Medium Probability App"),
+                ("55–69.99", "Low-Volume Automated Source"),
+                ("30–54.99", "Unknown/Ambiguous"),
+                ("0–29.99", "Likely Human"),
+            ]
+            for i, (rng, label) in enumerate(rows, start=1):
+                summary.write_string(legend_r + i, legend_c, rng, fm.summary_format)
+                summary.write_string(legend_r + i, legend_c + 1, label, fm.summary_values_format)
+
+        self._apply_summary_geometry(summary)
 
 
-# -----------------------------
-# Drop-in replacement class
-# -----------------------------
 class PipelineProcessorReport:
-    def __init__(self, output_file: str, pipeline_manager: PipelineManager):
+    def __init__(self, output_file: str, pipeline_manager: PipelineManager, with_probability: bool = True):
         self.__threshold = DEFAULT_THRESHOLD
         self.__output_file = output_file
         self.__workbook = Workbook(output_file)
         self.__format_manager = FormatManager(self.__workbook)
         self.__pipeline_manager = pipeline_manager
         self.__days = len(self.__pipeline_manager.get_processor_manager().date_processor.get_date_counter())
-
-        self._ctx = ReportContext(self.__workbook, self.__format_manager, self.__days)
+        self.__with_probability = with_probability
+        self._ctx = ReportContext(self.__workbook, self.__format_manager, self.__days, self.__with_probability)
         self._writer = ExcelSheetWriter(self._ctx)
         self._summary_builder = SummarySheetBuilder(self._ctx, threshold=self.__threshold)
 
@@ -400,11 +591,6 @@ class PipelineProcessorReport:
         print("Please see report: {}".format(self.__output_file))
 
     def __collect_table_names(self) -> List[str]:
-        """
-        Match your original behavior: collect report_name from processors and sanitize.
-        IMPORTANT: This calls proc.report(self.__days) only to get report names.
-        Your original code did the same (to build dropdown list).
-        """
         data_tables: List[str] = []
         for proc in self.__pipeline_manager.get_active_processors():
             if isinstance(proc, Reportable) and getattr(proc, "create_data_table", False):
@@ -413,12 +599,7 @@ class PipelineProcessorReport:
         return data_tables
 
     def create_sizing_summary(self):
-        """
-        Kept for compatibility with your existing flow.
-        Builds Summary + hidden sheets using the list of table names.
-        """
         table_names = self.__collect_table_names()
-        print("DEBUG table_names:", table_names)
         self._summary_builder.build(table_names=table_names)
 
     def __report(self, processor: Any) -> None:
@@ -436,8 +617,6 @@ class PipelineProcessorReport:
         print()
         print("Generating report, please wait.")
 
-        # Keep your original order (Summary first), so external expectations remain the same.
-        # Excel will resolve table references when the tables exist in the workbook.
         self.create_sizing_summary()
 
         for proc in self.__pipeline_manager.get_active_processors():
