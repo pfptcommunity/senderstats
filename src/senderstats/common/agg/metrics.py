@@ -57,7 +57,7 @@ def compute_message_agg_metrics(
     gap_cv = agg.gap_stats.cv() if agg.gap_stats.n > 1 else 0.0
 
     avg_rcpts = (total_recipients / total_messages) if total_messages > 0 else 0.0
-    avg_ext_rcpts = avg_rcpts  # your semantics
+    avg_ext_rcpts = avg_rcpts
 
     return MessageAggMetrics(
         total_messages=total_messages,

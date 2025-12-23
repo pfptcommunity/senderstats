@@ -67,7 +67,6 @@ class ExcelFormulas:
         return f'=ROUNDUP({self._sumif(cond, threshold_cell, data)},0)'
 
     def conditional_avg_kb_display(self, *, table_cell: str, threshold_cell: str) -> str:
-        # Your style: (sum bytes)/(sum msgs)/1024 rounded up and appended " KB"
         cond = self._col(table_cell, "Messages Per Day")
         bytes_rng = self._col(table_cell, "Total Bytes")
         msgs_rng = self._col(table_cell, "Messages")
@@ -506,7 +505,7 @@ class SummarySheetBuilder:
                 '=IF($E$20>=90,"High Probability App",'
                 'IF($E$20>=70,"Medium Probability App",'
                 'IF($E$20>=55,"Low-Volume Automated Source",'
-                'IF($E$20>=30,"Unknown/Ambiguous","Likely Human"))))',
+                'IF($E$20>=30,"Human-Operated Workflow","Likely Human"))))',
                 fm.summary_value_format
             )
 
@@ -532,7 +531,7 @@ class SummarySheetBuilder:
                 ("90–100", "High Probability App"),
                 ("70–89.99", "Medium Probability App"),
                 ("55–69.99", "Low-Volume Automated Source"),
-                ("30–54.99", "Unknown/Ambiguous"),
+                ("30–54.99", "Human-Operated Workflow"),
                 ("0–29.99", "Likely Human"),
             ]
             for i, (rng, label) in enumerate(rows, start=1):

@@ -48,7 +48,7 @@ def classify_sender(
     if rows_per_day >= 1.0 and reply_ratio <= 0.02:
         return "Medium Probability App", 0.70
 
-    return "Unknown/Ambiguous", 0.30
+    return "Human-Operated Workflow", 0.30
 
 
 def normalized_entropy(counts: List[int], total: int) -> float:
@@ -177,14 +177,14 @@ def autonomy_score(
     # - high volume => more "app"
     # - very low reply => more "app"
     # - low-volume + top1_ratio high => "automated source"
-    vol_boost = min(1.0, rows_per_day / 20.0)  # hits 1 around your "High Probability App" cutoff
+    vol_boost = min(1.0, rows_per_day / 20.0)  # hits 1 around "High Probability App" cutoff
     rr_boost = min(1.0, max(0.0, (0.30 - reply_ratio) / 0.30))  # 1 when rr=0, 0 when rr>=0.30
     lowvol_auto = 1.0 if (rows_per_day < 1.0 and reply_ratio == 0.0 and top1_ratio >= 0.95) else 0.0
 
     # Combine: base drives most ordering, boosts improve label alignment
     score = base * 0.75 + vol_boost * 0.15 + rr_boost * 0.10
 
-    # Guarantee low-volume automated sources rank above ambiguous low-volume humans
+    # low-volume automated sources rank above ambiguous low-volume humans
     if lowvol_auto:
         score = max(score, 0.60)
 
