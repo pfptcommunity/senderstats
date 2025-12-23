@@ -42,10 +42,10 @@ def classify_sender(
     if rows_per_day >= 20.0:
         return "High Probability App", 0.90
 
-    if rows_per_day < 1.0 and reply_ratio == 0.0 and top1_ratio >= 0.95:
+    if rows_per_day < 1.0 and reply_ratio <= 0.02 and top1_ratio >= 0.95:
         return "Low-Volume Automated Source", 0.55
 
-    if rows_per_day >= 1.0 and reply_ratio == 0.0:
+    if rows_per_day >= 1.0 and reply_ratio <= 0.02:
         return "Medium Probability App", 0.70
 
     return "Unknown/Ambiguous", 0.30
