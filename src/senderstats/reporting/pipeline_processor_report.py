@@ -543,7 +543,7 @@ class SummarySheetBuilder:
 
 
 class PipelineProcessorReport:
-    def __init__(self, output_file: str, pipeline_manager: PipelineManager, with_probability: bool = True):
+    def __init__(self, output_file: str, pipeline_manager: PipelineManager, with_probability: bool):
         self.__threshold = DEFAULT_THRESHOLD
         self.__output_file = output_file
         self.__workbook = Workbook(output_file)

@@ -687,7 +687,7 @@ class SenderStatsGUI:
 
                         pipeline_manager.get_filter_manager().display_summary()
 
-                        report = PipelineProcessorReport(config.output_file, pipeline_manager)
+                        report = PipelineProcessorReport(config.output_file, pipeline_manager, config.with_probability)
 
                         report.generate()
 
