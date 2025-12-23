@@ -8,7 +8,6 @@ class FormatManager:
             "bottom": 1,
         })
 
-        # Table/report body cells
         self.data_cell_format = self.create_format({
             "valign": "top",
             "text_wrap": True,
@@ -22,48 +21,44 @@ class FormatManager:
             "text_wrap": False,
             "bg_color": "#D9E1F2",
             "bottom": 1,
+            "hidden": True,     # optional (just affects formula bar)
         })
 
-        # Labels (make these LEFT aligned so the sheet reads naturally)
         self.summary_label_format = self.create_format({
             "bold": True,
             "align": "left",
             "valign": "vcenter",
+            "hidden": True,     # optional
         })
 
-        # Values (right aligned)
         self.summary_value_format = self.create_format({
             "align": "right",
             "valign": "vcenter",
+            "hidden": True,     # IMPORTANT: hides formulas when sheet is protected
         })
 
-        # Highlight label/value rows (your yellow rows)
         self.summary_highlight_label_format = self.create_format({
             "bold": True,
             "align": "left",
             "valign": "vcenter",
-            "bg_color": "#FFF59D",   # softer yellow than pure #FFFF00
+            "bg_color": "#FFF59D",
+            "hidden": True,     # optional
         })
+
         self.summary_highlight_value_format = self.create_format({
             "align": "right",
             "valign": "vcenter",
             "bg_color": "#FFF59D",
+            "hidden": True,     # IMPORTANT
         })
 
-        # Editable input cells (threshold + dropdown)
+        # Editable input cells (threshold + dropdown) - NOT hidden
         self.input_value_format = self.create_format({
             "align": "right",
             "valign": "vcenter",
             "locked": False,
-            "bg_color": "#FFF2CC",   # Excel-ish input yellow
+            "bg_color": "#FFF2CC",
             "border": 1,
-        })
-
-        # Slightly muted helper text if you ever want it
-        self.helper_text_format = self.create_format({
-            "align": "left",
-            "valign": "vcenter",
-            "font_color": "#666666",
         })
 
     def create_format(self, properties):

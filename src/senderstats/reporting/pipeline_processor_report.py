@@ -126,9 +126,9 @@ class ExcelFormulas:
 
     def prob_pct_of_total_display(self, *, table_cell: str, threshold_cell: str) -> str:
         cond = self._col(table_cell, "Autonomy Score (%)")
-        bytes_rng = self._col(table_cell, "Total Bytes")
-        num = self._sumif(cond, threshold_cell, bytes_rng)
-        den = f'SUM({bytes_rng})'
+        msgs_rng = self._col(table_cell, "Messages")
+        num = self._sumif(cond, threshold_cell, msgs_rng)
+        den = f'SUM({msgs_rng})'
         return f'=IF(({den})=0,"",ROUNDUP(({num})/({den})*100,1)&"%")'
 
 
@@ -232,35 +232,6 @@ class SummarySheetBuilder:
         # Now write the Summary content (labels, validations, formulas)
         self._write_summary_sheet(summary, default_selection=default_selection)
 
-    def _apply_summary_geometry(self, summary: Worksheet) -> None:
-        # A: labels (left block)
-        summary.set_column("A:A", 38)
-
-        # B: values (left block)
-        summary.set_column("B:B", 18)
-
-        # C: gutter / spacing
-        summary.set_column("C:C", 3)
-
-        # D: labels (right block)
-        summary.set_column("D:D", 38)
-
-        # E: values (right block)
-        summary.set_column("E:E", 22)
-
-        # F+: keep unused area narrow
-        summary.set_column("F:Z", 2)
-
-        # Give section headers a little breathing room
-        summary.set_row(0, 20)
-        summary.set_row(6, 20)
-        summary.set_row(12, 20)
-        summary.set_row(18, 20)
-
-        # Optional: legend header + a few rows below it
-        summary.set_row(22, 18)
-        for r in range(23, 30):
-            summary.set_row(r, 16)
 
     def _write_summary_calc(self, calc: Worksheet, table_names: List[str]) -> None:
         fm = self._ctx.formats
@@ -453,32 +424,32 @@ class SummarySheetBuilder:
         days = self._ctx.days
 
         summary.protect()
+
         summary.merge_range(0, 0, 0, 1, f"Total Data Summary", fm.grouped_header_format)
-        summary.write(1, 0, "Data", fm.summary_format)
-        summary.write(2, 0, "Messages", fm.summary_format)
-        summary.write(3, 0, "Average Message Size", fm.summary_format)
-        summary.write(4, 0, "Total Peak Hourly Volume", fm.summary_format)
+        summary.write(1, 0, "Data", fm.summary_label_format)
+        summary.write(2, 0, "Messages", fm.summary_label_format)
+        summary.write(3, 0, "Average Message Size", fm.summary_label_format)
+        summary.write(4, 0, "Total Peak Hourly Volume", fm.summary_label_format)
         #5 - Space
         summary.merge_range(6,0,6,1, f"Volumetric Summary ({days} days)", fm.grouped_header_format)
-        summary.write(7, 0, f"App Message Data", fm.summary_format)
-        summary.write(8, 0, f"App Messages", fm.summary_format)
-        summary.write(9, 0, f"App Average Message Size", fm.summary_format)
-        summary.write(10, 0, f"App Volume Percentage", fm.summary_format)
+        summary.write(7, 0, f"App Message Data", fm.summary_label_format)
+        summary.write(8, 0, f"App Messages", fm.summary_label_format)
+        summary.write(9, 0, f"App Average Message Size", fm.summary_label_format)
+        summary.write(10, 0, f"App Volume Percentage", fm.summary_label_format)
         #11 - Space
         summary.merge_range(12, 0, 12, 1, f"Volumetric Monthly Summary", fm.grouped_header_format)
-        summary.write(13, 0, "Estimated App Data", fm.summary_format)
-        summary.write(14, 0, "Estimated App Messages", fm.summary_format)
-        summary.write(15, 0, "Estimated App Message Size", fm.summary_format)
-        summary.write(16, 0, "Estimated App Delivery Data", fm.summary_highlight_format)
+        summary.write(13, 0, "Estimated App Data", fm.summary_label_format)
+        summary.write(14, 0, "Estimated App Messages", fm.summary_label_format)
+        summary.write(15, 0, "Estimated App Message Size", fm.summary_label_format)
+        summary.write(16, 0, "Estimated App Delivery Data", fm.summary_highlight_label_format)
         # 17 - Space
         summary.merge_range(18, 0, 18, 1, f"Configuration Options", fm.grouped_header_format)
-        summary.write(19, 0, "Messages Per Day Threshold (Number must be >= 0):", fm.summary_format)
-        summary.write_number(19, 1, self._threshold, fm.field_values_format)
-        summary.set_column(1, 1, 25)
+        summary.write(19, 0, "Messages Per Day Threshold (Number must be >= 0):", fm.summary_label_format)
+        summary.write_number(19, 1, self._threshold, fm.input_value_format)
         summary.data_validation(19, 1, 19, 1, {"validate": "integer", "criteria": ">=", "value": 0})
 
-        summary.write(20, 0, "Select Data Source:", fm.summary_format)
-        summary.write(20, 1, default_selection, fm.field_values_format)
+        summary.write(20, 0, "Select Data Source:", fm.summary_label_format)
+        summary.write(20, 1, default_selection, fm.input_value_format)
         summary.data_validation(20, 1, 20, 1, {
             "validate": "list",
             "source": "=DataTables",
@@ -487,22 +458,22 @@ class SummarySheetBuilder:
         })
 
         # Row 0 - Header
-        summary.write_formula(1, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "K"), fm.summary_values_format)
-        summary.write_formula(2, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "L"), fm.summary_values_format)
-        summary.write_formula(3, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "M"), fm.summary_values_format)
-        summary.write_formula(4, 1, "=MAX('Hourly Metrics'!B:B)", fm.summary_values_format)
+        summary.write_formula(1, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "K"), fm.summary_value_format)
+        summary.write_formula(2, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "L"), fm.summary_value_format)
+        summary.write_formula(3, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "M"), fm.summary_value_format)
+        summary.write_formula(4, 1, "=MAX('Hourly Metrics'!B:B)", fm.summary_value_format)
         # 5 - Space
         # Row 6 - Header
-        summary.write_formula(7, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "C"), fm.summary_values_format)
-        summary.write_formula(8, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "D"), fm.summary_values_format)
-        summary.write_formula(9, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "E"), fm.summary_values_format)
-        summary.write_formula(10, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "F"), fm.summary_values_format)
+        summary.write_formula(7, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "C"), fm.summary_value_format)
+        summary.write_formula(8, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "D"), fm.summary_value_format)
+        summary.write_formula(9, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "E"), fm.summary_value_format)
+        summary.write_formula(10, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "F"), fm.summary_value_format)
         # 11 - Space
         # Row 12 - Header
-        summary.write_formula(13, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "G"), fm.summary_values_format)
-        summary.write_formula(14, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "H"), fm.summary_values_format)
-        summary.write_formula(15, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "I"), fm.summary_values_format)
-        summary.write_formula(16, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "N"), fm.summary_highlight_values_format)
+        summary.write_formula(13, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "G"), fm.summary_value_format)
+        summary.write_formula(14, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "H"), fm.summary_value_format)
+        summary.write_formula(15, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "I"), fm.summary_value_format)
+        summary.write_formula(16, 1, self._index_match("_SummaryCalc",self._cell_selected_table, "N"), fm.summary_highlight_value_format)
         # 17 - Space
         # Row 18 - Header all configs are defined above
 
@@ -512,44 +483,43 @@ class SummarySheetBuilder:
         if self._ctx.with_probability:
             # headings
             summary.merge_range(6, 3, 6, 4, f"Probabilistic Summary ({days} days)", fm.grouped_header_format)
-            summary.write(7, 3, "App Message Data", fm.summary_format)
-            summary.write(8, 3, "App Messages", fm.summary_format)
-            summary.write(9, 3, "App Average Message Size", fm.summary_format)
-            summary.write(10, 3, "App Volume Percentage", fm.summary_format)
+            summary.write(7, 3, "App Message Data", fm.summary_label_format)
+            summary.write(8, 3, "App Messages", fm.summary_label_format)
+            summary.write(9, 3, "App Average Message Size", fm.summary_label_format)
+            summary.write(10, 3, "App Volume Percentage", fm.summary_label_format)
 
             summary.merge_range(12, 3, 12, 4, "Probabilistic Monthly Summary", fm.grouped_header_format)
-            summary.write(13, 3, "Estimated App Data", fm.summary_format)
-            summary.write(14, 3, "Estimated App Messages", fm.summary_format)
-            summary.write(15, 3, "Estimated App Message Size", fm.summary_format)
-            summary.write(16, 3, "Estimated App Delivery Data", fm.summary_highlight_format)
+            summary.write(13, 3, "Estimated App Data", fm.summary_label_format)
+            summary.write(14, 3, "Estimated App Messages", fm.summary_label_format)
+            summary.write(15, 3, "Estimated App Message Size", fm.summary_label_format)
+            summary.write(16, 3, "Estimated App Delivery Data", fm.summary_highlight_label_format)
 
             summary.merge_range(18, 3, 18, 4, "Probabilistic Options", fm.grouped_header_format)
-            summary.write(19, 3, "Autonomy Threshold (Number must be >= 0):", fm.summary_format)
-            summary.write_number(19, 4, 70, fm.field_values_format)
-            summary.set_column(4, 4, 25)
+            summary.write(19, 3, "Autonomy Threshold (Number must be >= 0):", fm.summary_label_format)
+            summary.write_number(19, 4, 70, fm.input_value_format)
             summary.data_validation(19, 4, 19, 4, {"validate": "integer", "criteria": ">=", "value": 0})
 
             # Live label (uses the threshold in E20)
-            summary.write(20, 3, "Threshold Label:", fm.summary_format)
+            summary.write(20, 3, "Threshold Label:", fm.summary_label_format)
             summary.write_formula(
                 20, 4,
                 '=IF($E$20>=90,"High Probability App",'
                 'IF($E$20>=70,"Medium Probability App",'
                 'IF($E$20>=55,"Low-Volume Automated Source",'
                 'IF($E$20>=30,"Unknown/Ambiguous","Likely Human"))))',
-                fm.summary_values_format
+                fm.summary_value_format
             )
 
             # values via _ProbCalc
-            summary.write_formula(7, 4, self._index_match("_ProbCalc", self._cell_selected_table, "C"), fm.summary_values_format)
-            summary.write_formula(8, 4, self._index_match("_ProbCalc", self._cell_selected_table, "D"), fm.summary_values_format)
-            summary.write_formula(9, 4, self._index_match("_ProbCalc", self._cell_selected_table, "E"), fm.summary_values_format)
-            summary.write_formula(10, 4, self._index_match("_ProbCalc", self._cell_selected_table, "F"), fm.summary_values_format)
+            summary.write_formula(7, 4, self._index_match("_ProbCalc", self._cell_selected_table, "C"), fm.summary_value_format)
+            summary.write_formula(8, 4, self._index_match("_ProbCalc", self._cell_selected_table, "D"), fm.summary_value_format)
+            summary.write_formula(9, 4, self._index_match("_ProbCalc", self._cell_selected_table, "E"), fm.summary_value_format)
+            summary.write_formula(10, 4, self._index_match("_ProbCalc", self._cell_selected_table, "F"), fm.summary_value_format)
 
-            summary.write_formula(13, 4, self._index_match("_ProbCalc", self._cell_selected_table, "G"), fm.summary_values_format)
-            summary.write_formula(14, 4, self._index_match("_ProbCalc", self._cell_selected_table, "H"), fm.summary_values_format)
-            summary.write_formula(15, 4, self._index_match("_ProbCalc", self._cell_selected_table, "I"), fm.summary_values_format)
-            summary.write_formula(16, 4, self._index_match("_ProbCalc", self._cell_selected_table, "J"), fm.summary_highlight_values_format)
+            summary.write_formula(13, 4, self._index_match("_ProbCalc", self._cell_selected_table, "G"), fm.summary_value_format)
+            summary.write_formula(14, 4, self._index_match("_ProbCalc", self._cell_selected_table, "H"), fm.summary_value_format)
+            summary.write_formula(15, 4, self._index_match("_ProbCalc", self._cell_selected_table, "I"), fm.summary_value_format)
+            summary.write_formula(16, 4, self._index_match("_ProbCalc", self._cell_selected_table, "J"), fm.summary_highlight_value_format)
 
             # Legend block (starts at row 21, col 3)
             legend_r = 22
@@ -566,10 +536,10 @@ class SummarySheetBuilder:
                 ("0–29.99", "Likely Human"),
             ]
             for i, (rng, label) in enumerate(rows, start=1):
-                summary.write_string(legend_r + i, legend_c, rng, fm.summary_format)
-                summary.write_string(legend_r + i, legend_c + 1, label, fm.summary_values_format)
+                summary.write_string(legend_r + i, legend_c, rng, fm.summary_label_format)
+                summary.write_string(legend_r + i, legend_c + 1, label, fm.summary_value_format)
 
-        self._apply_summary_geometry(summary)
+        summary.autofit()
 
 
 class PipelineProcessorReport:
