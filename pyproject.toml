@@ -22,10 +22,8 @@ license = { text = "MIT" }
 requires-python = ">3.9"
 dependencies = [
     'xlsxwriter',
-    'regex',
-    'google-re2',
-    'pyahocorasick',
-    'ciso8601'
+    'ciso8601',
+    'regex'
 ]
 
 [project.optional-dependencies]

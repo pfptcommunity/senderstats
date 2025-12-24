@@ -5,10 +5,6 @@ from senderstats.common.regex_patterns import *
 # Precompiled Regex matches IPv4 and IPv6 addresses
 ip_re = re.compile(IPV46_REGEX, re.IGNORECASE)
 
-ooto_re = re.compile(
-    r'(?i)(out[-\s]+of([-\s]+the)?[-\s]+office|auto(?:matic)?[-\s]*reply|autoreply|encrypted[-\s]message)')
-
-
 def escape_regex_specials(literal_str: str):
     """
     Escapes regex special characters in a given string.
@@ -140,7 +136,3 @@ def prepare_string_for_excel(text, max_length=32767):
             sanitized = sanitized[:max_length - count]
 
     return sanitized
-
-
-def is_ooo_or_autoreply(subject: str) -> bool:
-    return bool(ooto_re.search(subject))
