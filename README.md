@@ -404,7 +404,7 @@ When running the application for the first time, these options will be automatic
 
 #### Default Report Options
 
-Notice that all additional reporting is not on by default. 
+Notice that all additional reporting is disabled on by default.
 
 <img width="1026" height="832" alt="image" src="https://github.com/user-attachments/assets/2890d788-27cb-46e8-85bc-b49b012ecd29" />
 
