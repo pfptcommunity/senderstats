@@ -8,7 +8,7 @@ from contextlib import redirect_stdout, redirect_stderr
 from datetime import datetime
 from importlib import resources
 from types import SimpleNamespace
-import regex as re
+import re
 
 try:
     import tkinter as tk
