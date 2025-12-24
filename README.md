@@ -309,7 +309,7 @@ window exceeds 1M records. The tool can ingest multiple CSVs files at once.
 
 ![smart_search_outbound](https://github.com/pfptcommunity/senderstats/assets/83429267/83693152-922e-489a-b06d-a0765ecaf3e8)
 
-Once the files are downlaoded to a target folder, you can run the following command with the path to the files you
+Once the files are downloaded to a target folder, you can run the following command with the path to the files you
 downloaded and specify a wildard.
 
 The following example is the most basic usage:
