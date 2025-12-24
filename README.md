@@ -136,7 +136,7 @@ pip install "senderstats[gui]"
 * Return-Path:
 * Envelope header: From:, MessageID Host, MessageID Domain (helpful to identify original sender)
 * Envelope sender and header From: for SPF alignment purposes
-* Random subject line sampling to help understand the type of traffic
+* Top N subject line sampling to help understand the type of traffic
 * Peak Hourly Volumes
 
 **Summarize message volume information:**
