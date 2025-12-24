@@ -137,7 +137,7 @@ class SenderStatsGUI:
         self.remove_prvs = tk.BooleanVar(value=True)
         self.decode_srs = tk.BooleanVar(value=True)
         self.normalize_bounces = tk.BooleanVar(value=True)
-        self.normalize_entropy = tk.BooleanVar()
+        self.normalize_entropy = tk.BooleanVar(value=True)
         self.no_empty_hfrom = tk.BooleanVar()
         self.sample_subject = tk.BooleanVar(value=True)
         self.with_probability = tk.BooleanVar(value=True)
