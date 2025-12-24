@@ -108,10 +108,10 @@ def parse_arguments():
     parser_group.add_argument('--normalize-entropy', action='store_true', dest="normalize_entropy",
                               help='Convert bounce scheme, <random_tracking_id>@domain.com to #entropy#@domain.com')
     parser_group.add_argument('--no-empty-hfrom', action='store_true', dest="no_empty_hfrom",
-                              help='If the header From: is empty the envelope sender address is used')
+                              help='If the header From: is empty the envelope sender address is used.')
     parser_group.add_argument('--sample-subject', action='store_true', dest="sample_subject",
-                              help='Enable probabilistic random sampling of subject lines found during processing')
-    parser.add_argument("--with-probability", action="store_true", dest="with_probability", help="Compute app probability score (requires --sample-subject)")
+                              help='Enable sampling of subject lines found during processing with counts.')
+    parser_group.add_argument("--with-probability", action="store_true", dest="with_probability", help="Compute app probability score (requires --sample-subject)")
 
     parser_group.add_argument('--exclude-ips', default=[], metavar='<ip>', dest="exclude_ips",
                               nargs='+', type=is_valid_ip_syntax, help='Exclude ips from processing.')
