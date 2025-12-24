@@ -396,4 +396,22 @@ Please see report: C:\Users\ljerabek\Downloads\my_cluster_hosted.xlsx
 ![image](https://github.com/user-attachments/assets/cb40e574-4fda-4888-9e95-98df35be3769)
 
 ### GUI Example
-<img width="1244" height="953" alt="image" src="https://github.com/user-attachments/assets/9d9b20e7-98dc-409d-85df-4221c4f06a00" />
+<img width="1026" height="832" alt="image" src="https://github.com/user-attachments/assets/9abbb733-ea6b-4445-b22f-e8bc9886d1f3" />
+
+### Default Recommended Options for Proofpoint Smart Search CSV files
+
+When running the application for the first time, these options will be automatically set.
+
+#### Default Report Options
+
+Notice that all additional reporting is not on by default. 
+
+<img width="1026" height="832" alt="image" src="https://github.com/user-attachments/assets/2890d788-27cb-46e8-85bc-b49b012ecd29" />
+
+#### Default Parsing Options
+
+Please validate your options are correctly set as shown below if you are trying to determine application volumes.
+
+<img width="1026" height="832" alt="image" src="https://github.com/user-attachments/assets/d43712c5-d100-46c2-aa59-6b944b68d9ae" />
+
+
