@@ -4,7 +4,7 @@ This tool helps identify the top senders based on smart search outbound message 
 
 ### Requirements:
 
-* Python 3.9+
+* Python 3.9+ or [download pre-packaged binary for Windows or Mac from Releases](https://github.com/pfptcommunity/senderstats/releases/latest) 
 
 ### Installation
 
