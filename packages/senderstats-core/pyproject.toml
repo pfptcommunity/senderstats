@@ -1,0 +1,32 @@
+[build-system]
+requires = ['setuptools', 'setuptools-scm']
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"senderstats_core.common.data" = ["*.pkl"]
+
+[project]
+name = "senderstats-core"
+dynamic = ["version"]
+readme = "README.md"
+description = "Core processing library to process csv and smart search data from Proofpoint"
+license = { text = "MIT" }
+requires-python = ">3.9"
+dependencies = [
+    'xlsxwriter',
+    'ciso8601',
+    'regex'
+]
+
+[project.urls]
+repository = "https://github.com/pfptcommunity/senderstats"
+#homepage = "https://github.com/pfptcommunity/senderstats"
+#documentation = "https://github.com/pfptcommunity/senderstats"
+#changelog = "https://github.com/pfptcommunity/senderstats"

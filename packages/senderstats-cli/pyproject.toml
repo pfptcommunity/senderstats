@@ -1,0 +1,30 @@
+[build-system]
+requires = ['setuptools', 'setuptools-scm']
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+version_scheme = "post-release"
+local_scheme = "node-and-date"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project]
+name = "senderstats-cli"
+dynamic = ["version"]
+readme = "README.md"
+description = "Command line user interface for senderstats"
+license = { text = "MIT" }
+requires-python = ">3.9"
+dependencies = [
+    'senderstats-core',
+]
+
+[project.urls]
+repository = "https://github.com/pfptcommunity/senderstats"
+#homepage = "https://github.com/pfptcommunity/senderstats"
+#documentation = "https://github.com/pfptcommunity/senderstats"
+#changelog = "https://github.com/pfptcommunity/senderstats"
+
+[project.scripts]
+senderstats-gui = "senderstats_cli:main"
