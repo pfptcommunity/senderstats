@@ -3,9 +3,9 @@ import re
 import sys
 from importlib.metadata import version, PackageNotFoundError
 
-from senderstats.common.defaults import *
-from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
-from senderstats.data.data_source_type import DataSourceType
+from senderstats_core.common.defaults import *
+from senderstats_core.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
+from senderstats_core.data.data_source_type import DataSourceType
 
 
 def get_version():

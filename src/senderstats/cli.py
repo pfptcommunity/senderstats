@@ -1,9 +1,9 @@
 from senderstats.cli_args import parse_arguments
-from senderstats.processing.config_manager import ConfigManager
-from senderstats.processing.data_source_manager import DataSourceManager
-from senderstats.processing.pipeline_manager import PipelineManager
-from senderstats.processing.pipeline_processor import PipelineProcessor
-from senderstats.reporting.pipeline_processor_report import PipelineProcessorReport
+from senderstats_core.processing.config_manager import ConfigManager
+from senderstats_core.processing.data_source_manager import DataSourceManager
+from senderstats_core.processing.pipeline_manager import PipelineManager
+from senderstats_core.processing.pipeline_processor import PipelineProcessor
+from senderstats_core.reporting.pipeline_processor_report import PipelineProcessorReport
 
 
 def main():

@@ -26,14 +26,14 @@ except ImportError as e:
     ) from e
 
 from senderstats.cli_args import get_version
-from senderstats.common.defaults import *
-from senderstats.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
-from senderstats.data.data_source_type import DataSourceType
-from senderstats.processing.config_manager import ConfigManager
-from senderstats.processing.data_source_manager import DataSourceManager
-from senderstats.processing.pipeline_manager import PipelineManager
-from senderstats.processing.pipeline_processor import PipelineProcessor
-from senderstats.reporting.pipeline_processor_report import PipelineProcessorReport
+from senderstats_core.common.defaults import *
+from senderstats_core.common.regex_patterns import EMAIL_ADDRESS_REGEX, VALID_DOMAIN_REGEX, IPV46_REGEX
+from senderstats_core.data.data_source_type import DataSourceType
+from senderstats_core.processing.config_manager import ConfigManager
+from senderstats_core.processing.data_source_manager import DataSourceManager
+from senderstats_core.processing.pipeline_manager import PipelineManager
+from senderstats_core.processing.pipeline_processor import PipelineProcessor
+from senderstats_core.reporting.pipeline_processor_report import PipelineProcessorReport
 
 
 def is_valid_domain_syntax(domain_name: str):

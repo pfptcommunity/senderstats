@@ -10,7 +10,6 @@ local_scheme = "node-and-date"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"senderstats.common.data" = ["*.pkl"]
 "senderstats.images" = ["*.png", "*.ico"]
 
 [project]
@@ -21,9 +20,7 @@ description = "Tool to Process Smart Search Results and Identify Top Senders"
 license = { text = "MIT" }
 requires-python = ">3.9"
 dependencies = [
-    'xlsxwriter',
-    'ciso8601',
-    'regex'
+    'senderstats-core'
 ]
 
 [project.optional-dependencies]
